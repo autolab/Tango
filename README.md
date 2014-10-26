@@ -11,7 +11,9 @@ Tango was started as part of the Autolab project at Carnegie Mellon University a
 
 ## Getting Started
 
-The easiest way to get started with Tango is by installing it on a vanilla EC2 Ubuntu instance. The detailed instructions can be found [here](https://github.com/autolab/Tango/wiki/Setting-up-Tango-and-VMs-on-Amazon).
+The easiest way to get started with Tango is by installing it on a vanilla EC2 Ubuntu instance. The detailed instructions can be found [here](https://github.com/autolab/Tango/wiki/Setting-up-Tango-and-VMs-on-Amazon-EC2).
+
+Tango has a REST API which can be used for job submission and other administrative tasks. The documentation of the API can be found [here](https://github.com/autolab/Tango/wiki/Tango-REST-API)
 
 In order to run Tango locally, the VMM API needs to be implemented such that jobs run locally. This is currently work in progress.
 
