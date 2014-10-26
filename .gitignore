@@ -1,0 +1,8 @@
+# exclude all binaries
+*.pyc
+# exclude all test job outputs
+*.out
+# exclude helper scripts
+scripts/*.sh
+# exclude
+vmms/id_rsa*

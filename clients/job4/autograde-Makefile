@@ -1,0 +1,5 @@
+autograde:
+	(./hello.sh; exit 2)
+
+
+

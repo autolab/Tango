@@ -1,0 +1,1 @@
+Tests resiliency to programs that exceed the VM memory size
