@@ -1,4 +1,4 @@
-![Welcome to Autolab](https://github.com/autolab/autolab-src/blob/master/public/images/autolab_logo.png)
+![Welcome to Autolab](https://github.com/autolab/Autolab/blob/master/public/images/autolab_logo.png)
 
 Tango
 ======
