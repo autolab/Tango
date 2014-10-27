@@ -3,7 +3,7 @@
 Tango
 ======
 
-Tango is a standalone, RESTful Web service that provides autograding services [Autolab](https://github.com/autolab/Autolab). This is the main repository that includes the application layer of the project.
+Tango is a standalone, RESTful Web service that provides autograding services for [Autolab](https://github.com/autolab/Autolab). This is the main repository that includes the application layer of the project.
 
 Tango allows submission of jobs that are to be run in pre-configured VMs. Tango also supports different Virtual Machine Management (VMM) systems by providing a high level VMM API. Users can implement the high level VMM API for a hypervisor or VMM of your choice such as KVM, Xen, Docker or EC2.
 
