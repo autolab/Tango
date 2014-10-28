@@ -99,9 +99,9 @@ class Worker( threading.Thread ):
 		if job.notifyURL:
 			outputFileName = job.outputFile.split("/")[-1] # get filename from path
 			fh = open(job.outputFile, 'rb')
-			hdrs = {'content-type' : 'application/x-www-form-urlencoded',
-				'Filename': outputFileName}
-			response = requests.post(job.notifyURL, data = fh, headers = hdrs, verify=False)
+            files = {'file': fh}
+			hdrs = {'Filename': outputFileName}
+			response = requests.post(job.notifyURL, files = files, headers = hdrs, verify=False)
 			self.log.info("Response from callback to %s:%s" % (job.notifyURL, response.content))
 			fh.close()
 
