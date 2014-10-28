@@ -34,24 +34,10 @@ import threading, time, logging, sys, signal, re, gc
 import shlex, subprocess, random, string, os, urllib, stat
 from collections import deque
 
-# Thrift is installed in this directory for each python release, however,
-# python 2.7 is installed in /usr/local/bin, so by default it looks for it in
-# /usr/local/lib, which is incorrect
-
-sys.path.append('/usr/lib/python2.7/site-packages/')
-
 from config import *
 from preallocator import *
 from jobQueue import *
-from vmms.tashiSSH import *
-
-from pythonThrift.tango import Tango
-from pythonThrift.tango.ttypes import *
-
-from thrift.transport import TSocket
-from thrift.transport import TTransport
-from thrift.protocol import TBinaryProtocol
-from thrift.server import TServer
+from vmms.ec2SSH import *
 
 class tangoServer:
     """ tangoServer - Defines the RPC calls that the server accepts
@@ -194,22 +180,22 @@ class tangoServer:
         # and kill those in the current Tango name space.
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
-            	vms = vobj.getVMs()
-            	log.debug("Pre-existing VMs: %s" % vms)
-            	namelist = []
-            	for vm in vms:
-                	if re.match("%s-" % Config.PREFIX, vm.name):
-                  	    vobj.destroyVM(vm)
-                            # Need a consistent abstraction for a vm between interfaces
-                            namelist.append(vm.name)
-            	if namelist:
-                	log.warning("Killed these %s VMs on restart: %s" %
-                           		(vmms_name, namelist))
+                vms = vobj.getVMs()
+                log.debug("Pre-existing VMs: %s" % vms)
+                namelist = []
+                for vm in vms:
+                    if re.match("%s-" % Config.PREFIX, vm.name):
+                        vobj.destroyVM(vm)
+                        # Need a consistent abstraction for a vm between interfaces
+                        namelist.append(vm.name)
+                if namelist:
+                    log.warning("Killed these %s VMs on restart: %s" %
+                                   (vmms_name, namelist))
 
-    	except Exception as err:
-        	print("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
-        	log.error("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
-        	os._exit(1)
+        except Exception as err:
+            print("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
+            log.error("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
+            os._exit(1)
 
 
 def validateJob(job, vmms):
@@ -246,25 +232,24 @@ def validateJob(job, vmms):
             job.trace.append("%s|validateJob: Missing job.vm.image" %
                              (time.asctime()))
             errors += 1
-
-       else:
-            Check if VM name exists in Tashi directory
-           imgList = os.listdir(Config.TASHI_IMAGE_PATH)
-           imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
-           if job.vm.image not in imgList:
-               log.error("validateJob: Image not found: %s" % job.vm.image)
-               job.trace.append("%s|validateJob: Image not found: %s" %
-                                (time.asctime(), job.vm.image))
-               errors += 1
-            Check if image has read permissions
-           elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-               log.error("validateJob: Not readable: %s" % job.vm.image)
-               job.trace.append("%s|validateJob: Not readable: %s" %
-                                (time.asctime(), job.vm.image))
-               errors += 1
-           else:
-               (base, ext) = os.path.splitext(job.vm.image)
-               job.vm.name = base;
+        else:
+            # Check if VM name exists in Tashi directory
+            imgList = os.listdir(Config.TASHI_IMAGE_PATH)
+            imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
+            if job.vm.image not in imgList:
+                log.error("validateJob: Image not found: %s" % job.vm.image)
+                job.trace.append("%s|validateJob: Image not found: %s" %
+                                            (time.asctime(), job.vm.image))
+                errors += 1
+            # Check if image has read permissions
+            elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
+                log.error("validateJob: Not readable: %s" % job.vm.image)
+                job.trace.append("%s|validateJob: Not readable: %s" %
+                                            (time.asctime(), job.vm.image))
+                errors += 1
+            else:
+                (base, ext) = os.path.splitext(job.vm.image)
+                job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")

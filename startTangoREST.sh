@@ -5,5 +5,5 @@
 source $PWD/scripts/sourcelib;
 
 while [ 1 ]; do
-	$PWD/tangoREST/server.py
+	python $PWD/restful-tango/server.py
 done

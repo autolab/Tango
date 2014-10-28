@@ -4,7 +4,7 @@ default:
 	@echo "Call me with a specific rule"
 
 # This rule runs the tango server.
-startProductionTango3Server:
+startTango:
 	(nohup ./startTangoREST.sh &> tango3.out &)
 
 clean:

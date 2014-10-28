@@ -6,14 +6,10 @@
 
 import sys, os, hashlib, time, json, random, logging, logging.handlers
 
-sys.path.insert(0, "/usr/share/mpandyaAutolab/tango3")
-
 from tangod import *
 from jobQueue import *
 from preallocator import *
-from vmms.tashiSSH import *
-from pythonThrift.tango import *
-from pythonThrift.tango.ttypes import *
+from vmms.ec2SSH import *
 from config import Config
 
 class Status:
@@ -44,7 +40,7 @@ class Status:
 
 class TangoREST:
 
-	COURSELABS = "/usr/share/yrkumarAutolab/courselabs"
+	COURSELABS = Config.COURSELABS
 	OUTPUT_FOLDER = "output"
 	LOGFILE = Config.LOGFILE
 
@@ -53,7 +49,7 @@ class TangoREST:
 	keys = ['403926033d001b5279df37cbbe5287b7c7c267bc'] 
 
 	def __init__(self):
-		self.vmms = {'tashiSSH':TashiSSH()}
+		self.vmms = {'ec2SSH':Ec2SSH()}
 		self.preallocator = Preallocator(self.vmms)
 		self.queue = JobQueue(self.preallocator)
 		self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)

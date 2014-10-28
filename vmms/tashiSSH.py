@@ -11,9 +11,6 @@
 import random, subprocess, re, time, logging, threading, os
 
 from config import *
-
-from pythonThrift.tango.ttypes import *
-from tashi.rpycservices.rpyctypes import *
 from tashi.util import getConfig, createClient
 
 def timeout(command, time_out=1):
