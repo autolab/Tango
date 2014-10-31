@@ -6,9 +6,6 @@ import sys, time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-#sys.path.append("/home/ubuntu/tango3/")
-#sys.path.insert(0, "/home/ubuntu/tango3/")
-
 import tangoREST
 from config import Config
 

@@ -23,6 +23,9 @@ class Config:
 	# Log file. Setting this to None sends the server output to stdout
     LOGFILE = None
 
+    # Courselabs directory. Must be created before starting Tango
+    COURSELABS = ""
+
     #####
     # Part 2: Constants that shouldn't need to change very often. 
     #

@@ -12,7 +12,6 @@ import random, subprocess, re, time, logging, threading, os
 
 from config import *
 
-from pythonThrift.tango.ttypes import *
 from boto import ec2, exception, config
 
 def timeout(command, time_out=1):
@@ -98,32 +97,32 @@ class Ec2SSH:
     # VMMS helper methods
     #
     def tangoMachineToEC2Instance(self, vm):
-        """ tangoMachineToEC2Instance - returns an object with EC2 instance
-	type and AMI. Only general-purpose instances are used. Defalt AMI
-	is currently used.
+        """ tangoMachineToEC2Instance - returns an object with EC2 instance 
+        type and AMI. Only general-purpose instances are used. Defalt AMI
+        is currently used.
         """
-	ec2instance = dict()
+        ec2instance = dict()
 
         memory = vm.memory # in Kbytes
         cores = vm.cores
         image = vm.image
 
-	if (cores == 1 and memory <= 613*1024):
-		ec2instance['instance_type'] = 't1.micro'
-	elif (cores == 1 and memory <= 1.7*1024*1024):
-		ec2instance['instance_type'] = 'm1.small'
-	elif (cores == 1 and memory <= 3.75*1024*1024):
-		ec2instance['instance_type'] = 'm3.medium'
-	elif (cores == 2):
-		ec2instance['instance_type'] = 'm3.large'
-	elif (cores == 4):
-		ec2instance['instance_type'] = 'm3.xlarge'
-	elif (cores == 8):
-		ec2instance['instance_type'] = 'm3.2xlarge'
-	else:
-		ec2instance['instance_type'] = Config.DEFAULT_INST_TYPE
+    	if (cores == 1 and memory <= 613*1024):
+    		ec2instance['instance_type'] = 't1.micro'
+    	elif (cores == 1 and memory <= 1.7*1024*1024):
+    		ec2instance['instance_type'] = 'm1.small'
+    	elif (cores == 1 and memory <= 3.75*1024*1024):
+    		ec2instance['instance_type'] = 'm3.medium'
+    	elif (cores == 2):
+    		ec2instance['instance_type'] = 'm3.large'
+    	elif (cores == 4):
+    		ec2instance['instance_type'] = 'm3.xlarge'
+    	elif (cores == 8):
+    		ec2instance['instance_type'] = 'm3.2xlarge'
+    	else:
+    		ec2instance['instance_type'] = Config.DEFAULT_INST_TYPE
 
-	ec2instance['ami'] = Config.DEFAULT_AMI
+    	ec2instance['ami'] = Config.DEFAULT_AMI
 
         return ec2instance
 
