@@ -96,14 +96,18 @@ class Worker( threading.Thread ):
 
 
     def notifyServer(self, job):
-        if job.notifyURL:
-            outputFileName = job.outputFile.split("/")[-1] # get filename from path
-            fh = open(job.outputFile, 'rb')
-            files = {'file': fh}
-            hdrs = {'Filename': outputFileName}
-            response = requests.post(job.notifyURL, files = files, headers = hdrs, verify=False)
-            self.log.info("Response from callback to %s:%s" % (job.notifyURL, response.content))
-            fh.close()
+        try:
+            if job.notifyURL:
+                outputFileName = job.outputFile.split("/")[-1] # get filename from path
+                fh = open(job.outputFile, 'rb')
+                files = {'file': unicode(fh.read(), errors='ignore')}
+                hdrs = {'Filename': outputFileName}
+                self.log.debug("Sending request to %s" % job.notifyURL)
+                response = requests.post(job.notifyURL, files = files, headers = hdrs, verify=False)
+                self.log.info("Response from callback to %s:%s" % (job.notifyURL, response.content))
+                fh.close()
+        except Exception as e:
+            self.log.debug("Error in notifyServer: %s" % str(e))
 
     #
     # Main worker function
