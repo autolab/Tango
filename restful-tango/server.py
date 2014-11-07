@@ -46,7 +46,7 @@ class MainHandler(tornado.web.RequestHandler):
 	@unblock
 	def get(self):
 		""" get - Default route to check if RESTful Tango is up."""
-		return ("Hello, RESTful Tango!\n")
+		return ("Hello, world! RESTful Tango here.\n")
 
 class OpenHandler(tornado.web.RequestHandler):
 	@unblock
