@@ -10,6 +10,7 @@
 import time, threading, logging
 
 from config import *
+from tangoObjects import *
 from worker import Worker
 
 #

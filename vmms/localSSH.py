@@ -1,18 +1,10 @@
 #
-# ec2SSH.py - Implements the Tango VMMS interface to run Tango jobs on Amazon EC2.
-#
-# This implementation uses the AWS EC2 SDK to manage the virtual machines and
-# ssh and scp to access them. The following excecption are raised back
-# to the caller:
-#
-#   Ec2Exception - EC2 raises this if it encounters any problem
-#   ec2CallError - raised by ec2Call() function
+# localSSH.py - Implements the Tango VMMS interface to run Tango jobs locally.
 #
 import random, subprocess, re, time, logging, threading, os
 
 from config import *
 
-from boto import ec2, exception, config
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -63,23 +55,25 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
 # User defined exceptions
 #
 # ec2Call() exception
-class ec2CallError(Exception):
+class localCallError(Exception):
     pass
 
-class Ec2SSH:
-    _SSH_FLAGS = ["-i", Config.SECURITY_KEY_PATH,
-                    "-o", "StrictHostKeyChecking no",
-                    "-o", "GSSAPIAuthentication no"]
+class LocalSSH:
+    _SSH_FLAGS = ["-o", "StrictHostKeyChecking no", "-o", "GSSAPIAuthentication no"]
 
     def __init__(self):
-        """ log - logger for the instance
-        connection - EC2Connection object that stores the connection
-        info to the EC2 network
-        instance - Instance object that stores information about the
-        VM created
         """
-        self.connection = ec2.connect_to_region(Config.EC2_REGION)
-        self.log = logging.getLogger("Ec2SSH")
+			Checks if the machine is ready to run Tango jobs. 
+        """
+        self.log = logging.getLogger("LocalSSH")
+        try:
+            checkBinary = subprocess.check_call(["which", "autodriver"])
+            checkAutogradeUser = subprocess.check_call("getent passwd | grep 'autograde'", shell=True)
+        except subprocess.CalledProcessError as e:
+            print "Local machine has not been bootstrapped for autograding. Please run localBootstrap.sh"
+            self.log.error(e)
+            exit(1)
+
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -93,93 +87,21 @@ class Ec2SSH:
         instance.
         """
         return vm.domain_name
-    #
-    # VMMS helper methods
-    #
-    def tangoMachineToEC2Instance(self, vm):
-        """ tangoMachineToEC2Instance - returns an object with EC2 instance 
-        type and AMI. Only general-purpose instances are used. Defalt AMI
-        is currently used.
-        """
-        ec2instance = dict()
-
-        memory = vm.memory # in Kbytes
-        cores = vm.cores
-        image = vm.image
-
-    	if (cores == 1 and memory <= 613*1024):
-    		ec2instance['instance_type'] = 't1.micro'
-    	elif (cores == 1 and memory <= 1.7*1024*1024):
-    		ec2instance['instance_type'] = 'm1.small'
-    	elif (cores == 1 and memory <= 3.75*1024*1024):
-    		ec2instance['instance_type'] = 'm3.medium'
-    	elif (cores == 2):
-    		ec2instance['instance_type'] = 'm3.large'
-    	elif (cores == 4):
-    		ec2instance['instance_type'] = 'm3.xlarge'
-    	elif (cores == 8):
-    		ec2instance['instance_type'] = 'm3.2xlarge'
-    	else:
-    		ec2instance['instance_type'] = Config.DEFAULT_INST_TYPE
-
-    	ec2instance['ami'] = Config.DEFAULT_AMI
-
-        return ec2instance
 
     #
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM - Tell EC2 to create a new VM instance.
-
-        Returns a boto.ec2.instance.Instance object.
+        """ initializeVM - Set domain name to localhost
         """
         # Create the instance and obtain the reservation
-        try:
-            instanceName = self.instanceName(vm.id, vm.name)
-            ec2instance = self.tangoMachineToEC2Instance(vm)
-            reservation = self.connection.run_instances(ec2instance['ami'],
-                                                        key_name=Config.SECURITY_KEY_NAME,
-                                                        security_groups=[Config.DEFAULT_SECURITY_GROUP],
-                                                        instance_type=ec2instance['instance_type'])
-
-
-            # Wait for instance to reach 'running' state
-            state = -1
-            start_time = time.time()
-            while state is not Config.INSTANCE_RUNNING:
-
-                for inst in self.connection.get_all_instances():
-                    if inst.id == reservation.id:
-                        newInstance = inst.instances.pop()
-
-                state = newInstance.state_code
-                self.log.debug("VM %s: Waiting to reach 'running' state. Current state: %s (%d)" % (instanceName, newInstance.state, state))
-                time.sleep(Config.TIMER_POLL_INTERVAL)
-                elapsed_secs = time.time() - start_time
-                if (elapsed_secs > Config.INITIALIZEVM_TIMEOUT):
-                    self.log.debug("VM %s: Did not reach 'running' state before timeout period of %d" % (instanceName, Config.TIMER_POLL_INTERVAL)) 
-
-            self.log.info("VM %s | State %s | Reservation %s | Private DNS Name %s | Private IP Address %s" % (instanceName, newInstance.state, reservation.id, newInstance.private_dns_name, newInstance.private_ip_address))
-
-            # Save domain and id ssigned by EC2 in vm object
-            vm.domain_name = newInstance.private_ip_address
-            vm.ec2_id = newInstance.id
-            # Assign name to EC2 instance 
-            self.connection.create_tags([newInstance.id], {"Name": instanceName}) 
-            self.log.debug("VM %s: %s" % (instanceName, newInstance))
-            return vm
-
-        except Exception as e:
-            self.log.debug("initializeVM Failed: %s" % e)
-
-            return None
+        vm.domain_name = "127.0.0.1"
+        return vm
 
     def waitVM(self, vm, max_secs):
         """ waitVM - Wait at most max_secs for a VM to become
-        ready. Return error if it takes too long.
-
-        VM is a boto.ec2.instance.Instance object.
+        ready. Return error if it takes too long. This should
+        be immediate since the VM is localhost.
         """
 
         # First, wait for ping to the vm instance to work
@@ -216,8 +138,8 @@ class Ec2SSH:
                 # If the call to ssh returns timeout (-1) or ssh error
                 # (255), then success. Otherwise, keep trying until we run
                 # out of time.
-                ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
-                                        ["ubuntu@%s" % (domain_name),
+                ret = timeout(["ssh"] + LocalSSH._SSH_FLAGS +
+                                        ["%s" % (domain_name),
                                         "(:)"], max_secs - elapsed_secs)
 
                 self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
@@ -234,14 +156,14 @@ class Ec2SSH:
         domain_name = self.domainName(vm)
 
         # Create a fresh input directory
-        ret = subprocess.call(["ssh"] + Ec2SSH._SSH_FLAGS +
-                               ["ubuntu@%s" % (domain_name), 
+        ret = subprocess.call(["ssh"] + LocalSSH._SSH_FLAGS +
+                               ["%s" % (domain_name),
                                "(rm -rf autolab; mkdir autolab)"])
         
         # Copy the input files to the input directory
         for file in inputFiles:
-            ret = timeout(["scp"] + Ec2SSH._SSH_FLAGS +
-                           [file.localFile, "ubuntu@%s:autolab/%s" %
+            ret = timeout(["scp"] + LocalSSH._SSH_FLAGS +
+                           [file.localFile, "%s:autolab/%s" %
                            (domain_name, file.destFile)], Config.COPYIN_TIMEOUT)
             if ret != 0:
                 return ret
@@ -251,6 +173,7 @@ class Ec2SSH:
         """ runJob - Run the make command on a VM using SSH and
         redirect output to file "output".
         """
+        print "IN RUN JOB!!!"
         domain_name = self.domainName(vm)
         self.log.debug("runJob: Running job on VM %s" % self.instanceName(vm.id, vm.name))
         # Setting ulimits for VM and running job
@@ -258,8 +181,8 @@ class Ec2SSH:
             %d -o %d autolab &> output" % (
             Config.VM_ULIMIT_USER_PROC, Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, maxOutputFileSize) 
-        return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
-                        ["ubuntu@%s" % (domain_name), runcmd], runTimeout * 2)
+        return timeout(["ssh"] + LocalSSH._SSH_FLAGS +
+                        ["%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
@@ -275,8 +198,8 @@ class Ec2SSH:
                 # regular expression matcher for error message from cat
                 no_file = re.compile('No such file or directory')
                 
-                time_info = subprocess.check_output(['ssh'] + Ec2SSH._SSH_FLAGS +
-                                                     ['ubuntu@%s' % (domain_name),
+                time_info = subprocess.check_output(['ssh'] + LocalSSH._SSH_FLAGS +
+                                                     ['%s' % (domain_name),
                                                      'cat time.out']).rstrip('\n')
 
                 # If the output is empty, then ignore it (timing info wasn't
@@ -295,48 +218,25 @@ class Ec2SSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
     
-        return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
-                        ["ubuntu@%s:output" % (domain_name), destFile],
+        return timeout(["scp"] + LocalSSH._SSH_FLAGS +
+                        ["%s:output" % (domain_name), destFile],
                        Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
-        """ destroyVM - Removes a VM from the system
+        """ destroyVM - Nothing to destroy for local.
         """
-        ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
-        return ret
+        return
 
     def safeDestroyVM(self, vm):
         return self.destroyVM(vm)
 
     def getVMs(self):
-        """ getVMs - Returns the complete list of VMs on this account. Each
-        list entry is a boto.ec2.instance.Instance object.
+        """ getVMs - Nothing to return for local.
         """
-        #TODO: Find a way to return vm objects as opposed ec2 instance objects.
-        instances = list()
-        for i in self.connection.get_all_instances():
-            if i.id is not Config.TANGO_RESERVATION_ID:
-                inst = i.instances.pop()
-                if inst.state_code is Config.INSTANCE_RUNNING:
-                    instances.append(inst)
-
-        vms = list()
-        for inst in instances:
-            vm = TangoMachine()
-            vm.ec2_id = inst.id
-            vm.name = str(inst.tags.get('Name'))
-            self.log.debug('getVMs: Instance - %s, EC2 Id - %s' % (vm.name, vm.ec2_id))
-            vms.append(vm)
-
-        return vms
+        return []
 
     def existsVM(self, vm):
-        """ existsVM - Checks whether a VM exists in the vmms.
+        """ existsVM - VM is simply localhost which exists.
         """
-        instances = self.connection.get_all_instances()
-
-        for inst in instances:
-            if inst.instances[0].id is vm.ec2_id:
-                return True
-        return False
+        return True
 

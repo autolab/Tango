@@ -37,7 +37,8 @@ from collections import deque
 from config import *
 from preallocator import *
 from jobQueue import *
-from vmms.ec2SSH import *
+from vmms.localSSH import *
+from tangoObjects import *
 
 class tangoServer:
     """ tangoServer - Defines the RPC calls that the server accepts
@@ -233,23 +234,24 @@ def validateJob(job, vmms):
                              (time.asctime()))
             errors += 1
         else:
-            # Check if VM name exists in Tashi directory
-            imgList = os.listdir(Config.TASHI_IMAGE_PATH)
-            imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
-            if job.vm.image not in imgList:
-                log.error("validateJob: Image not found: %s" % job.vm.image)
-                job.trace.append("%s|validateJob: Image not found: %s" %
-                                            (time.asctime(), job.vm.image))
-                errors += 1
-            # Check if image has read permissions
-            elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-                log.error("validateJob: Not readable: %s" % job.vm.image)
-                job.trace.append("%s|validateJob: Not readable: %s" %
-                                            (time.asctime(), job.vm.image))
-                errors += 1
-            else:
-                (base, ext) = os.path.splitext(job.vm.image)
-                job.vm.name = base;
+            if job.vm.vmms == "tashiSSH":
+	            # Check if VM name exists in Tashi directory
+				imgList = os.listdir(Config.TASHI_IMAGE_PATH)
+				imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
+				if job.vm.image not in imgList:
+					log.error("validateJob: Image not found: %s" % job.vm.image)
+					job.trace.append("%s|validateJob: Image not found: %s" %
+                	                            (time.asctime(), job.vm.image))
+					errors += 1
+            	# Check if image has read permissions
+				elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
+					log.error("validateJob: Not readable: %s" % job.vm.image)
+					job.trace.append("%s|validateJob: Not readable: %s" %
+                                            	(time.asctime(), job.vm.image))
+					errors += 1
+				else:
+					(base, ext) = os.path.splitext(job.vm.image)
+					job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
@@ -336,7 +338,7 @@ def main():
 
     # Initialize the hash of supported VMM systems.
     # vmms = {'tashiSSH':TashiSSH()}
-    vmms = {'tashiSSH':TashiSSH()}
+    vmms = {'localSSH':LocalSSH()}
 
     # Instantiate the main components in the service
     preallocator = Preallocator(vmms)
