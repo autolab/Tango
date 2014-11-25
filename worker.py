@@ -58,7 +58,7 @@ class Worker( threading.Thread ):
         """
         self.log.error("Job %s:%d failed: %s" %
                        (self.job.name, self.job.id, err))
-        self.job.trace.append("%s|Job %s:%d failed: %s" % (time.asctime(),
+        self.job.trace.append("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
                                                            self.job.name, self.job.id, err))
 
         # Try a few times before giving up
@@ -80,7 +80,7 @@ class Worker( threading.Thread ):
         """ appendMsg - Append a timestamped Tango message to a file
         """
         f = open(filename, "a")
-        f.write("Autograder [%s]: %s\n" % (time.asctime(), msg))
+        f.write("Autograder [%s]: %s\n" % (time.ctime(time.time()+time.timezone), msg))
         f.close
 
     def catFiles(self, f1, f2):
@@ -138,7 +138,7 @@ class Worker( threading.Thread ):
                                self.vmms.instanceName(self.preVM.id,
                                                       self.preVM.name)))
                 self.job.trace.append("%s|Assigned job %s:%d existing VM %s" %
-                                      (time.asctime(),
+                                      (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.preVM.id,
                                                               self.preVM.name)))
@@ -150,7 +150,7 @@ class Worker( threading.Thread ):
                                self.vmms.instanceName(self.job.vm.id,
                                                       self.job.vm.name)))
                 self.job.trace.append("%s|Assigned job %s:%d new VM %s" %
-                                      (time.asctime(),
+                                      (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.job.vm.id,
                                                               self.job.vm.name)))
@@ -165,7 +165,8 @@ class Worker( threading.Thread ):
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))
             self.job.trace.append("%s|Job %s:%d waiting for VM %s" %
-                                  (time.asctime(), self.job.name, self.job.id,
+                                  (time.ctime(time.time()+time.timezone), 
+                                   self.job.name, self.job.id,
                                    self.vmms.instanceName(vm.id, vm.name)))
             ret["waitvm"] = self.vmms.waitVM(vm,
                                              Config.WAITVM_TIMEOUT)
@@ -185,7 +186,7 @@ class Worker( threading.Thread ):
                           (self.vmms.instanceName(vm.id, vm.name),
                            self.job.name, self.job.id))
             self.job.trace.append("%s|VM %s ready for job %s:%d" %
-                                  (time.asctime(),
+                                  (time.ctime(time.time()+time.timezone),
                                    self.vmms.instanceName(vm.id, vm.name),
                                    self.job.name, self.job.id))
 
@@ -196,7 +197,8 @@ class Worker( threading.Thread ):
             self.log.info("Input copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyin"]))
             self.job.trace.append("%s|Input copied for job %s:%d [status=%d]" %
-                                  (time.asctime(),self.job.name,
+                                  (time.ctime(time.time()+time.timezone),
+                                   self.job.name,
                                    self.job.id, ret["copyin"]))
 
             # Run the job on the virtual machine
@@ -208,7 +210,8 @@ class Worker( threading.Thread ):
             self.log.info("Job %s:%d executed [status=%s]" %
                           (self.job.name, self.job.id, ret["runjob"]))
             self.job.trace.append("%s|Job %s:%d executed [status=%s]" %
-                                  (time.asctime(), self.job.name, self.job.id,
+                                  (time.ctime(time.time()+time.timezone),
+                                   self.job.name, self.job.id,
                                    ret["runjob"]))
 
             # Copy the output back.
@@ -218,7 +221,8 @@ class Worker( threading.Thread ):
             self.log.info("Output copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyout"]))
             self.job.trace.append("%s|Output copied for job %s:%d [status=%d]"
-                                  % (time.asctime(), self.job.name,
+                                  % (time.ctime(time.time()+time.timezone),
+                                     self.job.name,
                                      self.job.id, ret["copyout"]))
 
             # Abnormal job termination (Autodriver encountered an OS
