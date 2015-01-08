@@ -9,3 +9,4 @@ startTango:
 
 clean:
 	rm -f *~
+	rm -rf *.pyc

@@ -13,12 +13,12 @@ class Config:
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production.
-    PREFIX = "dev"
+    PREFIX = "local"
 
     # Default port for the RESTful server to listen on. Port 9090 is
     # reserved for production. Port 8080 for the lead developer.
     # Other developers should pick their own unique ports.
-    PORT = 8080
+    PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
     LOGFILE = None

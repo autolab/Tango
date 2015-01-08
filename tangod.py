@@ -37,7 +37,8 @@ from collections import deque
 from config import *
 from preallocator import *
 from jobQueue import *
-from vmms.ec2SSH import *
+from vmms.localSSH import *
+from tangoObjects import *
 
 class tangoServer:
     """ tangoServer - Defines the RPC calls that the server accepts
@@ -217,63 +218,64 @@ def validateJob(job, vmms):
     if not job.name:
         log.error("validateJob: Missing job.name")
         job.trace.append("%s|validateJob: Missing job.name" %
-                         (time.asctime()))
+                         (time.ctime(time.time()+time.timezone)))
         errors += 1
 
     # Check the virtual machine field
     if not job.vm:
         log.error("validateJob: Missing job.vm")
         job.trace.append("%s|validateJob: Missing job.vm" %
-                         (time.asctime()))
+                         (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not job.vm.image:
             log.error("validateJob: Missing job.vm.image")
             job.trace.append("%s|validateJob: Missing job.vm.image" %
-                             (time.asctime()))
+                             (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
-            # Check if VM name exists in Tashi directory
-            imgList = os.listdir(Config.TASHI_IMAGE_PATH)
-            imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
-            if job.vm.image not in imgList:
-                log.error("validateJob: Image not found: %s" % job.vm.image)
-                job.trace.append("%s|validateJob: Image not found: %s" %
-                                            (time.asctime(), job.vm.image))
-                errors += 1
-            # Check if image has read permissions
-            elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-                log.error("validateJob: Not readable: %s" % job.vm.image)
-                job.trace.append("%s|validateJob: Not readable: %s" %
-                                            (time.asctime(), job.vm.image))
-                errors += 1
-            else:
-                (base, ext) = os.path.splitext(job.vm.image)
-                job.vm.name = base;
+            if job.vm.vmms == "tashiSSH":
+	            # Check if VM name exists in Tashi directory
+				imgList = os.listdir(Config.TASHI_IMAGE_PATH)
+				imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
+				if job.vm.image not in imgList:
+					log.error("validateJob: Image not found: %s" % job.vm.image)
+					job.trace.append("%s|validateJob: Image not found: %s" %
+                	                            (time.ctime(time.time()+time.timezone), job.vm.image))
+					errors += 1
+            	# Check if image has read permissions
+				elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
+					log.error("validateJob: Not readable: %s" % job.vm.image)
+					job.trace.append("%s|validateJob: Not readable: %s" %
+                                            	(time.ctime(time.time()+time.timezone), job.vm.image))
+					errors += 1
+				else:
+					(base, ext) = os.path.splitext(job.vm.image)
+					job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
             job.trace.append("%s|validateJob: Missing job.vm.vmms" %
-                             (time.asctime()))
+                             (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if job.vm.vmms not in vmms:
                 log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
                 job.trace.append("%s|validateJob: Invalid vmms name: %s" %
-                                 (time.asctime(), job.vm.vmms))
+                                 (time.ctime(time.time()+time.timezone), job.vm.vmms))
                 errors += 1
 
     # Check the output file
     if not job.outputFile:
         log.error("validateJob: Missing job.outputFile")
         job.trace.append("%s|validateJob: Missing job.outputFile" %
-                         (time.asctime()))
+                         (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not os.path.exists(os.path.dirname(job.outputFile)):
             log.error("validateJob: Bad output path: %s", job.outputFile)
             job.trace.append("%s|validateJob: Bad output path: %s" %
-                             (time.asctime(), job.outputFile))
+                             (time.ctime(time.time()+time.timezone), job.outputFile))
             errors += 1
 
     # Check for max output file size parameter
@@ -287,14 +289,14 @@ def validateJob(job, vmms):
         if not inputFile.localFile:
             log.error("validateJob: Missing inputFile.localFile")
             job.trace.append("%s|validateJob: Missing inputFile.localFile" %
-                             (time.asctime()))
+                             (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if not os.path.exists(inputFile.localFile):
                 log.error("validateJob: Input file %s not found" %
                           (inputFile.localFile))
                 job.trace.append("%s|validateJob: Input file %s not found" %
-                                 (time.asctime(), inputFile.localFile))
+                                 (time.ctime(time.time()+time.timezone), inputFile.localFile))
                 errors += 1
 
     # Check if job timeout has been set; If not set timeout to default
@@ -307,7 +309,7 @@ def validateJob(job, vmms):
     if errors > 0:
         log.error("validateJob: Job rejected: %d errors" % errors)
         job.trace.append("%s|validateJob: Job rejected: %d errors" %
-                         (time.asctime(), errors))
+                         (time.ctime(time.time()+time.timezone), errors))
         return -1
     else:
         return 0
@@ -336,7 +338,7 @@ def main():
 
     # Initialize the hash of supported VMM systems.
     # vmms = {'tashiSSH':TashiSSH()}
-    vmms = {'tashiSSH':TashiSSH()}
+    vmms = {'localSSH':LocalSSH()}
 
     # Instantiate the main components in the service
     preallocator = Preallocator(vmms)

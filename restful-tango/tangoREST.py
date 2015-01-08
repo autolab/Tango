@@ -1,4 +1,4 @@
-# tango-rest.py
+# tangoREST.py
 #
 # Implements open, upload, addJob, and poll to be used for the RESTful
 # interface of Tango.
@@ -9,7 +9,8 @@ import sys, os, hashlib, time, json, random, logging, logging.handlers
 from tangod import *
 from jobQueue import *
 from preallocator import *
-from vmms.ec2SSH import *
+from vmms.localSSH import *
+from tangoObjects import *
 from config import Config
 
 class Status:
@@ -46,10 +47,10 @@ class TangoREST:
 
 	# Replace with choice of key store and override validateKey.
 	# This key is just for testing.
-	keys = ['403926033d001b5279df37cbbe5287b7c7c267bc'] 
+	keys = ['local'] 
 
 	def __init__(self):
-		self.vmms = {'ec2SSH':Ec2SSH()}
+		self.vmms = {'localSSH':LocalSSH()}
 		self.preallocator = Preallocator(self.vmms)
 		self.queue = JobQueue(self.preallocator)
 		self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
@@ -105,13 +106,13 @@ class TangoREST:
 				continue
 		return result
 
-	def createTangoMachine(self, image, 
+	def createTangoMachine(self, image, vmms = "localSSH",
 		vmObj={'cores': 1, 'memory' : 512}):
 		""" createTangoMachine - Creates a tango machine object from image
 		"""
 		return TangoMachine(
 				name = image,
-				vmms = "tashiSSH",
+				vmms = vmms,
 				image = "%s.img" % (image),
 				cores = vmObj["cores"],
 				memory = vmObj["memory"],
@@ -121,30 +122,41 @@ class TangoREST:
 	def convertJobObj(self, dirName, jobObj):
 		""" convertJobObj - Converts a dictionary into a TangoJob object
 		"""
-		# Basic arguments
-		job = TangoJob()
 
-		# TODO: Find something better to do here for job name
-		job.name = jobObj['jobName']
-		job.outputFile = "%s/%s/%s/%s" % (self.COURSELABS, dirName, 
+		name = jobObj['jobName']
+		outputFile = "%s/%s/%s/%s" % (self.COURSELABS, dirName, 
 			self.OUTPUT_FOLDER, jobObj['output_file'])
-		job.timeout = jobObj['timeout']
+		timeout = jobObj['timeout']
+		notifyURL = None
+		maxOutputFileSize = 512
 		if 'callback_url' in jobObj:
-			job.notifyURL = jobObj['callback_url']
+			notifyURL = jobObj['callback_url']
 		if 'max_kb' in jobObj:
-			job.maxOutputFileSize = jobObj['max_kb']
+			maxOutputFileSize = jobObj['max_kb']
 
 		# List of input files
-		job.input = []
+		input = []
 		for file in jobObj['files']:
 			handinfile = InputFile(
 					localFile = "%s/%s/%s" % (self.COURSELABS, dirName, file),
 					destFile = file)
-			job.input.append(handinfile)
+			input.append(handinfile)
 
 		# VM object 
-		job.vm = self.createTangoMachine(jobObj["image"])
+		vm = self.createTangoMachine(jobObj["image"])
+		
+		job = TangoJob(
+				name = name,
+				vm = vm,
+				outputFile = outputFile,
+				input = input,
+				timeout = timeout,
+				notifyURL = notifyURL,
+				maxOutputFileSize = 512)
+		self.log.debug("inputFile: %s" % input)
+		self.log.debug("outputFile: %s" % outputFile)
 		return job
+				
 
 	def convertTangoMachineObj(self, tangoMachine):
 		""" convertVMObj - Converts a TangoMachine object into a dictionary
@@ -260,6 +272,7 @@ class TangoREST:
 				jobObj = json.loads(jobStr)
 				job = self.convertJobObj(labName, jobObj)
 				jobId = self.tango.addJob(job)
+				self.log.debug("Done adding job")
 				if (jobId == -1):
 					self.log.info("Failed to add job to tango")
 					return self.status.create(-1, job.trace)

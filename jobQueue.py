@@ -10,6 +10,7 @@
 import time, threading, logging
 
 from config import *
+from tangoObjects import *
 from worker import Worker
 
 #
@@ -84,7 +85,7 @@ class JobQueue:
 		self.queueLock.acquire()
 		self.jobQueue[job.id] = job
 		job.trace.append("%s|Added job %s:%d to queue" %
-				(time.asctime(), job.name, job.id))
+				(time.ctime(time.time()+time.timezone), job.name, job.id))
 		self.queueLock.release()
 		self.log.debug("add|Releasing lock to job queue.")
 
@@ -224,7 +225,7 @@ class JobQueue:
 			del self.jobQueue[id]
 			if job.trace is None:
 				job.trace = []
-			job.trace.append("%s|%s" %  (time.asctime(), reason))
+			job.trace.append("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
 			self.log.info("Terminated job %s:%d: %s" %
 						  (job.name, job.id, reason))
 			self.deadJobs[id] = job
@@ -275,7 +276,7 @@ class JobManager:
 					self.log.info("Dispatched job %s:%d [try %d]" %
 								  (job.name, job.id, job.retries))
 					job.trace.append("%s|Dispatched job %s:%d [try %d]" %
-									 (time.asctime(), job.name, job.id,
+									 (time.ctime(time.time()+time.timezone), job.name, job.id,
 									  job.retries))
 					vmms = self.vmms[job.vm.vmms] # Create new vmms object
 					worker = Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
