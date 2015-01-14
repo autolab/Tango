@@ -113,7 +113,7 @@ class TangoREST:
 		return TangoMachine(
 				name = image,
 				vmms = vmms,
-				image = "%s.img" % (image),
+				image = "%s" % (image),
 				cores = vmObj["cores"],
 				memory = vmObj["memory"],
 				disk = None,
