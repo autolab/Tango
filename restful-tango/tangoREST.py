@@ -137,9 +137,11 @@ class TangoREST:
 		# List of input files
 		input = []
 		for file in jobObj['files']:
+            inFile = file['localFile']
+            vmFile = file['destFile']
 			handinfile = InputFile(
-					localFile = "%s/%s/%s" % (self.COURSELABS, dirName, file),
-					destFile = file)
+					localFile = "%s/%s/%s" % (self.COURSELABS, dirName, inFile),
+					destFile = vmFile)
 			input.append(handinfile)
 
 		# VM object 
