@@ -101,7 +101,7 @@ class TangoREST:
 			try:
 				body = open("%s/%s" % (directory, el)).read()
 				md5hash = hashlib.md5(body).hexdigest()
-				result.append(md5hash)
+				result.append({'md5': md5hash, 'localFile': el})
 			except IOError:
 				continue
 		return result
