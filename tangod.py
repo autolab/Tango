@@ -100,6 +100,8 @@ class tangoServer:
         try:
             if not vm or num < 0:
                 return -1;
+            (base, ext) = os.path.splitext(vm.image)
+            vm.name = base
             self.preallocator.update(vm, num)
             return 0
         except Exception, err:
