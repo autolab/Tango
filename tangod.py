@@ -99,7 +99,7 @@ class tangoServer:
         """ preallocVM - Set the pool size for VMs of type vm to num
         """
         self.log.debug("Received preallocVM(%s,%d)request"
-                       % (vm.name, num))
+                % (vm.name, num))
         try:
             if not vm or num < 0:
                 return -1;
@@ -182,7 +182,7 @@ class tangoServer:
         log = logging.getLogger('Server')
 
         try:
-        # For each supported VMM system, get the instances it knows about,
+            # For each supported VMM system, get the instances it knows about,
         # and kill those in the current Tango name space.
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
@@ -196,7 +196,7 @@ class tangoServer:
                         namelist.append(vm.name)
                 if namelist:
                     log.warning("Killed these %s VMs on restart: %s" %
-                                   (vmms_name, namelist))
+                            (vmms_name, namelist))
 
         except Exception as err:
             print("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
@@ -223,70 +223,70 @@ def validateJob(job, vmms):
     if not job.name:
         log.error("validateJob: Missing job.name")
         job.trace.append("%s|validateJob: Missing job.name" %
-                         (time.ctime(time.time()+time.timezone)))
+                (time.ctime(time.time()+time.timezone)))
         errors += 1
 
     # Check the virtual machine field
     if not job.vm:
         log.error("validateJob: Missing job.vm")
         job.trace.append("%s|validateJob: Missing job.vm" %
-                         (time.ctime(time.time()+time.timezone)))
+                (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not job.vm.image:
             log.error("validateJob: Missing job.vm.image")
             job.trace.append("%s|validateJob: Missing job.vm.image" %
-                             (time.ctime(time.time()+time.timezone)))
+                    (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if job.vm.vmms == "tashiSSH":
-	            # Check if VM name exists in Tashi directory
-				imgList = os.listdir(Config.TASHI_IMAGE_PATH)
-				imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
-				if job.vm.image not in imgList:
-					log.error("validateJob: Image not found: %s" % job.vm.image)
-					job.trace.append("%s|validateJob: Image not found: %s" %
-                	                            (time.ctime(time.time()+time.timezone), job.vm.image))
-					errors += 1
-            	# Check if image has read permissions
-				elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-					log.error("validateJob: Not readable: %s" % job.vm.image)
-					job.trace.append("%s|validateJob: Not readable: %s" %
-                                            	(time.ctime(time.time()+time.timezone), job.vm.image))
-					errors += 1
-				else:
-					(base, ext) = os.path.splitext(job.vm.image)
-					job.vm.name = base;
+                # Check if VM name exists in Tashi directory
+                imgList = os.listdir(Config.TASHI_IMAGE_PATH)
+                imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
+                if job.vm.image not in imgList:
+                    log.error("validateJob: Image not found: %s" % job.vm.image)
+                    job.trace.append("%s|validateJob: Image not found: %s" %
+                            (time.ctime(time.time()+time.timezone), job.vm.image))
+                    errors += 1
+                # Check if image has read permissions
+            elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
+                log.error("validateJob: Not readable: %s" % job.vm.image)
+                    job.trace.append("%s|validateJob: Not readable: %s" %
+                            (time.ctime(time.time()+time.timezone), job.vm.image))
+                    errors += 1
+                else:
+                    (base, ext) = os.path.splitext(job.vm.image)
+                    job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
             job.trace.append("%s|validateJob: Missing job.vm.vmms" %
-                             (time.ctime(time.time()+time.timezone)))
+                    (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if job.vm.vmms not in vmms:
                 log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
                 job.trace.append("%s|validateJob: Invalid vmms name: %s" %
-                                 (time.ctime(time.time()+time.timezone), job.vm.vmms))
+                        (time.ctime(time.time()+time.timezone), job.vm.vmms))
                 errors += 1
 
     # Check the output file
     if not job.outputFile:
         log.error("validateJob: Missing job.outputFile")
         job.trace.append("%s|validateJob: Missing job.outputFile" %
-                         (time.ctime(time.time()+time.timezone)))
+                (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not os.path.exists(os.path.dirname(job.outputFile)):
             log.error("validateJob: Bad output path: %s", job.outputFile)
             job.trace.append("%s|validateJob: Bad output path: %s" %
-                             (time.ctime(time.time()+time.timezone), job.outputFile))
+                    (time.ctime(time.time()+time.timezone), job.outputFile))
             errors += 1
 
     # Check for max output file size parameter
     if not job.maxOutputFileSize:
         log.debug("validateJob: Setting job.maxOutputFileSize "
-                  "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
+                "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
         job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
     # Check the list of input files
@@ -294,27 +294,27 @@ def validateJob(job, vmms):
         if not inputFile.localFile:
             log.error("validateJob: Missing inputFile.localFile")
             job.trace.append("%s|validateJob: Missing inputFile.localFile" %
-                             (time.ctime(time.time()+time.timezone)))
+                    (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if not os.path.exists(inputFile.localFile):
                 log.error("validateJob: Input file %s not found" %
-                          (inputFile.localFile))
+                        (inputFile.localFile))
                 job.trace.append("%s|validateJob: Input file %s not found" %
-                                 (time.ctime(time.time()+time.timezone), inputFile.localFile))
+                        (time.ctime(time.time()+time.timezone), inputFile.localFile))
                 errors += 1
 
     # Check if job timeout has been set; If not set timeout to default
     if not job.timeout or job.timeout <= 0:
         log.debug("validateJob: Setting job.timeout to"
-                  " default config value: %d secs", Config.RUNJOB_TIMEOUT)
+                " default config value: %d secs", Config.RUNJOB_TIMEOUT)
         job.timeout = Config.RUNJOB_TIMEOUT
 
     # Any problems, return an error status
     if errors > 0:
         log.error("validateJob: Job rejected: %d errors" % errors)
         job.trace.append("%s|validateJob: Job rejected: %d errors" %
-                         (time.ctime(time.time()+time.timezone), errors))
+                (time.ctime(time.time()+time.timezone), errors))
         return -1
     else:
         return 0

@@ -22,8 +22,8 @@ def timeout(command, time_out=1):
 
     # Launch the command
     p = subprocess.Popen(command,
-                        stdout=open("/dev/null", 'w'),
-                        stderr=subprocess.STDOUT)
+            stdout=open("/dev/null", 'w'),
+            stderr=subprocess.STDOUT)
 
     # Wait for the command to complete
     t = 0.0
@@ -55,9 +55,9 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
             return ret
         else:
             p = subprocess.Popen(command,
-                            stdout=open("/dev/null", 'w'),
-                            stderr=subprocess.STDOUT)
-    return ret
+                    stdout=open("/dev/null", 'w'),
+                    stderr=subprocess.STDOUT)
+            return ret
 
 #
 # User defined exceptions
@@ -68,8 +68,8 @@ class ec2CallError(Exception):
 
 class Ec2SSH:
     _SSH_FLAGS = ["-i", Config.SECURITY_KEY_PATH,
-                    "-o", "StrictHostKeyChecking no",
-                    "-o", "GSSAPIAuthentication no"]
+            "-o", "StrictHostKeyChecking no",
+            "-o", "GSSAPIAuthentication no"]
 
     def __init__(self):
         """ log - logger for the instance
@@ -107,22 +107,22 @@ class Ec2SSH:
         cores = vm.cores
         image = vm.image
 
-    	if (cores == 1 and memory <= 613*1024):
-    		ec2instance['instance_type'] = 't1.micro'
-    	elif (cores == 1 and memory <= 1.7*1024*1024):
-    		ec2instance['instance_type'] = 'm1.small'
-    	elif (cores == 1 and memory <= 3.75*1024*1024):
-    		ec2instance['instance_type'] = 'm3.medium'
-    	elif (cores == 2):
-    		ec2instance['instance_type'] = 'm3.large'
-    	elif (cores == 4):
-    		ec2instance['instance_type'] = 'm3.xlarge'
-    	elif (cores == 8):
-    		ec2instance['instance_type'] = 'm3.2xlarge'
-    	else:
-    		ec2instance['instance_type'] = Config.DEFAULT_INST_TYPE
+        if (cores == 1 and memory <= 613*1024):
+            ec2instance['instance_type'] = 't1.micro'
+        elif (cores == 1 and memory <= 1.7*1024*1024):
+            ec2instance['instance_type'] = 'm1.small'
+        elif (cores == 1 and memory <= 3.75*1024*1024):
+            ec2instance['instance_type'] = 'm3.medium'
+        elif (cores == 2):
+            ec2instance['instance_type'] = 'm3.large'
+        elif (cores == 4):
+            ec2instance['instance_type'] = 'm3.xlarge'
+        elif (cores == 8):
+            ec2instance['instance_type'] = 'm3.2xlarge'
+        else:
+            ec2instance['instance_type'] = Config.DEFAULT_INST_TYPE
 
-    	ec2instance['ami'] = Config.DEFAULT_AMI
+        ec2instance['ami'] = Config.DEFAULT_AMI
 
         return ec2instance
 
@@ -139,9 +139,9 @@ class Ec2SSH:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
             reservation = self.connection.run_instances(ec2instance['ami'],
-                                                        key_name=Config.SECURITY_KEY_NAME,
-                                                        security_groups=[Config.DEFAULT_SECURITY_GROUP],
-                                                        instance_type=ec2instance['instance_type'])
+                    key_name=Config.SECURITY_KEY_NAME,
+                    security_groups=[Config.DEFAULT_SECURITY_GROUP],
+                    instance_type=ec2instance['instance_type'])
 
 
             # Wait for instance to reach 'running' state
@@ -189,9 +189,9 @@ class Ec2SSH:
         domain_name = self.domainName(vm)
         while instance_down:
             instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
-                                            shell=True,
-                                            stdout=open('/dev/null', 'w'),
-                                            stderr=subprocess.STDOUT)
+                    shell=True,
+                    stdout=open('/dev/null', 'w'),
+                    stderr=subprocess.STDOUT)
 
             # Wait a bit and then try again if we haven't exceeded
             # timeout
@@ -217,10 +217,10 @@ class Ec2SSH:
                 # (255), then success. Otherwise, keep trying until we run
                 # out of time.
                 ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
-                                        ["ubuntu@%s" % (domain_name),
-                                        "(:)"], max_secs - elapsed_secs)
+                        ["ubuntu@%s" % (domain_name),
+                            "(:)"], max_secs - elapsed_secs)
 
-                self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
+                        self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
 
                 if (ret != -1) and (ret != 255):
                     return 0
@@ -235,16 +235,16 @@ class Ec2SSH:
 
         # Create a fresh input directory
         ret = subprocess.call(["ssh"] + Ec2SSH._SSH_FLAGS +
-                               ["ubuntu@%s" % (domain_name), 
-                               "(rm -rf autolab; mkdir autolab)"])
-        
-        # Copy the input files to the input directory
+                ["ubuntu@%s" % (domain_name), 
+                    "(rm -rf autolab; mkdir autolab)"])
+
+                # Copy the input files to the input directory
         for file in inputFiles:
             ret = timeout(["scp"] + Ec2SSH._SSH_FLAGS +
-                           [file.localFile, "ubuntu@%s:autolab/%s" %
-                           (domain_name, file.destFile)], Config.COPYIN_TIMEOUT)
-            if ret != 0:
-                return ret
+                    [file.localFile, "ubuntu@%s:autolab/%s" %
+                        (domain_name, file.destFile)], Config.COPYIN_TIMEOUT)
+                    if ret != 0:
+                        return ret
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
@@ -255,12 +255,12 @@ class Ec2SSH:
         self.log.debug("runJob: Running job on VM %s" % self.instanceName(vm.id, vm.name))
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-            %d -o %d autolab &> output" % (
-            Config.VM_ULIMIT_USER_PROC, Config.VM_ULIMIT_FILE_SIZE,
-            runTimeout, maxOutputFileSize) 
-        return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+                %d -o %d autolab &> output" % (
+                        Config.VM_ULIMIT_USER_PROC, Config.VM_ULIMIT_FILE_SIZE,
+                        runTimeout, maxOutputFileSize) 
+                return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
                         ["ubuntu@%s" % (domain_name), runcmd], runTimeout * 2)
-        # runTimeout * 2 is a temporary hack. The driver will handle the timout
+                # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the file output on the VM to the file
@@ -274,33 +274,33 @@ class Ec2SSH:
             try:
                 # regular expression matcher for error message from cat
                 no_file = re.compile('No such file or directory')
-                
-                time_info = subprocess.check_output(['ssh'] + Ec2SSH._SSH_FLAGS +
-                                                     ['ubuntu@%s' % (domain_name),
-                                                     'cat time.out']).rstrip('\n')
 
-                # If the output is empty, then ignore it (timing info wasn't
+                time_info = subprocess.check_output(['ssh'] + Ec2SSH._SSH_FLAGS +
+                        ['ubuntu@%s' % (domain_name),
+                            'cat time.out']).rstrip('\n')
+
+                        # If the output is empty, then ignore it (timing info wasn't
                 # collected), otherwise let's log it!
                 if no_file.match(time_info):
                     # runJob didn't produce an output file
                     pass
-                
+
                 else:
                     # remove newline character printed in timing info
                     # replaces first '\n' character with a space
                     time_info = re.sub('\n', ' ', time_info, count = 1)
                     self.log.info('Timing (%s): %s' % (domain_name, time_info))
-                    
+
             except subprocess.CalledProcessError, re.error:
                 # Error copying out the timing data (probably runJob failed)
                 pass
-    
-        return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
-                        ["ubuntu@%s:output" % (domain_name), destFile],
-                       Config.COPYOUT_TIMEOUT)
 
-    def destroyVM(self, vm):
-        """ destroyVM - Removes a VM from the system
+        return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
+                ["ubuntu@%s:output" % (domain_name), destFile],
+                Config.COPYOUT_TIMEOUT)
+
+        def destroyVM(self, vm):
+            """ destroyVM - Removes a VM from the system
         """
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         return ret
