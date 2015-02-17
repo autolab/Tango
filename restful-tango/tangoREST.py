@@ -154,7 +154,7 @@ class TangoREST:
                 timeout = timeout,
                 notifyURL = notifyURL,
                 maxOutputFileSize = 512)
-        self.log.debug("inputFile: %s" % input)
+        self.log.debug("inputFile: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
         return job
 
@@ -369,7 +369,7 @@ class TangoREST:
                 vmObj = json.loads(vmStr)
                 vm = self.createTangoMachine(image, vmObj)
             else:
-                vm = self.createTangoMachine(image, vmObj)
+                vm = self.createTangoMachine(image)
             success = self.tango.preallocVM(vm, int(num))
             if (success == -1):
                 self.log.info("Failed to preallocated VMs")

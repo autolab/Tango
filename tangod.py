@@ -187,7 +187,7 @@ class tangoServer:
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
                 vms = vobj.getVMs()
-                log.debug("Pre-existing VMs: %s" % vms)
+                log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
                 namelist = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
