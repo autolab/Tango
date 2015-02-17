@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python
 
 from tornado.ioloop import IOLoop
 import tornado.web
