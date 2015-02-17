@@ -33,7 +33,7 @@ class Preallocator:
         """ update - Updates the number of machines of a certain type
         to be preallocated.
 
-        This function is called via the TangoServer RPC interface, and
+        This function is called via the TangoServer HTTP interface, and
         therefore should do as little as possible before returning.
         It will update the machine list, and then spawn child threads
         to do the creation and destruction of machines as necessary.
@@ -178,7 +178,7 @@ class Preallocator:
         self.log.debug("createVM: Added vm %s to pool %s" % (newVM.id, newVM.name))  
 
     def destroyVM(self, vmName, id):
-        """ destroyVM - Called by the delVM rpc function to remove and
+        """ destroyVM - Called by the delVM API function to remove and
         destroy a particular VM instance from a pool. We only allow
         this function when the system is queiscent (pool size == free
         size)

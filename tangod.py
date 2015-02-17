@@ -1,31 +1,35 @@
-#!/usr/local/bin/python2.7
 #
 # Tango is a job management service that manages requests for jobs to
-# be run in virtual machines. Tango consists of four main components:
+# be run in virtual machines. Tango consists of five main components:
 #
-# 1. The Tango Server: This is a thrift interface that receives
-#    requests from clients. This interface is defined in
-#    thrift/tango.thrift. Job requests are validated and placed in a
-#    job queue. (tangod.py)
+# 1. The Restful API: This is the interface for Tango that receives 
+#    requests from clients via HTTP. AddJob requests are converted 
+#    into a form that the tangoServer understands and then passed on 
+#    to an instance of the tangoServer class. (restful-tango/*)
+# 
+# 2. The TangoServer Class: This is a class that accepts addJob requests 
+#    from the restful server. Job requests are validated and placed in
+#    a job queue. This class also implements various administrative
+#    functions to manage instances of tangoServer. (tangod.py)
 #
-# 2. The Job Manager: This thread runs continuously. It watches the job
+# 3. The Job Manager: This thread runs continuously. It watches the job
 #    queue for new job requests. When it finds one it creates a new
 #    worker thread to handle the job, and assigns a preallocated or new VM
 #    to the job. (jobQueue.py)
 #
-# 3. Workers: Worker threads do the actual work of running a job. The
+# 4. Workers: Worker threads do the actual work of running a job. The
 #    process of running a job is broken down into the following steps:
 #    (1) initializeVM, (2) waitVM, (3) copyIn, (4) runJob, (5)
 #    copyOut, (6) destroyVM. The actual process involved in
 #    each of those steps is handled by a virtual machine management
-#    system (VMMS) such as Tashi or Eucalyptus.  Each job request
+#    system (VMMS) such as Local or Amazon EC2.  Each job request
 #    specifies the VMMS to use.  The worker thread dynamically loads
-#    and uses the module written for that particular VMSS. (worker.py
+#    and uses the module written for that particular VMMS. (worker.py
 #    and vmms/*.py)
 #
-# 4. Preallocator: Virtual machines can preallocated in a pool in
+# 5. The Preallocator: Virtual machines can preallocated in a pool in
 #    order to reduce response time. Each virtual machine image has its
-#    own pool.  Users control the size of each pool via an external rpc
+#    own pool.  Users control the size of each pool via an external HTTP
 #    call.  Each time a machine is assigned to a job and removed from
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
@@ -40,7 +44,7 @@ from jobQueue import *
 from tangoObjects import *
 
 class tangoServer:
-    """ tangoServer - Defines the RPC calls that the server accepts
+    """ tangoServer - Implements the API functions that the server accepts
     """
     def __init__(self, jobQueue, preallocator, vmms):
         self.daemon = True
@@ -315,54 +319,3 @@ def validateJob(job, vmms):
     else:
         return 0
 
-
-def main():
-    """ main - control starts here
-    """
-    # Parse optional port argument
-    if len(sys.argv) > 1:
-        Config.PORT = int(sys.argv[1])
-
-    # Record the start time for later throughput calculations
-    Config.start_time = time.time()
-
-    # Set up the system logger
-    logging.basicConfig(
-        filename = Config.LOGFILE,
-        format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-        #level = logging.INFO
-        level = logging.DEBUG
-        )
-
-    # Set AWS logging level to INFO
-    logging.getLogger('boto').setLevel(logging.INFO)
-
-    # Initialize the hash of supported VMM systems.
-    # vmms = {'tashiSSH':TashiSSH()}
-    vmms = {'localSSH':LocalSSH()}
-
-    # Instantiate the main components in the service
-    preallocator = Preallocator(vmms)
-    jobQueue = JobQueue(preallocator)
-    jobManager = JobManager(jobQueue, vmms, preallocator)
-
-    # Reset the service into a clean starting state
-    # resetTango(vmms);
-
-    # Start the service
-    handler = tangoServer(jobQueue, preallocator, vmms)
-    handler.resetTango(vmms)
-    processor = Tango.Processor(handler)
-    transport = TSocket.TServerSocket(port=Config.PORT)
-    tfactory = TTransport.TBufferedTransportFactory()
-    pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-    server = TServer.TThreadPoolServer(processor, transport, tfactory, pfactory)
-
-    # Set the size of the server thread pool
-    server.setNumThreads(Config.NUM_THREADS);
-
-    print "Starting the Tango server on port %d..." % (Config.PORT)
-    server.serve()
-
-if __name__ == "__main__":
-    main()
