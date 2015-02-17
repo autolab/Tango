@@ -128,7 +128,7 @@ class Preallocator:
         might take a long time to complete.
         """
         vmms = self.vmms[vm.vmms]
-        self.log.debug("__create: Using VMMS %s " % (vmms))
+        self.log.debug("__create: Using VMMS %s " % (Config.VMMS_NAME))
         for i in range(cnt):
             newVM = copy.deepcopy(vm)
             newVM.id = self._getNextID()

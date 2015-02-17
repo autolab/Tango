@@ -222,11 +222,12 @@ class TashiSSH:
         self.log.debug("Autolab directory created on VM")
         # Copy the input files to the input directory
         for file in inputFiles:
-            self.log.debug("Copying file %s to VM %s" % (file, domain_name))
+            self.log.debug("Copying file %s to VM %s" % (file.localFile, domain_name))
             ret = timeout(["scp"] + TashiSSH._SSH_FLAGS +
                            [file.localFile, "autolab@%s:autolab/%s" %
                            (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
-            self.log.debug("Copied file %s to VM %s with status %s" % (file, domain_name, str(ret)))
+            self.log.debug("Copied file %s to VM %s with status %s" % (file.localFile, 
+                domain_name, str(ret)))
             if ret != 0:
                 return ret
         return 0

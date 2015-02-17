@@ -61,7 +61,7 @@ class TangoREST:
                 level = logging.DEBUG
                 )
         logging.getLogger('boto').setLevel(logging.INFO)
-        self.log = logging.getLogger("RESTful Server")
+        self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
         self.status = Status()
 
