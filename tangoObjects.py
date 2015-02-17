@@ -19,7 +19,7 @@ class TangoMachine():
     def __init__(self, name = "DefaultTestVM", image = None, vmms = None,
                 network = None, cores = None, memory = None, disk = None, 
                 domain_name = None, ec2_id = None, resume = None, id = None,
-                instance_id = None)
+                instance_id = None):
         self.name = name
         self.image = image
         self.network = network

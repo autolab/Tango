@@ -10,8 +10,10 @@
 #
 import random, subprocess, re, time, logging, threading, os
 
+from tashi.rpycservices.rpyctypes import *
 from config import *
 from tashi.util import getConfig, createClient
+from tangoObjects import *
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on

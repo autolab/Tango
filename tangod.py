@@ -183,7 +183,7 @@ class tangoServer:
 
         try:
             # For each supported VMM system, get the instances it knows about,
-        # and kill those in the current Tango name space.
+            # and kill those in the current Tango name space.
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
                 vms = vobj.getVMs()
@@ -199,7 +199,6 @@ class tangoServer:
                             (vmms_name, namelist))
 
         except Exception as err:
-            print("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
             log.error("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
             os._exit(1)
 
@@ -251,12 +250,12 @@ def validateJob(job, vmms):
                 # Check if image has read permissions
             elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
                 log.error("validateJob: Not readable: %s" % job.vm.image)
-                    job.trace.append("%s|validateJob: Not readable: %s" %
+                job.trace.append("%s|validateJob: Not readable: %s" %
                             (time.ctime(time.time()+time.timezone), job.vm.image))
-                    errors += 1
-                else:
-                    (base, ext) = os.path.splitext(job.vm.image)
-                    job.vm.name = base;
+                errors += 1
+            else:
+                (base, ext) = os.path.splitext(job.vm.image)
+                job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
