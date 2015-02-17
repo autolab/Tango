@@ -2,22 +2,24 @@
 # config.py - Global configuration constants and runtime info
 #
 
+from vmms.localSSH import * 
+
 # Config - defines 
 class Config:
     #####
-    # Part 1: Tango constants for developers. 
+    # Part 1: Tango constants for developers
     #
     # These allow developers to run test versions of Tango on the same
-    # server as the production Tango. 
+    # server as the production Tango
 
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
-    # unique identifier. The "prod" prefix is reserved for production.
+    # unique identifier. The "prod" prefix is reserved for production
     PREFIX = "local"
 
     # Default port for the RESTful server to listen on. Port 9090 is
     # reserved for production. Port 8080 for the lead developer.
-    # Other developers should pick their own unique ports.
+    # Other developers should pick their own unique ports
     PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
@@ -26,9 +28,17 @@ class Config:
     # Courselabs directory. Must be created before starting Tango
     COURSELABS = ""
 
+    # VMMS to use. Must be set to a VMMS implemented in vmms/ before
+    # starting Tango
+    VMMS_NAME = "localSSH"
+    VMMS = LocalSSH()
+
     #####
     # Part 2: Constants that shouldn't need to change very often. 
     #
+
+    # Keys for Tango to authenticate client requests
+    KEYS = ["test"]
 
     # Queue manager checks for new work every so many seconds
     DISPATCH_PERIOD = 0.2

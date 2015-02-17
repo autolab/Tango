@@ -64,7 +64,6 @@ class Preallocator:
         """
         vm = None
         if vmName in self.machines:
-            self.log.debug("allocVM: Found vmName %s" % (vmName))
             self.lock.acquire()
             if not self.machines[vmName][1].empty():
                 vm = self.machines[vmName][1].get_nowait()

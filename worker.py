@@ -4,7 +4,6 @@
 import threading, time, logging, signal, sys, urllib, tempfile, requests
 
 from config import *
-from vmms.ec2SSH import *
 
 #
 # Worker - The worker class is very simple and very dumb. The goal is
@@ -270,7 +269,7 @@ class Worker( threading.Thread ):
         #
         # Exception: ec2CallError - Raised by ec2Call()
         #
-        except ec2CallError, err:
+        except err:
             self.log.debug("Internal ec2CallError: %s" % err)
             self.appendMsg(self.job.outputFile,
                            "Internal ec2CallError: %s" % err)

@@ -9,7 +9,6 @@ import sys, os, hashlib, time, json, random, logging, logging.handlers
 from tangod import *
 from jobQueue import *
 from preallocator import *
-from vmms.localSSH import *
 from tangoObjects import *
 from config import Config
 
@@ -47,10 +46,10 @@ class TangoREST:
 
     # Replace with choice of key store and override validateKey.
     # This key is just for testing.
-    keys = ['local'] 
+    keys = Config.KEYS
 
     def __init__(self):
-        self.vmms = {'localSSH':LocalSSH()}
+        self.vmms = {Config.VMMS_NAME:Config.VMMS}
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
         self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
@@ -106,7 +105,7 @@ class TangoREST:
                 continue
         return result
 
-    def createTangoMachine(self, image, vmms = "localSSH",
+    def createTangoMachine(self, image, vmms = Config.VMMS_NAME, 
         vmObj={'cores': 1, 'memory' : 512}):
         """ createTangoMachine - Creates a tango machine object from image
         """

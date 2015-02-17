@@ -16,9 +16,10 @@ class TangoMachine():
 	"""
 		TangoMachine - A description of the Autograding Virtual Machine
 	"""
-	def __init__(self, name = "LocalVM", image = None, vmms = "localSSH",
+	def __init__(self, name = "DefaultTestVM", image = None, vmms = None,
 				network = None, cores = None, memory = None, disk = None, 
-				domain_name = None, ec2_id = None):
+				domain_name = None, ec2_id = None, resume = None, id = None,
+                instance_id = None)
 		self.name = name
 		self.image = image
 		self.network = network
@@ -28,6 +29,9 @@ class TangoMachine():
 		self.vmms = vmms
 		self.domain_name = domain_name
 		self.ec2_id = ec2_id
+        self.resume = resume
+        self.id = id
+        self.instance_id = id
 
 class TangoJob():
 	"""

@@ -37,7 +37,6 @@ from collections import deque
 from config import *
 from preallocator import *
 from jobQueue import *
-from vmms.localSSH import *
 from tangoObjects import *
 
 class tangoServer:
