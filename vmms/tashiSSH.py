@@ -11,7 +11,7 @@
 import random, subprocess, re, time, logging, threading, os
 
 from tashi.rpycservices.rpyctypes import *
-from config import *
+import config
 from tashi.util import getConfig, createClient
 from tangoObjects import *
 
@@ -28,8 +28,8 @@ def timeout(command, time_out=1):
     # Wait for the command to complete
     t = 0.0
     while t < time_out and p.poll() is None:
-        time.sleep(Config.TIMER_POLL_INTERVAL)
-        t += Config.TIMER_POLL_INTERVAL
+        time.sleep(config.Config.TIMER_POLL_INTERVAL)
+        t += config.Config.TIMER_POLL_INTERVAL
 
     # Determine why the while loop terminated
     if p.poll() is None:
@@ -52,8 +52,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
     while t < time_out:
         ret = p.poll()
         if ret is None:
-            time.sleep(Config.TIMER_POLL_INTERVAL)
-            t += Config.TIMER_POLL_INTERVAL
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            t += config.Config.TIMER_POLL_INTERVAL
         elif ret == returnValue:
             return ret
         else:
@@ -94,7 +94,7 @@ class TashiSSH:
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
-        return "%s-%d-%s" % (Config.PREFIX, id, name)
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, id, name):
         """ Construct a VM domain name. Always use this function when
@@ -180,7 +180,7 @@ class TashiSSH:
             # Wait a bit and then try again if we haven't exceeded
             # timeout
             if instance_down:
-                time.sleep(Config.TIMER_POLL_INTERVAL)
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
                 elapsed_secs = time.time() - start_time
                 if (elapsed_secs > max_secs):
                     return -1
@@ -208,7 +208,7 @@ class TashiSSH:
                 return 0
  
             # Sleep a bit before trying again
-            time.sleep(Config.TIMER_POLL_INTERVAL)
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles):
         """ copyIn - Copy input files to VM
@@ -225,7 +225,7 @@ class TashiSSH:
             self.log.debug("Copying file %s to VM %s" % (file, domain_name))
             ret = timeout(["scp"] + TashiSSH._SSH_FLAGS +
                            [file.localFile, "autolab@%s:autolab/%s" %
-                           (domain_name, file.destFile)], Config.COPYIN_TIMEOUT)
+                           (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
             self.log.debug("Copied file %s to VM %s with status %s" % (file, domain_name, str(ret)))
             if ret != 0:
                 return ret
@@ -240,7 +240,7 @@ class TashiSSH:
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
             %d -o %d autolab &> output" % (
-            Config.VM_ULIMIT_USER_PROC, Config.VM_ULIMIT_FILE_SIZE,
+            config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, maxOutputFileSize) 
         return timeout(["ssh"] + TashiSSH._SSH_FLAGS +
                         ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
@@ -254,7 +254,7 @@ class TashiSSH:
 
         # Optionally log finer grained runtime info. Adds about 1 sec
         # to the job latency, so we typically skip this.
-        if Config.LOG_TIMING:
+        if config.Config.LOG_TIMING:
             try:
                 # regular expression matcher for error message from cat
                 no_file = re.compile('No such file or directory')
@@ -281,7 +281,7 @@ class TashiSSH:
     
         return timeout(["scp"] + TashiSSH._SSH_FLAGS +
                         ["autolab@%s:output" % (domain_name), destFile],
-                       Config.COPYOUT_TIMEOUT)
+                       config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
         """ destroyVM - Removes a VM from the system
@@ -306,12 +306,12 @@ class TashiSSH:
                 self.destroyVM(vm)
                 self.secs = 0;
                 # Give Tashi time to delete the instance
-                while self.existsVM(vm) and self.secs < Config.DESTROY_SECS:
+                while self.existsVM(vm) and self.secs < config.Config.DESTROY_SECS:
                     self.secs += 1
                     time.sleep(1)
 
                 # Something is really screwy, give up and log the event
-                if self.secs >= Config.DESTROY_SECS:
+                if self.secs >= config.Config.DESTROY_SECS:
                     self.log.error("Tashi never destroyed VM %s" %
                                    (self.instance_name))
 

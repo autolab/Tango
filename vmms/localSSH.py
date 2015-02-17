@@ -3,8 +3,7 @@
 #
 import random, subprocess, re, time, logging, threading, os
 
-from config import *
-
+import config
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -20,8 +19,8 @@ def timeout(command, time_out=1):
     # Wait for the command to complete
     t = 0.0
     while t < time_out and p.poll() is None:
-        time.sleep(Config.TIMER_POLL_INTERVAL)
-        t += Config.TIMER_POLL_INTERVAL
+        time.sleep(config.Config.TIMER_POLL_INTERVAL)
+        t += config.Config.TIMER_POLL_INTERVAL
 
     # Determine why the while loop terminated
     if p.poll() is None:
@@ -41,8 +40,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
     while (t < time_out):
         ret = p.poll()
         if ret is None:
-            time.sleep(Config.TIMER_POLL_INTERVAL)
-            t += Config.TIMER_POLL_INTERVAL
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            t += config.Config.TIMER_POLL_INTERVAL
         elif ret == returnValue:
             return ret
         else:
@@ -80,7 +79,7 @@ class LocalSSH:
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
-        return "%s-%d-%s" % (Config.PREFIX, id, name)
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, vm):
         """ Returns the domain name that is stored in the vm
@@ -118,7 +117,7 @@ class LocalSSH:
             # Wait a bit and then try again if we haven't exceeded
             # timeout
             if instance_down:
-                time.sleep(Config.TIMER_POLL_INTERVAL)
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
                 elapsed_secs = time.time() - start_time
                 if (elapsed_secs > max_secs):
                     return -1
@@ -148,7 +147,7 @@ class LocalSSH:
                     return 0
 
                 # Sleep a bit before trying again
-                time.sleep(Config.TIMER_POLL_INTERVAL)
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles):
         """ copyIn - Copy input files to VM
@@ -164,7 +163,7 @@ class LocalSSH:
         for file in inputFiles:
             ret = timeout(["scp"] + LocalSSH._SSH_FLAGS +
                            [file.localFile, "%s:autolab/%s" %
-                           (domain_name, file.destFile)], Config.COPYIN_TIMEOUT)
+                           (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
             if ret != 0:
                 return ret
         return 0
@@ -179,7 +178,7 @@ class LocalSSH:
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
             %d -o %d autolab &> output" % (
-            Config.VM_ULIMIT_USER_PROC, Config.VM_ULIMIT_FILE_SIZE,
+            config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, maxOutputFileSize) 
         return timeout(["ssh"] + LocalSSH._SSH_FLAGS +
                         ["%s" % (domain_name), runcmd], runTimeout * 2)
@@ -193,7 +192,7 @@ class LocalSSH:
 
         # Optionally log finer grained runtime info. Adds about 1 sec
         # to the job latency, so we typically skip this.
-        if Config.LOG_TIMING:
+        if config.Config.LOG_TIMING:
             try:
                 # regular expression matcher for error message from cat
                 no_file = re.compile('No such file or directory')
@@ -220,7 +219,7 @@ class LocalSSH:
     
         return timeout(["scp"] + LocalSSH._SSH_FLAGS +
                         ["%s:output" % (domain_name), destFile],
-                       Config.COPYOUT_TIMEOUT)
+                       config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
         """ destroyVM - Nothing to destroy for local.
