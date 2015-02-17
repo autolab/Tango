@@ -3,7 +3,5 @@
 # Run this script from tango3 directory
 # For RESTful Tango
 tango3_dir=$PWD
-export PYTHONPATH=$tango3_dir/lib/futures-2.2.0/:$tango3_dir/lib/backports.ssl_match_hostname-3.4.0.2/src/:$tango3_dir/lib/boto-2.27.0/:$tango3_dir/lib/requests-2.2.1/:$tango3_dir/lib/tornado-3.2/:/usr/share/tashi/src/:/usr/share/tango2/:$PYTHONPATH
+export PYTHONPATH=$tango3_dir/lib/futures-2.2.0/:$tango3_dir/lib/backports.ssl_match_hostname-3.4.0.2/src/:$tango3_dir/lib/boto-2.27.0/:$tango3_dir/lib/requests-2.2.1/:$tango3_dir/lib/tornado-3.2/:/usr/share/tango2/:$PYTHONPATH
 
-# For Tango
-export PATH=$PATH:/usr/share/tashi/bin
