@@ -184,8 +184,7 @@ if (args.poll):
 if (args.info):
 	try:
 		checkKey()
-		checkCourselab()
-		response = requests.get('%s:%d/info/%s/%s/' % (args.server, args.port, args.key, args.courselab))
+		response = requests.get('%s:%d/info/%s/' % (args.server, args.port, args.key))
 		print (response.content)
 
 	except Exception as err:
@@ -209,7 +208,6 @@ if (args.jobs):
 if (args.pool):
 	try:
 		checkKey()
-		checkCourselab()
 		response = requests.get('%s:%d/pool/%s/%s/' % (args.server, args.port, args.key, args.image))
 		print (response.content)
 
