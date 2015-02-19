@@ -2,7 +2,7 @@
 
 from tornado.ioloop import IOLoop
 import tornado.web
-import sys, time
+import sys, time, urllib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
@@ -71,7 +71,7 @@ class PollHandler(tornado.web.RequestHandler):
 	def get(self, key, courselab, outputFile):
 		""" get - Handles the get request to poll."""
 		self.set_header('Content-Type', 'application/octet-stream')
-		return tangoREST.poll(key, courselab, outputFile)
+		return tangoREST.poll(key, courselab, urllib.unquote(outputFile))
 
 class InfoHandler(tornado.web.RequestHandler):
 	@unblock
