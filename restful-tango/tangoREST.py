@@ -307,10 +307,10 @@ class TangoREST:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def info(self, key, courselab):
+    def info(self, key):
         """ info - Returns basic status for the Tango service such as uptime, number of jobs etc
         """
-        self.log.debug("Received info request (%s, %s)" % (key, courselab))
+        self.log.debug("Received info request (%s)" % (key))
         if (self.validateKey(key)):
             info = self.tango.getInfo()
             result = self.status.obtained_info
@@ -320,10 +320,10 @@ class TangoREST:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def jobs(self, key, courselab, deadJobs):
+    def jobs(self, key, deadJobs):
         """ jobs - Returns the list of live jobs (deadJobs == 0) or the list of dead jobs (deadJobs == 1)
         """
-        self.log.debug("Received jobs request (%s, %s, %s)" % (key, courselab, deadJobs))
+        self.log.debug("Received jobs request (%s, %s)" % (key, deadJobs))
         if (self.validateKey(key)):
             jobs = list()
             result = self.status.obtained_jobs
@@ -353,8 +353,8 @@ class TangoREST:
             self.log.info("Pool image found: %s" % image)
             info = self.preallocator.getPool(image)
             result = self.status.obtained_pool
-            result["total"] = len(info["pool"])
-            result["free"] = len(info["free"])
+            result["total"] = info["pool"]
+            result["free"] = info["free"]
             return result
         else:
             self.log.info("Key not recognized: %s" % key)
