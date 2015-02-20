@@ -16,21 +16,21 @@ class Config:
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = "mp"
+    PREFIX = ""
 
     # Default port for the RESTful server to listen on. Port 9090 is
     # reserved for production. Port 8080 for the lead developer.
     # Other developers should pick their own unique ports
-    PORT = 2908
+    PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
-    LOGFILE = "/usr/share/mpandyaAutolab/Tango/tango3.log"
+    LOGFILE = ""
 
     # Logging level
-    LOGLEVEL = logging.DEBUG
+    LOGLEVEL = logging.INFO
 
     # Courselabs directory. Must be created before starting Tango
-    COURSELABS = "/usr/share/mpandyaAutolab/Tango/courselabs"
+    COURSELABS = ""
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango
@@ -42,7 +42,7 @@ class Config:
     #
 
     # Keys for Tango to authenticate client requests
-    KEYS = ["mp_test"]
+    KEYS = ["test"]
 
     # Queue manager checks for new work every so many seconds
     DISPATCH_PERIOD = 0.2
@@ -90,7 +90,7 @@ class Config:
     POOL_SIZE = 2
 
     # Path for tashi images
-    TASHI_IMAGE_PATH = "/raid/tashi/images/"
+    TASHI_IMAGE_PATH = ""
 
     # Optionally log finer-grained timing information 
     LOG_TIMING = True
