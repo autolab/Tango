@@ -11,7 +11,7 @@ sys.path.append('/usr/lib/python2.7/site-packages/')
 sys.path.append('gen-py')
 sys.path.append('/usr/share/Tango-prod/lib/requests-2.2.1/')
 
-import argparse, requests, json
+import argparse, requests, json, urllib
 
 #
 #
@@ -172,7 +172,7 @@ if (args.poll):
 			print "Must supply name of output file with --outputFile"
 			sys.exit(0)
 
-		response = requests.get('%s:%d/poll/%s/%s/%s/' % (args.server, args.port, args.key, args.courselab, args.outputFile))
+		response = requests.get('%s:%d/poll/%s/%s/%s/' % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile)))
 		print (response.content)
 
 	except Exception as err:
