@@ -15,7 +15,7 @@ EXECUTOR = ThreadPoolExecutor(max_workers=4)
 # Regex for the resources
 SHA1_KEY = ".+" # So that we can have better error messages
 COURSELAB = ".+"
-OUTPUTFILE = "[0-9a-zA-z\.\-\_]+"
+OUTPUTFILE = ".+"
 IMAGE = ".+"
 NUM = "[0-9]+"
 JOBID = "[0-9]+"

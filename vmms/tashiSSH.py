@@ -8,7 +8,7 @@
 #   TashiException - Tashi raises this if it encounters any problem
 #   tashiCallError - raised by tashiCall() function
 #
-import random, subprocess, re, time, logging, threading, os
+import random, subprocess, re, time, logging, threading, os, sys
 
 from tashi.rpycservices.rpyctypes import *
 import config
@@ -20,10 +20,17 @@ def timeout(command, time_out=1):
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
     """
+    if (config.Config.LOGLEVEL is logging.DEBUG) and ("ssh" in command or "scp" in command):
+        out = sys.stdout
+        err = sys.stderr
+    else:
+        out = open("/dev/null", 'w')
+        err = sys.stdout
+
     # Launch the command
     p = subprocess.Popen(command, 
-                         stdout=open("/dev/null", 'w'), 
-                         stderr=subprocess.STDOUT)
+                         stdout=out, 
+                         stderr=err)
 
     # Wait for the command to complete
     t = 0.0
@@ -37,7 +44,8 @@ def timeout(command, time_out=1):
         returncode = -1
     else:                 
         returncode = p.poll()
-    return returncode   
+
+    return returncode
 
 def timeoutWithReturnStatus(command, time_out, returnValue = 0):
     """ timeoutWithReturnStatus - Run a Unix command with a timeout,
@@ -223,7 +231,7 @@ class TashiSSH:
         # Copy the input files to the input directory
         for file in inputFiles:
             self.log.debug("Copying file %s to VM %s" % (file.localFile, domain_name))
-            ret = timeout(["scp"] + TashiSSH._SSH_FLAGS +
+            ret = timeout(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
                            [file.localFile, "autolab@%s:autolab/%s" %
                            (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
             self.log.debug("Copied file %s to VM %s with status %s" % (file.localFile, 
@@ -243,7 +251,7 @@ class TashiSSH:
             %d -o %d autolab &> output" % (
             config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, maxOutputFileSize) 
-        return timeout(["ssh"] + TashiSSH._SSH_FLAGS +
+        return timeout(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
                         ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
@@ -280,7 +288,7 @@ class TashiSSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
     
-        return timeout(["scp"] + TashiSSH._SSH_FLAGS +
+        return timeout(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
                         ["autolab@%s:output" % (domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 

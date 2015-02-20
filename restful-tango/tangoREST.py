@@ -57,8 +57,7 @@ class TangoREST:
         logging.basicConfig(
                 filename = self.LOGFILE,
                 format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                #level = logging.INFO
-                level = logging.DEBUG
+                level = config.Config.LOGLEVEL
                 )
         logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")
