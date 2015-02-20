@@ -74,6 +74,12 @@ class Config:
     # How many times to reschedule a failed job
     JOB_RETRIES = 2
 
+    # How many times to attempt an SSH connection
+    SSH_RETRIES = 5
+
+    # Frequency of retrying SSH connections (in seconds)
+    SSH_INTERVAL = 0.5
+
     # Give Tashi this many seconds to destroy a VM before giving up
     DESTROY_SECS = 5
 
@@ -87,7 +93,7 @@ class Config:
     TASHI_IMAGE_PATH = "/raid/tashi/images/"
 
     # Optionally log finer-grained timing information 
-    LOG_TIMING = False
+    LOG_TIMING = True
 
     # Largest job ID
     MAX_JOBID = 500

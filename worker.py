@@ -270,9 +270,7 @@ class Worker( threading.Thread ):
         # Exception: ec2CallError - Raised by ec2Call()
         #
         except Exception as err:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.log.debug("Internal Error on line %d: %s" % 
-                (err, exc_tb.tb_lineno))
+            self.log.debug("Internal Error: %s" % err)
             self.appendMsg(self.job.outputFile,
                            "Internal Error: %s" % err)
 
