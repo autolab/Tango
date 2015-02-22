@@ -8,7 +8,7 @@
 #   TashiException - Tashi raises this if it encounters any problem
 #   tashiCallError - raised by tashiCall() function
 #
-import random, subprocess, re, time, logging, threading, os
+import random, subprocess, re, time, logging, threading, os, sys
 
 from tashi.rpycservices.rpyctypes import *
 import config
@@ -20,10 +20,17 @@ def timeout(command, time_out=1):
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
     """
+    if (config.Config.LOGLEVEL is logging.DEBUG) and ("ssh" in command or "scp" in command):
+        out = sys.stdout
+        err = sys.stderr
+    else:
+        out = open("/dev/null", 'w')
+        err = sys.stdout
+
     # Launch the command
     p = subprocess.Popen(command, 
-                         stdout=open("/dev/null", 'w'), 
-                         stderr=subprocess.STDOUT)
+                         stdout=out, 
+                         stderr=err)
 
     # Wait for the command to complete
     t = 0.0
@@ -37,16 +44,25 @@ def timeout(command, time_out=1):
         returncode = -1
     else:                 
         returncode = p.poll()
-    return returncode   
+
+    return returncode
 
 def timeoutWithReturnStatus(command, time_out, returnValue = 0):
     """ timeoutWithReturnStatus - Run a Unix command with a timeout,
     until the expected value is returned by the command; On timeout,
     return last error code obtained from the command.
     """
+    if (config.Config.LOGLEVEL is logging.DEBUG) and ("ssh" in command or "scp" in command):
+        out = sys.stdout
+        err = sys.stderr
+    else:
+        out = open("/dev/null", 'w')
+        err = sys.stdout
+
+    # Launch the command
     p = subprocess.Popen(command, 
-                         stdout=open("/dev/null", 'w'), 
-                         stderr=subprocess.STDOUT)
+                         stdout=out, 
+                         stderr=err)
 
     t = 0.0
     while t < time_out:
@@ -58,9 +74,23 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
             return ret
         else:
             p = subprocess.Popen(command, 
-                         stdout=open("/dev/null", 'w'), 
-                         stderr=subprocess.STDOUT)
+                                 stdout=out, 
+                                 stderr=err)
     return ret
+
+def ssh_retry(command, time_out=1):
+    ssh_tries = 0
+
+    while ssh_tries < config.Config.SSH_RETRIES:
+        ret = timeout(command, time_out)
+        if ret != 0:
+            ssh_tries = ssh_tries + 1
+            time.sleep(config.Config.SSH_INTERVAL)
+        else:
+            break
+
+    return (ssh_tries, ret)
+
 #
 # User defined exceptions
 #
@@ -214,6 +244,7 @@ class TashiSSH:
         """ copyIn - Copy input files to VM
         """
         domain_name = self.domainName(vm.id, vm.name);
+        ssh_tries = 0
         self.log.debug("Creating autolab directory on VM")
         # Create a fresh input directory
         ret = subprocess.call(["ssh"] + TashiSSH._SSH_FLAGS +
@@ -223,12 +254,19 @@ class TashiSSH:
         # Copy the input files to the input directory
         for file in inputFiles:
             self.log.debug("Copying file %s to VM %s" % (file.localFile, domain_name))
-            ret = timeout(["scp"] + TashiSSH._SSH_FLAGS +
-                           [file.localFile, "autolab@%s:autolab/%s" %
-                           (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
-            self.log.debug("Copied file %s to VM %s with status %s" % (file.localFile, 
-                domain_name, str(ret)))
-            if ret != 0:
+            
+            (ssh_tries, ret) = ssh_retry(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
+                                [file.localFile, "autolab@%s:autolab/%s" %
+                                (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
+            
+            self.log.debug("copyIn: Number of SSH Attempts: %d", ssh_tries)
+
+            if ret == 0:
+                self.log.debug("Success: copied file %s to VM %s with status %s" % (file.localFile, 
+                    domain_name, str(ret)))
+            else:
+                self.log.debug("Error: failed to copy file %s to VM %s with status %s" % (file.localFile,
+                    domain_name, str(ret)))
                 return ret
         return 0
 
@@ -243,9 +281,14 @@ class TashiSSH:
             %d -o %d autolab &> output" % (
             config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, maxOutputFileSize) 
-        return timeout(["ssh"] + TashiSSH._SSH_FLAGS +
-                        ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
+        (ssh_tries, ret) = ssh_retry(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
+                                ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
+
+        self.log.debug("runJob: Number of SSH Attempts: %d", ssh_tries)
+
+        return ret
+        
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the file output on the VM to the file
@@ -280,9 +323,13 @@ class TashiSSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
     
-        return timeout(["scp"] + TashiSSH._SSH_FLAGS +
-                        ["autolab@%s:output" % (domain_name), destFile],
-                       config.Config.COPYOUT_TIMEOUT)
+        (ssh_tries, ret) = ssh_retry(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
+                                ["autolab@%s:output" % (domain_name), destFile],
+                                config.Config.COPYOUT_TIMEOUT)
+
+        self.log.debug("copyOut: Number of SSH Attempts: %d", ssh_tries)
+
+        return ret
 
     def destroyVM(self, vm):
         """ destroyVM - Removes a VM from the system

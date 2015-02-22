@@ -2,7 +2,8 @@
 # config.py - Global configuration constants and runtime info
 #
 
-from vmms.localSSH import * 
+from vmms.localSSH import *
+import logging
 
 # Config - defines 
 class Config:
@@ -17,13 +18,14 @@ class Config:
     # unique identifier. The "prod" prefix is reserved for production
     PREFIX = "local"
 
-    # Default port for the RESTful server to listen on. Port 9090 is
-    # reserved for production. Port 8080 for the lead developer.
-    # Other developers should pick their own unique ports
+    # Default port for the RESTful server to listen on. 
     PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
     LOGFILE = None
+
+    # Logging level
+    LOGLEVEL = logging.INFO
 
     # Courselabs directory. Must be created before starting Tango
     COURSELABS = ""
@@ -70,6 +72,12 @@ class Config:
     # How many times to reschedule a failed job
     JOB_RETRIES = 2
 
+    # How many times to attempt an SSH connection
+    SSH_RETRIES = 5
+
+    # Frequency of retrying SSH connections (in seconds)
+    SSH_INTERVAL = 0.5
+
     # Give Tashi this many seconds to destroy a VM before giving up
     DESTROY_SECS = 5
 
@@ -83,7 +91,7 @@ class Config:
     TASHI_IMAGE_PATH = ""
 
     # Optionally log finer-grained timing information 
-    LOG_TIMING = False
+    LOG_TIMING = True
 
     # Largest job ID
     MAX_JOBID = 500
