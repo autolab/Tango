@@ -2,7 +2,7 @@
 # config.py - Global configuration constants and runtime info
 #
 
-from vmms.tashiSSH import *
+from vmms.localSSH import *
 import logging
 
 # Config - defines 
@@ -16,15 +16,13 @@ class Config:
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = ""
+    PREFIX = "local"
 
-    # Default port for the RESTful server to listen on. Port 9090 is
-    # reserved for production. Port 8080 for the lead developer.
-    # Other developers should pick their own unique ports
+    # Default port for the RESTful server to listen on. 
     PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
-    LOGFILE = ""
+    LOGFILE = None
 
     # Logging level
     LOGLEVEL = logging.INFO
@@ -34,8 +32,8 @@ class Config:
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango
-    VMMS_NAME = "tashiSSH"
-    VMMS = TashiSSH()
+    VMMS_NAME = "localSSH"
+    VMMS = LocalSSH()
 
     #####
     # Part 2: Constants that shouldn't need to change very often. 

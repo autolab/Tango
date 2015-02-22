@@ -6,5 +6,4 @@
 scripts/*.sh
 # exclude
 vmms/id_rsa*
-# config file
-config.py
+
