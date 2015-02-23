@@ -253,14 +253,14 @@ def validateJob(job, vmms):
                             (time.ctime(time.time()+time.timezone), job.vm.image))
                     errors += 1
                 # Check if image has read permissions
-            elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-                log.error("validateJob: Not readable: %s" % job.vm.image)
-                job.trace.append("%s|validateJob: Not readable: %s" %
-                            (time.ctime(time.time()+time.timezone), job.vm.image))
-                errors += 1
-            else:
-                (base, ext) = os.path.splitext(job.vm.image)
-                job.vm.name = base;
+                elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
+                    log.error("validateJob: Not readable: %s" % job.vm.image)
+                    job.trace.append("%s|validateJob: Not readable: %s" %
+                                (time.ctime(time.time()+time.timezone), job.vm.image))
+                    errors += 1
+                else:
+                    (base, ext) = os.path.splitext(job.vm.image)
+                    job.vm.name = base;
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
