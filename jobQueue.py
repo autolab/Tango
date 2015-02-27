@@ -12,7 +12,7 @@ import time, threading, logging
 from datetime import datetime
 from config import Config
 from tangoObjects import TangoDictionary, TangoJob
- 
+
 #
 # JobQueue - This class defines the job queue and the functions for
 # manipulating it. The actual queue is made up of two smaller
@@ -89,7 +89,7 @@ class JobQueue:
         self.jobQueue.set(job.id, job)
         job.appendTrace("%s|Added job %s:%d to queue" %
                 (datetime.utcnow().ctime(), job.name, job.id))
-        
+
         self.log.debug("Ref: " + str(job._remoteLocation))
         self.log.debug("job_id: " + str(job.id))
         self.log.debug("job_name: " + str(job.name))
@@ -228,7 +228,7 @@ class JobQueue:
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job %s" % str(job.id))
         job.makeAssigned()
-        
+
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
@@ -261,7 +261,13 @@ class JobQueue:
             self.log.info("makeDead| Job is in the queue")
             status = 0
             job = self.jobQueue.get(id)
-            self.jobQueue.delete(id)
+            if job.assigned:
+                #If the job is assigned, kill the VM, and create a new one.
+                newVM = preallocator.replaceVM()
+                self.jobQueue.delete(id)
+                preallocator.freeVM(newVM)
+            else:
+                self.jobQueue(delete.id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
