@@ -141,7 +141,6 @@ class JobQueue:
 				del self.deadJobs[id]
 				status = 0
 			self.queueLock.release()
-
 			if status == 0:
 				self.log.debug("Removed job %d from dead queue" % id)
 			else:
@@ -213,21 +212,30 @@ class JobQueue:
 			job.retries += 1
 			Config.job_retries += 1
 		self.queueLock.release()
-
 	def makeDead(self, id, reason):
 		""" makeDead - move a job from live queue to dead queue
+		    If the job is currently being executed on a VM, delete the VM,
+		    remove the job, and then free the VM. Otherwise, simply move the
+		    job to the dead jobs list.
 		"""
 		self.queueLock.acquire()
 		status = -1
 		if id in self.jobQueue:
 			status = 0
 			job = self.jobQueue[id]
-			del self.jobQueue[id]
 			if job.trace is None:
 				job.trace = []
-			job.trace.append("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
+				job.trace.append("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
+			if job.assigned = False:
+				del self.jobQueue[id]
+			else: #Job is assigned to a virtual machine.
+				vm = preallocator.replaceVM(job.vm)
+				self.log.info("VM %s was destroyed and recreated:" %
+					      self.vmms.instanceName(vm.id, vm.name))
+				del self.jobQueue[id]
+				preallocator.freeVM(vm)
 			self.log.info("Terminated job %s:%d: %s" %
-						  (job.name, job.id, reason))
+				      (job.name, job.id, reason))
 			self.deadJobs[id] = job
 		self.queueLock.release()
 		return status
