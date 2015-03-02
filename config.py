@@ -33,7 +33,7 @@ class Config:
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango
     VMMS_NAME = "localSSH"
-    VMMS = LocalSSH()
+    # VMMS = LocalSSH()
 
     #####
     # Part 2: Constants that shouldn't need to change very often. 
