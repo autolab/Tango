@@ -1,8 +1,7 @@
 #!/usr/local/bin/python
 
-from tornado.ioloop import IOLoop
 import tornado.web
-import sys, time, urllib
+import urllib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 

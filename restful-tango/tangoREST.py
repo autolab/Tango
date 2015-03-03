@@ -4,13 +4,24 @@
 # interface of Tango.
 #
 
-import sys, os, hashlib, time, json, random, logging, logging.handlers
+import sys, os, inspect, hashlib, json, logging, logging.handlers
 
-from tangod import *
-from jobQueue import *
-from preallocator import *
-from tangoObjects import *
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+
+from tangod import TangoServer
+from jobQueue import JobQueue
+from jobManager import JobManager
+from preallocator import Preallocator
+from tangoObjects import TangoJob, TangoMachine, InputFile
+
+from vmms.localSSH import LocalSSH
+from vmms.tashiSSH import TashiSSH
+from vmms.ec2SSH import Ec2SSH
+
 from config import Config
+
 
 class Status:
 
@@ -63,11 +74,11 @@ class TangoREST:
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
         self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
-        self.tango = tangoServer(self.queue, self.preallocator, self.vmms)
+        self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
         logging.basicConfig(
                 filename = self.LOGFILE,
                 format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                level = config.Config.LOGLEVEL
+                level = Config.LOGLEVEL
                 )
         logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")

@@ -220,7 +220,7 @@ class Ec2SSH:
                         ["ubuntu@%s" % (domain_name),
                             "(:)"], max_secs - elapsed_secs)
 
-                        self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
+                self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
 
                 if (ret != -1) and (ret != 255):
                     return 0

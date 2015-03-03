@@ -40,8 +40,8 @@ import os, stat
 from config import Config
 from tangoObjects import TangoJob
 
-class tangoServer:
-    """ tangoServer - Implements the API functions that the server accepts
+class TangoServer:
+    """ TangoServer - Implements the API functions that the server accepts
     """
     def __init__(self, jobQueue, preallocator, vmms):
         self.daemon = True
