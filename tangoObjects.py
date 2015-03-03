@@ -57,6 +57,9 @@ class TangoJob():
         self.maxOutputFileSize = maxOutputFileSize
 
 
+# This is an abstract class that decides on 
+# if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
+# Since there are no abstract classes in Python, we use a simple method
 def TangoDictionary(object_name):
     if Config.USE_REDIS:
         return TangoRemoteDictionary(Config.REDIS_HOSTNAME, Config.REDIS_PORT, object_name)
@@ -81,6 +84,9 @@ class TangoRemoteDictionary():
 
     def keys(self):
         return self.r.hkeys(self.hash_name)
+
+    def values(self):
+        return self.r.hvals(self.hash_name)
 
     def delete(self, id):
         self.r.hdel(self.hash_name, id)
@@ -108,6 +114,9 @@ class TangoNativeDictionary():
 
     def keys(self):
         return self.dict.keys()
+
+    def values(self):
+        return self.dict.values()
 
     def delete(self, id):
         del self.dict[id]

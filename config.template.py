@@ -106,7 +106,7 @@ class Config:
     copyout_errors=0
 
     ######
-    # Part 5: Settings for shared memory
+    # Part 4: Settings for shared memory
     #
     USE_REDIS = False
     REDIS_HOSTNAME = "127.0.0.1"
