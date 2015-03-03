@@ -55,9 +55,9 @@ class TestJobQueue(unittest.TestCase):
         self.assertEqual(info['size_deadjobs'], 1)
 
 
-        self.jobQueue.delJob(self.jobId2, 1)
+        self.jobQueue.delJob(self.jobId1, 1)
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size'], 0)
+        self.assertEqual(info['size_deadjobs'], 0)
 
         return False
 

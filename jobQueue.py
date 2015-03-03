@@ -133,7 +133,7 @@ class JobQueue:
 		and discard.
 		"""
 		if deadjob == 0:
-			return makeDead(id, "Requested by operator")
+			return self.makeDead(id, "Requested by operator")
 		else:
 			status = -1
 			self.queueLock.acquire()
@@ -236,5 +236,5 @@ class JobQueue:
 		info = {}
 		info['size'] = len(self.jobQueue.keys())
 		info['size_deadjobs'] = len(self.deadJobs.keys())
-		
+
 		return info
