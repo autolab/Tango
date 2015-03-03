@@ -34,14 +34,11 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
-import threading, time, logging, sys, signal, re, gc
-import shlex, subprocess, random, string, os, urllib, stat
-from collections import deque
+import threading, time, logging, re
+import os, stat
 
-from config import *
-from preallocator import *
-from jobQueue import *
-from tangoObjects import *
+from config import Config
+from tangoObjects import TangoJob
 
 class tangoServer:
     """ tangoServer - Implements the API functions that the server accepts

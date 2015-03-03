@@ -1,9 +1,9 @@
 #
 # worker.py - Thread that shepherds a job through it execution sequence
 #
-import threading, time, logging, signal, sys, urllib, tempfile, requests
+import threading, time, logging, tempfile, requests, subprocess
 
-from config import *
+from config import Config
 
 #
 # Worker - The worker class is very simple and very dumb. The goal is

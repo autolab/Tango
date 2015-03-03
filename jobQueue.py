@@ -9,10 +9,8 @@
 #
 import time, threading, logging
 
-from config import *
-from tangoObjects import *
-from worker import Worker
-
+from config import Config
+from tangoObjects import TangoDictionary, TangoJob
  
 #
 # JobQueue - This class defines the job queue and the functions for

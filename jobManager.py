@@ -9,6 +9,12 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+import time, threading, logging
+
+from config import Config
+from worker import Worker
+
+
 class JobManager:
 	def __init__(self, queue, vmms, preallocator):
 		self.daemon = True
@@ -45,7 +51,7 @@ class JobManager:
 									 (time.ctime(time.time()+time.timezone), job.name, job.id,
 									  job.retries))
 					vmms = self.vmms[job.vm.vmms] # Create new vmms object
-					worker = Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
+					Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
 
 				except Exception, err:
 					self.jobQueue.makeDead(job.id, str(err))

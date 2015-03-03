@@ -1,8 +1,6 @@
 #
 # config.py - Global configuration constants and runtime info
 #
-
-from vmms.localSSH import *
 import logging
 
 # Config - defines 
