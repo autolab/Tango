@@ -2,6 +2,10 @@
 #
 # Implements objects used to pass state within Tango.
 #
+import redis
+import pickle
+from config import *
+
 
 class InputFile():
     """
@@ -51,3 +55,62 @@ class TangoJob():
         self.timeout = timeout
         self.trace = trace
         self.maxOutputFileSize = maxOutputFileSize
+
+
+def TangoDictionary(object_name):
+    if Config.USE_REDIS:
+        return TangoRemoteDictionary(Config.REDIS_HOSTNAME, Config.REDIS_PORT, object_name)
+    else:
+        return TangoNativeDictionary()
+
+
+class TangoRemoteDictionary():
+    def __init__(self, hostname, port, object_name):
+        self.r = redis.StrictRedis(host=hostname, port=port, db=0)
+        self.hash_name = object_name
+    
+    def set(self, id, obj):
+        pickled_obj = pickle.dumps(obj)
+        self.r.hset(self.hash_name, id, pickled_obj)
+
+    def get(self, id):
+        unpickled_obj = self.r.hget(self.hash_name, id)
+        obj = pickle.loads(unpickled_obj)
+        return obj
+
+    def keys(self):
+        return self.r.hkeys(self.hash_name)
+
+    def delete(self, id):
+        self.r.hdel(self.hash_name, id)
+
+    def iteritems():
+        keys = self.hkeys(self.hash_name)
+        keyvals = []
+        for key in keys:
+            tup = (key, self.r.hget(self.hash_name, key))
+            keyvals.push(tup)
+
+        return keyvals
+
+
+class TangoNativeDictionary():
+
+    def __init__(self):
+        self.dict = {}
+
+    def set(self, id, obj):
+        self.dict[id] = obj
+
+    def get(self, id):
+        return self.dict[id]
+
+    def keys(self):
+        return self.dict.keys()
+
+    def delete(self, id):
+        del self.dict[id]
+
+    def iteritems():
+        return self.dict.iteritems()
+

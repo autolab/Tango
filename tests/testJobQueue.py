@@ -1,6 +1,6 @@
 import sys, os, hashlib, time, json, random
 import unittest
-# from tangod import *
+
 from jobQueue import *
 
 

@@ -108,7 +108,14 @@ class Config:
     copyout_errors=0
 
     ######
-    # Part 4: EC2 Constants
+    # Part 5: Settings for shared memory
+    #
+    USE_REDIS = False
+    REDIS_HOSTNAME = "127.0.0.1"
+    REDIS_PORT = 6379
+
+    ######
+    # Part 5: EC2 Constants
     #
     EC2_REGION = ''
     DEFAULT_AMI = ''
