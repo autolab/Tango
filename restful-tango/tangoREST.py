@@ -56,7 +56,7 @@ class TangoREST:
             vmms = LocalSSH()
         elif Config.VMMS_NAME == "tashiSSH":
             vmms = TashiSSH()
-        elif Config.VMMS_NAME == "ec2SSH"
+        elif Config.VMMS_NAME == "ec2SSH":
             vmms = Ec2SSH()
 
         self.vmms = {Config.VMMS_NAME: vmms}
