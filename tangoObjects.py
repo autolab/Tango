@@ -62,8 +62,8 @@ class TangoQueue(object):
     """Simple Queue with Redis Backend"""
     def __init__(self, name, namespace="queue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
-       self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
-       self.key = '%s:%s' %(namespace, name)
+        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.key = '%s:%s' %(namespace, name)
 
     def qsize(self):
         """Return the approximate size of the queue."""
@@ -95,6 +95,15 @@ class TangoQueue(object):
         """Equivalent to get(False)."""
         return self.get(False)
 
+    def __getstate__(self):
+        ret = {}
+        ret['key'] = self.key
+        return ret
+
+    def __setstate__(self, dict):
+        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.__dict__.update(dict)
+
 
 # This is an abstract class that decides on 
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
@@ -125,7 +134,11 @@ class TangoRemoteDictionary():
         return self.r.hkeys(self.hash_name)
 
     def values(self):
-        return self.r.hvals(self.hash_name)
+        vals = self.r.hvals(self.hash_name)
+        valslist = []
+        for val in vals:
+            valslist.append(pickle.loads(val))
+        return valslist
 
     def delete(self, id):
         self.r.hdel(self.hash_name, id)
