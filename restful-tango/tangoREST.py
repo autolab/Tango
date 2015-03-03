@@ -49,7 +49,17 @@ class TangoREST:
     keys = Config.KEYS
 
     def __init__(self):
-        self.vmms = {Config.VMMS_NAME:Config.VMMS}
+
+        vmms = None
+
+        if Config.VMMS_NAME == "localSSH":
+            vmms = LocalSSH()
+        elif Config.VMMS_NAME == "tashiSSH":
+            vmms = TashiSSH()
+        elif Config.VMMS_NAME == "ec2SSH"
+            vmms = Ec2SSH()
+
+        self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
         self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
