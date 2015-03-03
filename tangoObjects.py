@@ -57,6 +57,45 @@ class TangoJob():
         self.maxOutputFileSize = maxOutputFileSize
 
 
+
+class TangoQueue(object):
+    """Simple Queue with Redis Backend"""
+    def __init__(self, name, namespace="queue"):
+        """The default connection parameters are: host='localhost', port=6379, db=0"""
+       self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+       self.key = '%s:%s' %(namespace, name)
+
+    def qsize(self):
+        """Return the approximate size of the queue."""
+        return self.__db.llen(self.key)
+
+    def empty(self):
+        """Return True if the queue is empty, False otherwise."""
+        return self.qsize() == 0
+
+    def put(self, item):
+        """Put item into the queue."""
+        self.__db.rpush(self.key, item)
+
+    def get(self, block=True, timeout=None):
+        """Remove and return an item from the queue. 
+
+        If optional args block is true and timeout is None (the default), block
+        if necessary until an item is available."""
+        if block:
+            item = self.__db.blpop(self.key, timeout=timeout)
+        else:
+            item = self.__db.lpop(self.key)
+
+        if item:
+            item = item[1]
+        return item
+
+    def get_nowait(self):
+        """Equivalent to get(False)."""
+        return self.get(False)
+
+
 # This is an abstract class that decides on 
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
 # Since there are no abstract classes in Python, we use a simple method

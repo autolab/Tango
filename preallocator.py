@@ -2,6 +2,7 @@
 # preallocator.py - maintains a pool of active virtual machines
 #
 import threading, logging, copy, Queue, time
+from tangoObjects import TangoDictionary, TangoQueue
 from config import Config
 
 #
@@ -40,7 +41,7 @@ class Preallocator:
         """
         self.lock.acquire()
         if vm.name not in self.machines.keys():
-            self.machines.set(vm.name, [[], Queue.Queue())
+            self.machines.set(vm.name, [[], TangoQueue(vm.name)])
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
 
