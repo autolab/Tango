@@ -62,31 +62,42 @@ class TestJobQueue(unittest.TestCase):
         return False
 
 
-    def get(self):
+    def test_get(self):
         ret_job_1 = self.jobQueue.get(self.jobId1)
-        self.assertEqual(ret_job_1.__dict__, self.job1.__dict__)
+        self.assertEqual(str(ret_job_1.id), self.jobId1)
 
         ret_job_2 = self.jobQueue.get(self.jobId2)
-        self.assertEqual(ret_job_2.__dict__, self.job2.__dict__)
+        self.assertEqual(str(ret_job_2.id), self.jobId2)
 
 
-    def getNextPendingJob(self):
+    def test_getNextPendingJob(self):
+        self.jobQueue.assignJob(self.jobId2)
+        self.jobQueue.unassignJob(self.jobId1)
+        exp_id = self.jobQueue.getNextPendingJob()
+        self.assertMultiLineEqual(exp_id, self.jobId1)
+
+
+    def test_getNextPendingJobReuse(self):
         return False
 
 
-    def getNextPendingJobReuse(self):
-        return False
+    def test_assignJob(self):
+        self.jobQueue.assignJob(self.jobId1)
+        job = self.jobQueue.get(self.jobId1)
+        return self.assertTrue(job.assigned)
 
 
-    def assignJob(self):
-        return False
+    def test_unassignJob(self):
+        self.jobQueue.assignJob(self.jobId1)
+        job = self.jobQueue.get(self.jobId1)
+        self.assertTrue(job.assigned)
+
+        self.jobQueue.unassignJob(self.jobId1)
+        job = self.jobQueue.get(self.jobId1)
+        return self.assertEqual(job.assigned, False)
 
 
-    def unassignJob(self):
-        return False
-
-
-    def makeDead(self):
+    def test_makeDead(self):
         return False
 
 

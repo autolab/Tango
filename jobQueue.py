@@ -92,7 +92,7 @@ class JobQueue:
         self.log.debug("add|Releasing lock to job queue.")
 
         self.log.info("Added job %s:%d to queue" % (job.name, job.id))
-        return job.id
+        return str(job.id)
 
     def addDead(self, job):
         """ addDead - add a job to the dead queue.
@@ -122,9 +122,9 @@ class JobQueue:
         self.queueLock.release()
 
         if status == 0:
-            self.log.debug("Removed job %d from queue" % id)
+            self.log.debug("Removed job %s from queue" % id)
         else:
-            self.log.error("Job %d not found in queue" % id)
+            self.log.error("Job %s not found in queue" % id)
         return status
 
     def delJob(self, id, deadjob):
@@ -145,9 +145,9 @@ class JobQueue:
             self.queueLock.release()
 
             if status == 0:
-                self.log.debug("Removed job %d from dead queue" % id)
+                self.log.debug("Removed job %s from dead queue" % id)
             else:
-                self.log.error("Job %d not found in dead queue" % id)
+                self.log.error("Job %s not found in dead queue" % id)
             return status
 
 
@@ -197,23 +197,27 @@ class JobQueue:
         self.queueLock.release()
         return (None, None)
 
-    def assignJob(self, job):
+    def assignJob(self, jobId):
         """ assignJob - marks a job to be assigned
         """
         self.queueLock.acquire()
+        job = self.jobQueue.get(jobId)
         job.assigned = True
+        self.jobQueue.set(jobId, job)
         self.queueLock.release()
 
-    def unassignJob(self, job):
+    def unassignJob(self, jobId):
         """ assignJob - marks a job to be unassigned
         """
         self.queueLock.acquire()
+        job = self.jobQueue.get(jobId)
         job.assigned = False;
         if job.retries is None:
             job.retries = 0
         else:
             job.retries += 1
             Config.job_retries += 1
+        self.jobQueue.set(jobId, job)
         self.queueLock.release()
 
     def makeDead(self, id, reason):

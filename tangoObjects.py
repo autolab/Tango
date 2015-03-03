@@ -4,7 +4,7 @@
 #
 import redis
 import pickle
-from config import *
+from config import Config
 
 
 class InputFile():
@@ -72,6 +72,7 @@ class TangoRemoteDictionary():
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
         self.r.hset(self.hash_name, id, pickled_obj)
+        return id
 
     def get(self, id):
         unpickled_obj = self.r.hget(self.hash_name, id)
@@ -84,12 +85,12 @@ class TangoRemoteDictionary():
     def delete(self, id):
         self.r.hdel(self.hash_name, id)
 
-    def iteritems():
-        keys = self.hkeys(self.hash_name)
+    def iteritems(self):
+        keys = self.r.hkeys(self.hash_name)
         keyvals = []
         for key in keys:
-            tup = (key, self.r.hget(self.hash_name, key))
-            keyvals.push(tup)
+            tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
+            keyvals.append(tup)
 
         return keyvals
 
@@ -111,6 +112,6 @@ class TangoNativeDictionary():
     def delete(self, id):
         del self.dict[id]
 
-    def iteritems():
+    def iteritems(self):
         return self.dict.iteritems()
 
