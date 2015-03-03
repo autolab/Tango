@@ -243,8 +243,9 @@ class Ec2SSH:
             ret = timeout(["scp"] + Ec2SSH._SSH_FLAGS +
                     [file.localFile, "ubuntu@%s:autolab/%s" %
                         (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
-                    if ret != 0:
-                        return ret
+            if ret != 0:
+                return ret
+
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):

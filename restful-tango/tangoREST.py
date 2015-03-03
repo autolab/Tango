@@ -16,10 +16,6 @@ from jobManager import JobManager
 from preallocator import Preallocator
 from tangoObjects import TangoJob, TangoMachine, InputFile
 
-from vmms.localSSH import LocalSSH
-from vmms.tashiSSH import TashiSSH
-from vmms.ec2SSH import Ec2SSH
-
 from config import Config
 
 
@@ -64,10 +60,13 @@ class TangoREST:
         vmms = None
 
         if Config.VMMS_NAME == "localSSH":
+            from vmms.localSSH import LocalSSH
             vmms = LocalSSH()
         elif Config.VMMS_NAME == "tashiSSH":
+            from vmms.tashiSSH import TashiSSH
             vmms = TashiSSH()
         elif Config.VMMS_NAME == "ec2SSH":
+            from vmms.ec2SSH import Ec2SSH
             vmms = Ec2SSH()
 
         self.vmms = {Config.VMMS_NAME: vmms}
