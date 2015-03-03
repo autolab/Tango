@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 
 import tornado.web
-import urllib
+import urllib, sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
@@ -110,7 +110,11 @@ application = tornado.web.Application([
 	])
 
 if __name__ == "__main__":
+
 	port = Config.PORT
+	if len(sys.argv) > 0:
+		port = int(sys.argv[1])
+
 	tangoREST.resetTango()
 	print("Starting the RESTful Tango server on port %d..." % (port))
 	application.listen(port)

@@ -29,7 +29,7 @@ class Config:
     COURSELABS = ""
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
-    # starting Tango
+    # starting Tango. Options are: "localSSH", "tashiSSH", "ec2SSH"
     VMMS_NAME = "localSSH"
 
     #####
