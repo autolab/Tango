@@ -121,7 +121,8 @@ class TangoRemoteQueue():
 
     def put(self, item):
         """Put item into the queue."""
-        self.__db.rpush(self.key, item)
+        pickled_item = pickle.dumps(item)
+        self.__db.rpush(self.key, pickled_item)
 
     def get(self, block=True, timeout=None):
         """Remove and return an item from the queue. 
@@ -133,8 +134,10 @@ class TangoRemoteQueue():
         else:
             item = self.__db.lpop(self.key)
 
-        if item:
-            item = item[1]
+        # if item:
+        #     item = item[1]
+
+        item = pickle.loads(item)
         return item
 
     def get_nowait(self):
