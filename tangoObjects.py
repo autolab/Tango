@@ -72,7 +72,7 @@ class TangoRemoteIntValue():
         self.set(value)
 
     def increment(self):
-        return self.__db.increment(self.key)
+        return self.__db.incr(self.key)
 
     def get(self):
         return int(self.__db.get(self.key))

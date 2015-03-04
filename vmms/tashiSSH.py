@@ -124,7 +124,7 @@ class TashiSSH:
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
-        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+        return "%s-%s-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, id, name):
         """ Construct a VM domain name. Always use this function when

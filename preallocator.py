@@ -121,6 +121,8 @@ class Preallocator:
         and 9999.
         """
         self.lock.acquire()
+        id = self.nextID.get()
+
         self.nextID.increment()
 
         if self.nextID.get() > 9999:
