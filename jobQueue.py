@@ -83,6 +83,8 @@ class JobQueue:
         # know the job has actually been added to the queue.
         self.log.debug("add|Acquiring lock to job queue.")
         self.queueLock.acquire()
+        self.log.debug("add| Acquired lock to job queue.")
+
         self.jobQueue.set(job.id, job)
         job.trace.append("%s|Added job %s:%d to queue" %
                 (time.ctime(time.time()+time.timezone), job.name, job.id))
@@ -104,20 +106,29 @@ class JobQueue:
         job.retries = 0
         if not job.trace:
             job.trace = []
+        self.log.debug("addDead|Acquiring lock to job queue.")
         self.queueLock.acquire()
+        self.log.debug("addDead|Acquired lock to job queue.")
+
         self.deadJobs.set(job.id, job)
         self.queueLock.release()
+        self.log.debug("addDead|Released lock to job queue.")
+
         return job.id
 
     def remove(self, id):
         """remove - Remove job from live queue
         """
         status = -1
+        self.log.debug("remove|Acquiring lock to job queue.")
         self.queueLock.acquire()
+        self.log.debug("remove|Acquired lock to job queue.")
         if str(id) in self.jobQueue.keys():
             self.jobQueue.delete(id)
             status = 0
+
         self.queueLock.release()
+        self.log.debug("remove|Relased lock to job queue.")
 
         if status == 0:
             self.log.debug("Removed job %s from queue" % id)
@@ -137,10 +148,12 @@ class JobQueue:
         else:
             status = -1
             self.queueLock.acquire()
+            self.log.debug("delJob| Acquired lock to job queue.")
             if str(id) in self.deadJobs.keys():
                 self.deadJobs.delete(id)
                 status = 0
             self.queueLock.release()
+            self.log.debug("delJob| Released lock to job queue.")
 
             if status == 0:
                 self.log.debug("Removed job %s from dead queue" % id)
@@ -154,11 +167,13 @@ class JobQueue:
         @param id - the id of the job to retrieve
         """
         self.queueLock.acquire()
+        self.log.debug("get| Acquired lock to job queue.")
         if str(id) in self.jobQueue.keys():
             job = self.jobQueue.get(id)
         else:
             job = None
         self.queueLock.release()
+        self.log.debug("get| Released lock to job queue.")
         return job
 
     def getNextPendingJob(self):
@@ -166,11 +181,14 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
+        self.log.debug("getNextPendingJob| Acquired lock to job queue.")
         for id,job in self.jobQueue.iteritems():
             if job.assigned == False:
                 self.queueLock.release()
+                self.log.debug("getNextPendingJob|Released lock to job queue.")
                 return id
         self.queueLock.release()
+        self.log.debug("getNextPendingJob| Released lock to job queue.")
         return None
 
     def getNextPendingJobReuse(self):
@@ -178,6 +196,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
+        self.log.debug("getNextPendingJobReuse| Acquired lock to job queue.")
         for id, job in self.jobQueue.iteritems():
 
             # Create a pool if necessary
@@ -190,24 +209,30 @@ class JobQueue:
                 vm = self.preallocator.allocVM(job.vm.name)
                 if vm:
                     self.queueLock.release()
+                    self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
                     return (id, vm)
 
         self.queueLock.release()
+        self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
+
         return (None, None)
 
     def assignJob(self, jobId):
         """ assignJob - marks a job to be assigned
         """
         self.queueLock.acquire()
+        self.log.debug("assignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
         job.assigned = True
         self.jobQueue.set(jobId, job)
         self.queueLock.release()
+        self.log.debug("assignJob| Released lock to job queue.")
 
     def unassignJob(self, jobId):
         """ assignJob - marks a job to be unassigned
         """
         self.queueLock.acquire()
+        self.log.debug("unassignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
         job.assigned = False;
         if job.retries is None:
@@ -217,11 +242,13 @@ class JobQueue:
             Config.job_retries += 1
         self.jobQueue.set(jobId, job)
         self.queueLock.release()
+        self.log.debug("unassignJob| Released lock to job queue.")
 
     def makeDead(self, id, reason):
         """ makeDead - move a job from live queue to dead queue
         """
         self.queueLock.acquire()
+        self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.jobQueue.keys():
             status = 0
@@ -234,6 +261,8 @@ class JobQueue:
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
         self.queueLock.release()
+        self.log.debug("makeDead| Released lock to job queue.")
+
         return status
 
     def getInfo(self):
