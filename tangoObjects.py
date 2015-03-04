@@ -43,7 +43,7 @@ class TangoJob():
     """
     def __init__(self, assigned = False, retries = 0, vm = None,
                 outputFile = None, name = None, input = [],
-                notifyURL = None, timeout = 0, trace = None, 
+                notifyURL = None, timeout = 0, trace = [], 
                 maxOutputFileSize = 4096):
         self.assigned = assigned
         self.retries = retries
@@ -55,6 +55,19 @@ class TangoJob():
         self.timeout = timeout
         self.trace = trace
         self.maxOutputFileSize = maxOutputFileSize
+        self._remoteLocation = None
+
+    def appendTrace(self, trace_str):
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            dict_hash = self._remoteLocation.split(:)[0]
+            key = self._remoteLocation.split(:)[1]
+            dictionary = TangoDictionary(dict_hash)
+            self.trace.append(trace_str)
+            dictionary.set(key, self)
+
+        else:
+            self.trace.append(trace_str)
 
 
 def TangoIntValue(object_name, obj):
@@ -159,18 +172,22 @@ class TangoRemoteQueue():
 # Since there are no abstract classes in Python, we use a simple method
 def TangoDictionary(object_name):
     if Config.USE_REDIS:
-        return TangoRemoteDictionary(Config.REDIS_HOSTNAME, Config.REDIS_PORT, object_name)
+        return TangoRemoteDictionary(object_name)
     else:
         return TangoNativeDictionary()
 
 
 class TangoRemoteDictionary():
-    def __init__(self, hostname, port, object_name):
-        self.r = redis.StrictRedis(host=hostname, port=port, db=0)
+    def __init__(self, object_name):
+        self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
         self.hash_name = object_name
     
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
+
+        if hasattr(obj, '_remoteLocation'):
+            obj._remoteLocation = self.hash_name + ":" + str(id)
+
         self.r.hset(self.hash_name, str(id), pickled_obj)
         return str(id)
 

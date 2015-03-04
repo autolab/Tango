@@ -47,7 +47,7 @@ class JobManager:
 					# Now dispatch the job to a worker
 					self.log.info("Dispatched job %s:%d [try %d]" %
 								  (job.name, job.id, job.retries))
-					job.trace.append("%s|Dispatched job %s:%d [try %d]" %
+					job.appendTrace("%s|Dispatched job %s:%d [try %d]" %
 									 (time.ctime(time.time()+time.timezone), job.name, job.id,
 									  job.retries))
 					vmms = self.vmms[job.vm.vmms] # Create new vmms object

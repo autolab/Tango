@@ -57,7 +57,7 @@ class Worker( threading.Thread ):
         """
         self.log.error("Job %s:%d failed: %s" %
                        (self.job.name, self.job.id, err))
-        self.job.trace.append("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
+        self.job.appendTrace("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
                                                            self.job.name, self.job.id, err))
 
         # Try a few times before giving up
@@ -136,7 +136,7 @@ class Worker( threading.Thread ):
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.preVM.id,
                                                       self.preVM.name)))
-                self.job.trace.append("%s|Assigned job %s:%d existing VM %s" %
+                self.job.appendTrace("%s|Assigned job %s:%d existing VM %s" %
                                       (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.preVM.id,
@@ -148,7 +148,7 @@ class Worker( threading.Thread ):
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.job.vm.id,
                                                       self.job.vm.name)))
-                self.job.trace.append("%s|Assigned job %s:%d new VM %s" %
+                self.job.appendTrace("%s|Assigned job %s:%d new VM %s" %
                                       (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.job.vm.id,
@@ -163,7 +163,7 @@ class Worker( threading.Thread ):
             self.log.debug("Job %s:%d waiting for VM %s" %
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))
-            self.job.trace.append("%s|Job %s:%d waiting for VM %s" %
+            self.job.appendTrace("%s|Job %s:%d waiting for VM %s" %
                                   (time.ctime(time.time()+time.timezone), 
                                    self.job.name, self.job.id,
                                    self.vmms.instanceName(vm.id, vm.name)))
@@ -184,7 +184,7 @@ class Worker( threading.Thread ):
             self.log.info("VM %s ready for job %s:%d" %
                           (self.vmms.instanceName(vm.id, vm.name),
                            self.job.name, self.job.id))
-            self.job.trace.append("%s|VM %s ready for job %s:%d" %
+            self.job.appendTrace("%s|VM %s ready for job %s:%d" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.vmms.instanceName(vm.id, vm.name),
                                    self.job.name, self.job.id))
@@ -195,7 +195,7 @@ class Worker( threading.Thread ):
                 Config.copyin_errors += 1
             self.log.info("Input copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyin"]))
-            self.job.trace.append("%s|Input copied for job %s:%d [status=%d]" %
+            self.job.appendTrace("%s|Input copied for job %s:%d [status=%d]" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.job.name,
                                    self.job.id, ret["copyin"]))
@@ -208,7 +208,7 @@ class Worker( threading.Thread ):
                     Config.runjob_timeouts += 1
             self.log.info("Job %s:%d executed [status=%s]" %
                           (self.job.name, self.job.id, ret["runjob"]))
-            self.job.trace.append("%s|Job %s:%d executed [status=%s]" %
+            self.job.appendTrace("%s|Job %s:%d executed [status=%s]" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.job.name, self.job.id,
                                    ret["runjob"]))
@@ -219,7 +219,7 @@ class Worker( threading.Thread ):
                 Config.copyout_errors += 1
             self.log.info("Output copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyout"]))
-            self.job.trace.append("%s|Output copied for job %s:%d [status=%d]"
+            self.job.appendTrace("%s|Output copied for job %s:%d [status=%d]"
                                   % (time.ctime(time.time()+time.timezone),
                                      self.job.name,
                                      self.job.id, ret["copyout"]))

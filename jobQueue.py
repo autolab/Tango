@@ -77,7 +77,6 @@ class JobQueue:
         self.log.debug("add|Gotten next ID")
         job.assigned = False
         job.retries = 0
-        job.trace = []
 
         # Add the job to the queue. Careful not to append the trace until we
         # know the job has actually been added to the queue.
@@ -86,7 +85,7 @@ class JobQueue:
         self.log.debug("add| Acquired lock to job queue.")
 
         self.jobQueue.set(job.id, job)
-        job.trace.append("%s|Added job %s:%d to queue" %
+        job.appendTrace("%s|Added job %s:%d to queue" %
                 (time.ctime(time.time()+time.timezone), job.name, job.id))
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
@@ -104,8 +103,7 @@ class JobQueue:
         job.id = self._getNextID()
         job.assigned = False
         job.retries = 0
-        if not job.trace:
-            job.trace = []
+
         self.log.debug("addDead|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("addDead|Acquired lock to job queue.")
@@ -254,9 +252,8 @@ class JobQueue:
             status = 0
             job = self.jobQueue.get(id)
             self.jobQueue.delete(id)
-            if job.trace is None:
-                job.trace = []
-            job.trace.append("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
+
+            job.appendTrace("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
