@@ -98,7 +98,11 @@ class TestJobQueue(unittest.TestCase):
 
 
     def test_makeDead(self):
-        return False
+        info = self.jobQueue.getInfo()
+        self.assertEqual(info['size_deadjobs'], 0)
+        self.jobQueue.makeDead(self.jobId1, "test")
+        info = self.jobQueue.getInfo()
+        self.assertEqual(info['size_deadjobs'], 1)
 
 
 if __name__ == '__main__':

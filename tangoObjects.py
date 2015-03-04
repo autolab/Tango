@@ -57,8 +57,54 @@ class TangoJob():
         self.maxOutputFileSize = maxOutputFileSize
 
 
+def TangoIntValue(object_name, obj):
+    if Config.USE_REDIS:
+        return TangoRemoteIntValue(object_name, obj)
+    else:
+        return TangoNativeIntValue()
 
-class TangoQueue(object):
+
+class TangoRemoteIntValue():
+    def __init__(self, name, value, namespace="intvalue"):
+        """The default connection parameters are: host='localhost', port=6379, db=0"""
+        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.key = '%s:%s' %(namespace, name)
+        self.set(value)
+
+    def increment(self):
+        return self.__db.increment(self.key)
+
+    def get(self):
+        return int(self.__db.get(self.key))
+
+    def set(self, val):
+        return self.__db.get(self.key, val)
+
+
+class TangoNativeIntValue():
+    def __init__(self, name, value, namespace="intvalue"):
+        self.key = '%s:%s' %(namespace, name)
+        self.val = value
+
+    def increment(self):
+        self.val = self.val + 1
+        return self.val
+
+    def get(self):
+        return self.val
+
+    def set(self, val):
+        self.val = val
+        return val
+
+
+def TangoQueue(object_name):
+    if Config.USE_REDIS:
+        return TangoRemoteQueue(object_name)
+    else:
+        return Queue.Queue()
+
+class TangoRemoteQueue():
     """Simple Queue with Redis Backend"""
     def __init__(self, name, namespace="queue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""

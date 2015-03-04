@@ -2,7 +2,7 @@
 # preallocator.py - maintains a pool of active virtual machines
 #
 import threading, logging, copy, Queue, time
-from tangoObjects import TangoDictionary, TangoQueue
+from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config
 
 #
@@ -18,7 +18,7 @@ class Preallocator:
     def __init__(self, vmms):
         self.machines = TangoDictionary("machines")
         self.lock = threading.Lock()
-        self.nextID = 1000
+        self.nextID = TangoIntValue("nextID", 1000)
         self.vmms = vmms
         self.log = logging.getLogger("Preallocator")
 
@@ -121,10 +121,11 @@ class Preallocator:
         and 9999.
         """
         self.lock.acquire()
-        id = self.nextID
-        self.nextID += 1
-        if self.nextID > 9999:
-            self.nextID = 1000
+        self.nextID.increment()
+
+        if self.nextID.get() > 9999:
+            self.nextID.set(1000)
+
         self.lock.release()
         return id
     
