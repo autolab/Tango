@@ -35,7 +35,7 @@ class JobManager:
 				job = self.jobQueue.get(id)
 				try:
 					# Mark the job assigned
-					self.jobQueue.assignJob(job)
+					self.jobQueue.assignJob(job.id)
 
 					# Try to find a vm on the free list and allocate it to
 					# the worker if successful.

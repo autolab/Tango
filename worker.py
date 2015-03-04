@@ -64,7 +64,7 @@ class Worker( threading.Thread ):
         if self.job.retries < Config.JOB_RETRIES:
             subprocess.call("rm -f %s" % (hdrfile), shell=True)
             self.detachVM(return_vm=False, replace_vm=True)
-            self.jobQueue.unassignJob(self.job)
+            self.jobQueue.unassignJob(self.job.id)
 
         # Here is where we give up
         else:

@@ -169,7 +169,7 @@ class TangoRemoteDictionary():
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
         self.r.hset(self.hash_name, str(id), pickled_obj)
-        return id
+        return str(id)
 
     def get(self, id):
         unpickled_obj = self.r.hget(self.hash_name, str(id))
