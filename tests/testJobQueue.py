@@ -3,7 +3,7 @@ import unittest
 
 from jobQueue import *
 
-
+from config import Config
 
 class TestJobQueue(unittest.TestCase):
     def setUp(self):
@@ -27,11 +27,14 @@ class TestJobQueue(unittest.TestCase):
 
 
         self.jobQueue = JobQueue(None)
+        self.jobQueue.jobQueue._clean()
+        self.jobQueue.deadJobs._clean()
         self.jobId1 = self.jobQueue.add(self.job1)
         self.jobId2 = self.jobQueue.add(self.job2)
 
 
     def test_add(self):
+        print self.jobQueue.jobQueue.keys()
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size'], 2)
 
@@ -104,6 +107,14 @@ class TestJobQueue(unittest.TestCase):
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size_deadjobs'], 1)
 
+    def test__getNextID(self):
+
+        init_id = self.jobQueue.nextID
+        for i in xrange(1, Config.MAX_JOBID + 100):
+            id = self.jobQueue._getNextID()
+            self.assertNotEqual(str(id), self.jobId1)
+
+        self.jobQueue.nextID = init_id
 
 if __name__ == '__main__':
     unittest.main()

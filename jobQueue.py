@@ -47,10 +47,10 @@ class JobQueue:
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
         keys = self.jobQueue.keys()
-        if (id in keys):
+        if (str(id) in keys):
             id = -1
             for i in xrange(1, Config.MAX_JOBID + 1):
-                if (i not in keys):
+                if (str(i) not in keys):
                     id = i
                     break
 
