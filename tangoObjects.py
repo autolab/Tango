@@ -69,6 +69,14 @@ class TangoJob():
         else:
             self.trace.append(trace_str)
 
+    def updateRemote(self):
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
+            dictionary = TangoDictionary(dict_hash)
+            dictionary.set(key, self)
+
 
 def TangoIntValue(object_name, obj):
     if Config.USE_REDIS:
@@ -214,6 +222,7 @@ class TangoRemoteDictionary():
         return valslist
 
     def delete(self, id):
+        # todo: should remove the reference to _remoteLocation
         self.r.hdel(self.hash_name, id)
 
     def _clean(self):

@@ -227,15 +227,11 @@ class JobQueue:
         job = self.jobQueue.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
         job.assigned = True
-	try:
-		self.log.debug(str(jobId))
-		self.log.debug(str(job))
-        	self.jobQueue.set(jobId, job)
-        except:
-	        self.log.debug("assignJob| Err setting to job queue.")
+        
+        self.jobQueue.set(jobId, job)
 
         self.log.debug("assignJob| Releasing lock to job queue.")
-	self.queueLock.release()
+        self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
 
     def unassignJob(self, jobId):

@@ -135,6 +135,7 @@ class Worker( threading.Thread ):
             if self.preVM: #self.preVM:
                 self.log.debug("Assigning job to preallocated VM")
                 self.job.vm = self.preVM
+                self.job.updateRemote()
                 self.log.info("Assigned job %s:%d existing VM %s" %
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.preVM.id,
@@ -149,6 +150,8 @@ class Worker( threading.Thread ):
             else:
                 self.log.debug("Assigning job to a new VM")
                 self.job.vm.id = self.job.id
+                self.job.updateRemote()
+
                 self.log.info("Assigned job %s:%d new VM %s" %
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.job.vm.id,
@@ -164,11 +167,9 @@ class Worker( threading.Thread ):
                 self.log.debug("Asigned job to a new VM")
 
             vm = self.job.vm
-	    self.log.debug("VM")
-	    self.log.debug("VM: " + str(vm))
-	    self.log.debug("VM_type: " + str(type(vm)))
+
             
-	    # Wait for the instance to be ready
+            # Wait for the instance to be ready
             self.log.debug("Job %s:%d waiting for VM %s" %
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))

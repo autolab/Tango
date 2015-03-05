@@ -66,18 +66,16 @@ class Preallocator:
         vm = None
         if vmName in self.machines.keys():
             self.lock.acquire()
-            self.log.debug("Alloc VM: " + str(self.machines.get(vmName)))
-	    self.log.debug("Alloc VM obj: " + str(self.machines.get(vmName)[1]))
-	    if not self.machines.get(vmName)[1].empty():
-                vm = self.machines.get(vmName)[1].get_nowait()
-		self.log.debug("Got VM: " + str(vm))
 
-            self.lock.release()
+        if not self.machines.get(vmName)[1].empty():
+            vm = self.machines.get(vmName)[1].get_nowait()
+        
+        self.lock.release()
 
         # If we're not reusing instances, then crank up a replacement
         if vm and not Config.REUSE_VMS: 
             threading.Thread(target=self.__create(vm, 1)).start()
-            
+
         return vm
 
     def freeVM(self, vm):
