@@ -197,8 +197,6 @@ class JobQueue:
         self.log.debug("getNextPendingJobReuse| Acquired lock to job queue.")
         for id, job in self.jobQueue.iteritems():
 
-            self.log.debug("getNextPendingJobReuse|id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
-            self.log.debug("getNextPendingJobReuse|vm pool size: %s" % str(self.preallocator.poolSize(job.vm.name)))
 
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
@@ -207,12 +205,18 @@ class JobQueue:
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
+                self.log.debug("getNextPendingJobReuse| Not assigned id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
                 vm = self.preallocator.allocVM(job.vm.name)
                 if vm:
+                    self.log.debug("getNextPendingJobReuse| Found VM :" + str(vm))
                     self.queueLock.release()
-		    self.log.debug("VM :" + str(vm))
-                    self.log.debug("getNextPendingJobReuse|Released1 lock to job queue.")
+                    self.log.debug("getNextPendingJobReuse| Released1 lock to job queue.")
                     return (id, vm)
+                else:
+                    self.log.debug("getNextPendingJobReuse| No VMs"
+
+            else:
+                self.log.debug("getNextPendingJobReuse| Assigned id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
 
         self.queueLock.release()
         self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
