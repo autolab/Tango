@@ -87,6 +87,11 @@ class JobQueue:
         self.jobQueue.set(job.id, job)
         job.appendTrace("%s|Added job %s:%d to queue" %
                 (time.ctime(time.time()+time.timezone), job.name, job.id))
+        
+        self.log.debug("Ref: " + job._remoteLocation)
+        self.log.debug("job_id: " + job.id)
+        self.log.debug("job_name: " + job.name)
+
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 

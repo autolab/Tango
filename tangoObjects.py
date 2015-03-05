@@ -201,26 +201,20 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
         self.hash_name = object_name
-	self.log = logging.getLogger("Remote Dict["+ self.hash_name + "]")
+        self.log = logging.getLogger("Remote Dict["+ self.hash_name + "]")
 
     def set(self, id, obj):
-	self.log.debug("Set: " + str(id))
         pickled_obj = pickle.dumps(obj)
 
         if hasattr(obj, '_remoteLocation'):
             obj._remoteLocation = self.hash_name + ":" + str(id)
 
-	self.log.debug("Pickled")
         self.r.hset(self.hash_name, str(id), pickled_obj)
-	self.log.debug("Done")
         return str(id)
 
     def get(self, id):
-        self.log.debug("Get: " + str(id))  
         unpickled_obj = self.r.hget(self.hash_name, str(id))
-        self.log.debug("Retrieved pickled")
         obj = pickle.loads(unpickled_obj)
-        self.log.debug("Returned unpickled")
         return obj
 
     def keys(self):
