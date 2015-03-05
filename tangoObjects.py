@@ -57,17 +57,20 @@ class TangoJob():
         self.maxOutputFileSize = maxOutputFileSize
         self._remoteLocation = None
 
-    def appendTrace(self, trace_str):
-        if Config.USE_REDIS and self._remoteLocation is not None:
-            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
-            dict_hash = self._remoteLocation.split(":")[0]
-            key = self._remoteLocation.split(":")[1]
-            dictionary = TangoDictionary(dict_hash)
-            self.trace.append(trace_str)
-            dictionary.set(key, self)
+    def makeAssigned(self):
+        self.assigned = True
+        self.updateRemote()
 
-        else:
-            self.trace.append(trace_str)
+    def makeUnassigned(self):
+        self.assigned = False
+        self.updateRemote()
+
+    def isNotAssigned(self):
+        return not self.assigned
+
+    def appendTrace(self, trace_str):
+        self.trace.append(trace_str)
+        self.updateRemote()
 
     def updateRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:

@@ -75,7 +75,7 @@ class JobQueue:
             self.log.debug("add|JobQueue is full")
             return -1
         self.log.debug("add|Gotten next ID")
-        job.assigned = False
+        job.makeUnassigned()
         job.retries = 0
 
         # Add the job to the queue. Careful not to append the trace until we
@@ -101,7 +101,7 @@ class JobQueue:
         if (not isinstance(job,TangoJob)):
             return -1
         job.id = self._getNextID()
-        job.assigned = False
+        job.makeUnassigned()
         job.retries = 0
 
         self.log.debug("addDead|Acquiring lock to job queue.")
@@ -181,7 +181,7 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("getNextPendingJob| Acquired lock to job queue.")
         for id,job in self.jobQueue.iteritems():
-            if job.assigned == False:
+            if job.isNotAssigned():
                 self.queueLock.release()
                 self.log.debug("getNextPendingJob|Released lock to job queue.")
                 return id
@@ -206,7 +206,7 @@ class JobQueue:
 
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
-            if (job.assigned == False):
+            if (job.isNotAssigned()):
                 vm = self.preallocator.allocVM(job.vm.name)
                 if vm:
                     self.queueLock.release()
@@ -226,7 +226,7 @@ class JobQueue:
         self.log.debug("assignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
-        job.assigned = True
+        job.makeAssigned()
         
         self.jobQueue.set(jobId, job)
 
@@ -240,7 +240,7 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
-        job.assigned = False;
+        job.makeUnassigned()
         if job.retries is None:
             job.retries = 0
         else:
