@@ -30,6 +30,7 @@ class JobManager:
 				id,vm  = self.jobQueue.getNextPendingJobReuse()
 			else:
 				id = self.jobQueue.getNextPendingJob()
+			self.log.debug("__manage|next pending: " + str(id))
 
 			if id:
 				job = self.jobQueue.get(id)

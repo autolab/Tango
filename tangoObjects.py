@@ -3,7 +3,7 @@
 # Implements objects used to pass state within Tango.
 #
 import redis
-import pickle
+import pickle, logging
 from config import Config
 
 
@@ -60,8 +60,8 @@ class TangoJob():
     def appendTrace(self, trace_str):
         if Config.USE_REDIS and self._remoteLocation is not None:
             __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
-            dict_hash = self._remoteLocation.split(:)[0]
-            key = self._remoteLocation.split(:)[1]
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
             self.trace.append(trace_str)
             dictionary.set(key, self)
@@ -181,19 +181,26 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
         self.hash_name = object_name
-    
+	self.log = logging.getLogger("Remote Dict["+ self.hash_name + "]")
+
     def set(self, id, obj):
+	self.log.debug("Set: " + str(id))
         pickled_obj = pickle.dumps(obj)
 
         if hasattr(obj, '_remoteLocation'):
             obj._remoteLocation = self.hash_name + ":" + str(id)
 
+	self.log.debug("Pickled")
         self.r.hset(self.hash_name, str(id), pickled_obj)
+	self.log.debug("Done")
         return str(id)
 
     def get(self, id):
+        self.log.debug("Get: " + str(id))  
         unpickled_obj = self.r.hget(self.hash_name, str(id))
+        self.log.debug("Retrieved pickled")
         obj = pickle.loads(unpickled_obj)
+        self.log.debug("Returned unpickled")
         return obj
 
     def keys(self):
@@ -220,7 +227,7 @@ class TangoRemoteDictionary():
             tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
             keyvals.append(tup)
 
-        return keyvals
+        return iter(keyvals)
 
 
 class TangoNativeDictionary():

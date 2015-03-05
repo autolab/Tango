@@ -197,6 +197,9 @@ class JobQueue:
         self.log.debug("getNextPendingJobReuse| Acquired lock to job queue.")
         for id, job in self.jobQueue.iteritems():
 
+            self.log.debug("getNextPendingJobReuse|id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
+            self.log.debug("getNextPendingJobReuse|vm pool size: %s" % str(self.preallocator.poolSize(job.vm.name)))
+
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
                 self.preallocator.update(job.vm, Config.POOL_SIZE)
@@ -207,7 +210,8 @@ class JobQueue:
                 vm = self.preallocator.allocVM(job.vm.name)
                 if vm:
                     self.queueLock.release()
-                    self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
+		    self.log.debug("VM :" + str(vm))
+                    self.log.debug("getNextPendingJobReuse|Released1 lock to job queue.")
                     return (id, vm)
 
         self.queueLock.release()
@@ -221,9 +225,17 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
+        self.log.debug("assignJob| Retrieved job.")
         job.assigned = True
-        self.jobQueue.set(jobId, job)
-        self.queueLock.release()
+	try:
+		self.log.debug(str(jobId))
+		self.log.debug(str(job))
+        	self.jobQueue.set(jobId, job)
+        except:
+	        self.log.debug("assignJob| Err setting to job queue.")
+
+        self.log.debug("assignJob| Releasing lock to job queue.")
+	self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
 
     def unassignJob(self, jobId):
@@ -249,14 +261,16 @@ class JobQueue:
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.jobQueue.keys():
+            self.log.debug("makeDead| Job is in the queue")
             status = 0
             job = self.jobQueue.get(id)
             self.jobQueue.delete(id)
 
-            job.appendTrace("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
+            job.appendTrace("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
+
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
 

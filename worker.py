@@ -127,10 +127,13 @@ class Worker( threading.Thread ):
             self.appendMsg(hdrfile, "Received job %s:%d" %
                            (self.job.name, self.job.id))
 
+            self.log.debug("Run worker")
+
             vm = None
 
             # Assigning job to a preallocated VM
             if self.preVM: #self.preVM:
+                self.log.debug("Assigning job to preallocated VM")
                 self.job.vm = self.preVM
                 self.log.info("Assigned job %s:%d existing VM %s" %
                               (self.job.name, self.job.id,
@@ -141,8 +144,10 @@ class Worker( threading.Thread ):
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.preVM.id,
                                                               self.preVM.name)))
+            	self.log.debug("Assigned job to preallocated VM")
             # Assigning job to a new VM
             else:
+                self.log.debug("Assigning job to a new VM")
                 self.job.vm.id = self.job.id
                 self.log.info("Assigned job %s:%d new VM %s" %
                               (self.job.name, self.job.id,
@@ -156,10 +161,14 @@ class Worker( threading.Thread ):
 
                 # Host name returned from EC2 is stored in the vm object
                 self.vmms.initializeVM(self.job.vm)
+                self.log.debug("Asigned job to a new VM")
 
             vm = self.job.vm
-
-            # Wait for the instance to be ready
+	    self.log.debug("VM")
+	    self.log.debug("VM: " + str(vm))
+	    self.log.debug("VM_type: " + str(type(vm)))
+            
+	    # Wait for the instance to be ready
             self.log.debug("Job %s:%d waiting for VM %s" %
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))
@@ -167,8 +176,11 @@ class Worker( threading.Thread ):
                                   (time.ctime(time.time()+time.timezone), 
                                    self.job.name, self.job.id,
                                    self.vmms.instanceName(vm.id, vm.name)))
+            self.log.debug("Waiting for VM")
             ret["waitvm"] = self.vmms.waitVM(vm,
                                              Config.WAITVM_TIMEOUT)
+
+            self.log.debug("Waited for VM")
 
             # If the instance did not become ready in a reasonable
             # amount of time, then reschedule the job, detach the VM,
