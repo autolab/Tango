@@ -70,7 +70,7 @@ class JobQueue:
         if (not isinstance(job,TangoJob)):
             return -1
         self.log.debug("add|Getting next ID")
-        job.id = self._getNextID()
+        job.setId(self._getNextID())
         if (job.id == -1):
             self.log.debug("add|JobQueue is full")
             return -1
@@ -100,7 +100,7 @@ class JobQueue:
         """
         if (not isinstance(job,TangoJob)):
             return -1
-        job.id = self._getNextID()
+        job.setId(self._getNextID())
         job.makeUnassigned()
         job.retries = 0
 
@@ -213,8 +213,7 @@ class JobQueue:
                     self.log.debug("getNextPendingJobReuse| Released1 lock to job queue.")
                     return (id, vm)
                 else:
-                    self.log.debug("getNextPendingJobReuse| No VMs"
-
+                    self.log.debug("getNextPendingJobReuse| No VMs")
             else:
                 self.log.debug("getNextPendingJobReuse| Assigned id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
 
@@ -232,8 +231,6 @@ class JobQueue:
         self.log.debug("assignJob| Retrieved job.")
         job.makeAssigned()
         
-        self.jobQueue.set(jobId, job)
-
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
@@ -250,7 +247,7 @@ class JobQueue:
         else:
             job.retries += 1
             Config.job_retries += 1
-        self.jobQueue.set(jobId, job)
+
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 

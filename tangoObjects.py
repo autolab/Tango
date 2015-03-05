@@ -3,7 +3,7 @@
 # Implements objects used to pass state within Tango.
 #
 import redis
-import pickle, logging
+import pickle, logging, Queue
 from config import Config
 
 
@@ -72,9 +72,18 @@ class TangoJob():
         self.trace.append(trace_str)
         self.updateRemote()
 
+    def setId(self, new_id):
+        self.id = new_id
+        if self._remoteLocation is not None:
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
+            dictionary = TangoDictionary(dict_hash)
+            dictionary.delete(key)
+            self._remoteLocation = dict_hash + ":" + str(new_id)
+            self.updateRemote()
+
     def updateRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:
-            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             dict_hash = self._remoteLocation.split(":")[0]
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
