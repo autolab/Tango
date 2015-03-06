@@ -30,7 +30,7 @@ class JobManager:
 				id,vm  = self.jobQueue.getNextPendingJobReuse()
 			else:
 				id = self.jobQueue.getNextPendingJob()
-			self.log.debug("__manage|next pending: " + str(id))
+			self.log.info("__manage| Next pending: " + str(id))
 
 			if id:
 				job = self.jobQueue.get(id)
@@ -46,8 +46,8 @@ class JobManager:
 						preVM = self.preallocator.allocVM(job.vm.name)
 
 					# Now dispatch the job to a worker
-					self.log.info("Dispatched job %s:%d [try %d]" %
-								  (job.name, job.id, job.retries))
+					self.log.info("Dispatched job %s:%d to %s [try %d]" %
+								  (job.name, job.id, preVM.name, job.retries))
 					job.appendTrace("%s|Dispatched job %s:%d [try %d]" %
 									 (time.ctime(time.time()+time.timezone), job.name, job.id,
 									  job.retries))
