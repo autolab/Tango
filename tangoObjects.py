@@ -94,7 +94,7 @@ def TangoIntValue(object_name, obj):
     if Config.USE_REDIS:
         return TangoRemoteIntValue(object_name, obj)
     else:
-        return TangoNativeIntValue()
+        return TangoNativeIntValue(object_name, obj)
 
 
 class TangoRemoteIntValue():
@@ -254,7 +254,10 @@ class TangoNativeDictionary():
         self.dict[str(id)] = obj
 
     def get(self, id):
-        return self.dict[str(id)]
+        if str(id) in self.dict.keys():
+            return self.dict[str(id)]
+        else:
+            return None
 
     def keys(self):
         return self.dict.keys()
@@ -263,7 +266,8 @@ class TangoNativeDictionary():
         return self.dict.values()
 
     def delete(self, id):
-        del self.dict[id]
+        if str(id) in self.dict.keys():
+            del self.dict[str(id)]
 
     def iteritems(self):
         return self.dict.iteritems()
