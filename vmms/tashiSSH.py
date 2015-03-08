@@ -10,8 +10,8 @@
 #
 import random, subprocess, re, time, logging, threading, os, sys
 
-from tashi.rpycservices.rpyctypes import *
 import config
+from tashi.rpycservices.rpyctypes import *
 from tashi.util import getConfig, createClient
 from tangoObjects import *
 

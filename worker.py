@@ -1,7 +1,7 @@
 #
 # worker.py - Thread that shepherds a job through it execution sequence
 #
-import threading, time, logging, tempfile, requests, subprocess
+import threading, time, logging, tempfile, requests, subprocess, sys, os
 
 from config import Config
 
