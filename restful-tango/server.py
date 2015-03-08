@@ -38,12 +38,14 @@ def OpenHandler(key, courselab):
 @app.route('/upload/<key>/<courselab>/', methods=['POST'])
 def UploadHandler(key, courselab):
     """ post - Handles the post request to upload."""
+    request.get_data()
     return jsonify(tangoREST.upload(key, courselab, request.headers['Filename'], request.data))
 
 
 @app.route('/addJob/<key>/<courselab>/', methods=['POST'])
 def AddJobHandler(key, courselab):
     """ post - Handles the post request to add a job."""
+    request.get_data()
     return jsonify(tangoREST.addJob(key, courselab, request.data))
 
 
@@ -75,6 +77,7 @@ def PoolHandler(key, image):
 @app.route('/prealloc/<key>/<image>/<num>/', methods=['POST'])
 def PreallocHandler(key, image, num):
     """ post - Handles the post request to prealloc."""
+    request.get_data()
     return jsonify(tangoREST.prealloc(key, image, num, request.data))
 
 
