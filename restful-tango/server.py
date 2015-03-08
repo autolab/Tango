@@ -1,7 +1,9 @@
-#!/usr/local/bin/python
+from flask import Flask
+from flask import request
 
-import tornado.web
-import urllib, sys
+app = Flask(__name__)
+
+import sys, time, urllib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
@@ -20,94 +22,62 @@ NUM = "[0-9]+"
 JOBID = "[0-9]+"
 DEADJOBS=".+"
 
-def unblock(f):
-	@tornado.web.asynchronous
-	@wraps(f)
-	def wrapper(*args, **kwargs):
-		self = args[0]
 
-		def callback(future):
-			self.write(future.result())
-			self.finish()
+@app.route('/')
+def MainHandler():
+    """ get - Default route to check if RESTful Tango is up."""
+    return ("Hello, world! RESTful Tango here!\n")
 
-		EXECUTOR.submit(
-			partial(f, *args, **kwargs)
-		).add_done_callback(
-			lambda future: 
-			tornado.ioloop.IOLoop.instance().add_callback(
-				partial(callback, future)
-			)
-		)
 
-	return wrapper
+@app.route('/open/<key>/<courselab>/')
+def OpenHandler(key, courselab):
+    """ get - Handles the get request to open."""
+    return tangoREST.open(key, courselab)
 
-class MainHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self):
-		""" get - Default route to check if RESTful Tango is up."""
-		return ("Hello, world! RESTful Tango here!\n")
 
-class OpenHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self, key, courselab):
-		""" get - Handles the get request to open."""
-		return tangoREST.open(key, courselab)
+@app.route('/upload/<key>/<courselab>/', methods=['POST'])
+def UploadHandler(key, courselab):
+    """ post - Handles the post request to upload."""
+    return tangoREST.upload(key, courselab, self.request.headers['Filename'], self.request.body)
 
-class UploadHandler(tornado.web.RequestHandler):
-	@unblock
-	def post(self, key, courselab):
-		""" post - Handles the post request to upload."""
-		return tangoREST.upload(key, courselab, self.request.headers['Filename'], self.request.body)
 
-class AddJobHandler(tornado.web.RequestHandler):
-	@unblock
-	def post(self, key, courselab):
-		""" post - Handles the post request to add a job."""
-		return tangoREST.addJob(key, courselab, self.request.body)
+@app.route('/addJob/<key>/<courselab>/', methods=['POST'])
+def AddJobHandler(key, courselab):
+    """ post - Handles the post request to add a job."""
+    return tangoREST.addJob(key, courselab, self.request.body)
 
-class PollHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self, key, courselab, outputFile):
-		""" get - Handles the get request to poll."""
-		self.set_header('Content-Type', 'application/octet-stream')
-		return tangoREST.poll(key, courselab, urllib.unquote(outputFile))
 
-class InfoHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self, key):
-		""" get - Handles the get request to info."""
-		return tangoREST.info(key)
+@app.route('/poll/<key>/<courselab>/<outputFile>/')
+def PollHandler(key, courselab, outputFile):
+    """ get - Handles the get request to poll."""
+    self.set_header('Content-Type', 'application/octet-stream')
+    return tangoREST.poll(key, courselab, urllib.unquote(outputFile))
 
-class JobsHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self, key, deadJobs):
-		""" get - Handles the get request to jobs."""
-		return tangoREST.jobs(key, deadJobs)
 
-class PoolHandler(tornado.web.RequestHandler):
-	@unblock
-	def get(self, key, image):
-		""" get - Handles the get request to pool."""
-		return tangoREST.pool(key, image)
+@app.route('/info/<key>/')
+def InfoHandler(key):
+    """ get - Handles the get request to info."""
+    return tangoREST.info(key)
 
-class PreallocHandler(tornado.web.RequestHandler):
-	@unblock
-	def post(self, key, image, num):
-		""" post - Handles the post request to prealloc."""
-		return tangoREST.prealloc(key, image, num, self.request.body)
 
-# Routes
-application = tornado.web.Application([
-	(r"/", MainHandler),
-	(r"/open/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), OpenHandler),
-	(r"/upload/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), UploadHandler),
-	(r"/addJob/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), AddJobHandler),
-	(r"/poll/(%s)/(%s)/(%s)/" % (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
-	(r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
-	(r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
-	(r"/pool/(%s)/(%s)/" % (SHA1_KEY, IMAGE), PoolHandler),
-	(r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
-	])
+@app.route('/jobs/<key>/<int:deadJobs>/')
+def JobsHandler(key, deadJobs):
+    """ get - Handles the get request to jobs."""
+    return tangoREST.jobs(key, deadJobs)
+
+
+@app.route('/pool/<key>/<image>/')
+def PoolHandler(key, image):
+    """ get - Handles the get request to pool."""
+    return tangoREST.pool(key, image)
+
+
+@app.route('/prealloc/<key>/<image>/<num>/', methods=['POST'])
+def PreallocHandler(key, image, num):
+    """ post - Handles the post request to prealloc."""
+    return tangoREST.prealloc(key, image, num, self.request.body)
+
+
 
 if __name__ == "__main__":
 
@@ -116,6 +86,6 @@ if __name__ == "__main__":
 		port = int(sys.argv[1])
 
 	tangoREST.resetTango()
+    app.run(port=port, debug=True)
+
 	print("Starting the RESTful Tango server on port %d..." % (port))
-	application.listen(port)
-	tornado.ioloop.IOLoop.instance().start() 
