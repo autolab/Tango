@@ -85,7 +85,7 @@ def PreallocHandler(key, image, num):
 if __name__ == "__main__":
 
     port = Config.PORT
-    if len(sys.argv) > 0:
+    if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
     tangoREST.resetTango()
