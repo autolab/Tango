@@ -81,11 +81,11 @@ def PreallocHandler(key, image, num):
 
 if __name__ == "__main__":
 
-	port = Config.PORT
-	if len(sys.argv) > 0:
-		port = int(sys.argv[1])
+    port = Config.PORT
+    if len(sys.argv) > 0:
+        port = int(sys.argv[1])
 
-	tangoREST.resetTango()
+    tangoREST.resetTango()
     app.run(port=port, debug=True)
 
-	print("Starting the RESTful Tango server on port %d..." % (port))
+    print("Starting the RESTful Tango server on port %d..." % (port))
