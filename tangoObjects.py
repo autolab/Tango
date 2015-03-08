@@ -41,19 +41,24 @@ class TangoJob():
     """
         TangoJob - A job that is to be run on a TangoMachine
     """
-    def __init__(self, assigned = False, retries = 0, vm = None,
-                outputFile = None, name = None, input = [],
-                notifyURL = None, timeout = 0, trace = [], 
+    def __init__(self, vm = None,
+                outputFile = None, name = None, input = None,
+                notifyURL = None, timeout = 0, 
                 maxOutputFileSize = 4096):
-        self.assigned = assigned
-        self.retries = retries
+        self.assigned = False
+        self.retries = 0
+
         self.vm = vm
-        self.input = input
+        if input is None:
+            self.input = []
+        else:
+            self.input = input
+
         self.outputFile = outputFile
         self.name = name
         self.notifyURL = notifyURL
         self.timeout = timeout
-        self.trace = trace
+        self.trace = []
         self.maxOutputFileSize = maxOutputFileSize
         self._remoteLocation = None
 
