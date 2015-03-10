@@ -45,6 +45,7 @@ prealloc_help = 'Create a pool of instances spawned from a specific image. Must 
 parser.add_argument('--prealloc', action='store_true', help=prealloc_help)
 
 parser.add_argument('--runJob', help='Run a job from a specific directory')
+parser.add_argument('--numJobs', type=int, default=1, help='Number of jobs to run')
 
 parser.add_argument('--vmms', default='tashiSSH',
         help='Choose vmms between localSSH, ec2SSH, tashiSSH')
@@ -252,6 +253,14 @@ def tango_prealloc():
         print (str(err))
         sys.exit(0)
 
+def file_to_dict(file):
+    if "Makefile" in file:
+        return {"localFile" : file, "destFile" : "Makefile"}
+    elif "handin.tgz" in file:
+        return {"localFile" : file, "destFile" : "handin.tgz"}
+    else:
+        return {"localFile" : file, "destFile" : file}
+
 # runJob
 def tango_runJob():
     if args.runJob is None:
@@ -261,18 +270,24 @@ def tango_runJob():
     dir = args.runJob
     infiles = [ file for file in os.listdir(dir) if os.path.isfile(os.path.join(dir, file)) ]
     files = [ os.path.join(dir, file) for file in infiles ]
-    args.infiles = map(lambda file : {"localFile" : file, "destFile" : "Makefile"} if "Makefile" in file else {"localFile" : file, "destFile" : file}, infiles)
+    args.infiles = map(file_to_dict, infiles)
 
-    print "Calling open....\n"
-    tango_open()
-    print "Calling upload...\n"
-    for file in files:
-        args.filename = file
-        tango_upload()
-    print "Calling addJob...\n"
-    tango_addJob()
-
-
+    args.jobname += "-0"
+    args.outputFile += "-0"
+    for i in xrange(1, args.numJobs+1):
+        print "----------------------------------------- STARTING JOB " + str(i) + " -----------------------------------------"
+        print "----------- OPEN"
+        tango_open()
+        print "----------- UPLOAD"
+        for file in files:
+            args.filename = file
+            tango_upload()
+        print "----------- ADDJOB"
+        length = len(str(i-1))
+        args.jobname = args.jobname[:-length] + str(i)
+        args.outputFile = args.outputFile[:-length] + str(i)
+        tango_addJob()
+        print "--------------------------------------------------------------------------------------------------\n"
 
 def router():
     if (args.open):
