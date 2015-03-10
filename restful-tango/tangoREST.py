@@ -371,7 +371,7 @@ class TangoREST:
         if self.validateKey(key):
             if vmStr != "":
                 vmObj = json.loads(vmStr)
-                vm = self.createTangoMachine(image, vmObj)
+                vm = self.createTangoMachine(image, vmObj=vmObj)
             else:
                 vm = self.createTangoMachine(image)
             success = self.tango.preallocVM(vm, int(num))
