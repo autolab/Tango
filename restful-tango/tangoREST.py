@@ -28,6 +28,7 @@ class Status:
         self.wrong_courselab = self.create(-1, "Courselab not found")
         self.out_not_found = self.create(-1, "Output file not found")
         self.invalid_image = self.create(-1, "Invalid image name")
+        self.pool_not_found = self.create(-1, "Pool not found")
         self.prealloc_failed = self.create(-1, "Preallocate VM failed")
 
     def create(self, id, msg):
@@ -346,11 +347,15 @@ class TangoREST:
         """
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
-            if not image or image == "":
+            if not image or image == "" or not image.endswith(".img"):
                 self.log.info("Invalid pool image name")
                 return self.status.invalid_image
-            self.log.info("Pool image found: %s" % image)
+            image = image[:-4]
             info = self.preallocator.getPool(image)
+            if len(info["pool"]) == 0:
+                self.log.info("Pool image not found: %s" % image)
+                return self.status.pool_not_found
+            self.log.info("Pool image found: %s" % image)
             result = self.status.obtained_pool
             result["total"] = info["pool"]
             result["free"] = info["free"]
@@ -366,7 +371,7 @@ class TangoREST:
         if self.validateKey(key):
             if vmStr != "":
                 vmObj = json.loads(vmStr)
-                vm = self.createTangoMachine(image, vmObj)
+                vm = self.createTangoMachine(image, vmObj=vmObj)
             else:
                 vm = self.createTangoMachine(image)
             success = self.tango.preallocVM(vm, int(num))
