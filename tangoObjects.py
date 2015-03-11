@@ -2,7 +2,7 @@
 #
 # Implements objects used to pass state within Tango.
 #
-import redis
+import redis, inspect
 import pickle, logging, Queue
 from config import Config
 
@@ -64,18 +64,27 @@ class TangoJob():
 
     def makeAssigned(self):
         self.assigned = True
-        self.updateRemote()
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            job_r = self.getRemote()
+            job_r.assigned = True
+            self.setRemote(job_r)
 
     def makeUnassigned(self):
         self.assigned = False
-        self.updateRemote()
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            job_r = self.getRemote()
+            job_r.assigned = False
+            self.setRemote(job_r)
 
     def isNotAssigned(self):
         return not self.assigned
 
     def appendTrace(self, trace_str):
-        self.trace.append(trace_str)
-        self.updateRemote()
+        self.trace.append(trace_str) 
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            job_r = self.getRemote()
+            job_r.trace.append(trace_str)
+            self.setRemote(job_r)
 
     def setId(self, new_id):
         self.id = new_id
@@ -87,11 +96,33 @@ class TangoJob():
             self._remoteLocation = dict_hash + ":" + str(new_id)
             self.updateRemote()
 
+    def getRemote(self):
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        print 'caller name:', calframe[1][3]
+        dict_hash = self._remoteLocation.split(":")[0]
+        key = self._remoteLocation.split(":")[1]
+        dictionary = TangoDictionary(dict_hash)
+        job_r = dictionary.get(key)
+        print '!!!! getRemote: Assign bit = %s' % str(job_r.assigned)
+        return job_r
+
+    def setRemote(self, obj):
+        dict_hash = self._remoteLocation.split(":")[0]
+        key = self._remoteLocation.split(":")[1]
+        dictionary = TangoDictionary(dict_hash)
+        dictionary.set(key, obj)
+
     def updateRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:
             dict_hash = self._remoteLocation.split(":")[0]
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
+            curframe = inspect.currentframe()
+            calframe = inspect.getouterframes(curframe, 2)
+            print 'caller name:', calframe[1][3]
+            print "!!!! updateRemote: Assign bit = %s" % str(self.assigned)
+            print "!!!! dict_hash: %s; key: %s" % (dict_hash, key)
             dictionary.set(key, self)
 
 

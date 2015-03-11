@@ -1,6 +1,7 @@
 #
 # config.py - Global configuration constants and runtime info
 #
+
 import logging
 
 # Config - defines 
@@ -14,19 +15,19 @@ class Config:
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = "local"
+    PREFIX = "mp"
 
     # Default port for the RESTful server to listen on. 
-    PORT = 3000
+    PORT = 2908
 
 	# Log file. Setting this to None sends the server output to stdout
-    LOGFILE = None
+    LOGFILE = "tango3.log"
 
     # Logging level
-    LOGLEVEL = logging.INFO
+    LOGLEVEL = logging.DEBUG
 
     # Courselabs directory. Must be created before starting Tango
-    COURSELABS = ""
+    COURSELABS = "/usr/share/mpandyaAutolab/Tango/courselabs"
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango. Options are: "localSSH", "tashiSSH", "ec2SSH"
@@ -37,7 +38,7 @@ class Config:
     #
 
     # Keys for Tango to authenticate client requests
-    KEYS = ["test"]
+    KEYS = ["mp_test"]
 
     # Queue manager checks for new work every so many seconds
     DISPATCH_PERIOD = 0.2
@@ -85,7 +86,7 @@ class Config:
     POOL_SIZE = 2
 
     # Path for tashi images
-    TASHI_IMAGE_PATH = ""
+    TASHI_IMAGE_PATH = "/raid/tashi/images/"
 
     # Optionally log finer-grained timing information 
     LOG_TIMING = True
