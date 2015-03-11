@@ -2,7 +2,7 @@
 #
 # Implements objects used to pass state within Tango.
 #
-import redis
+import redis, inspect
 import pickle, logging, Queue
 from config import Config
 
@@ -63,18 +63,22 @@ class TangoJob():
         self._remoteLocation = None
 
     def makeAssigned(self):
+        self.syncRemote()
         self.assigned = True
         self.updateRemote()
 
     def makeUnassigned(self):
+        self.syncRemote()
         self.assigned = False
         self.updateRemote()
 
     def isNotAssigned(self):
+        self.syncRemote()
         return not self.assigned
 
     def appendTrace(self, trace_str):
-        self.trace.append(trace_str)
+        self.syncRemote()
+        self.trace.append(trace_str) 
         self.updateRemote()
 
     def setId(self, new_id):
@@ -87,12 +91,35 @@ class TangoJob():
             self._remoteLocation = dict_hash + ":" + str(new_id)
             self.updateRemote()
 
+
+    def syncRemote(self):
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
+            dictionary = TangoDictionary(dict_hash)
+            temp_job = dictionary.get(key)
+            self.updateSelf(dictionary.get(key))
+
     def updateRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:
             dict_hash = self._remoteLocation.split(":")[0]
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
+            curframe = inspect.currentframe()
+            calframe = inspect.getouterframes(curframe, 2)
             dictionary.set(key, self)
+
+    def updateSelf(self, other_job):
+        self.assigned = other_job.assigned
+        self.retries = other_job.retries
+        self.vm = other_job.vm
+        self.input = other_job.input
+        self.outputFile = other_job.outputFile
+        self.name = other_job.name
+        self.notifyURL = other_job.notifyURL
+        self.timeout = other_job.timeout
+        self.trace = other_job.trace
+        self.maxOutputFileSize = other_job.maxOutputFileSize
 
 
 def TangoIntValue(object_name, obj):

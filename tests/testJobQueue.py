@@ -32,6 +32,18 @@ class TestJobQueue(unittest.TestCase):
         self.jobId1 = self.jobQueue.add(self.job1)
         self.jobId2 = self.jobQueue.add(self.job2)
 
+    def test_job(self):
+        self.job1.makeUnassigned()
+        self.assertTrue(self.job1.isNotAssigned())
+
+        job = self.jobQueue.get(self.jobId1)
+        self.assertTrue(job.isNotAssigned())
+
+        self.job1.makeAssigned()
+        print "Checkout:"
+        self.assertFalse(self.job1.isNotAssigned())
+        self.assertFalse(job.isNotAssigned())
+
 
     def test_add(self):
         print self.jobQueue.jobQueue.keys()
@@ -87,7 +99,7 @@ class TestJobQueue(unittest.TestCase):
     def test_assignJob(self):
         self.jobQueue.assignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
-        return self.assertTrue(job.assigned)
+        self.assertFalse(job.isNotAssigned())
 
 
     def test_unassignJob(self):

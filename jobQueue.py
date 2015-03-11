@@ -74,7 +74,8 @@ class JobQueue:
         if (job.id == -1):
             self.log.info("add|JobQueue is full")
             return -1
-        self.log.info("add|Gotten next ID: " + str(job.id))
+        self.log.debug("add|Gotten next ID: " + str(job.id))
+        self.log.info("add|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         job.retries = 0
 
@@ -109,6 +110,7 @@ class JobQueue:
         if (not isinstance(job,TangoJob)):
             return -1
         job.setId(self._getNextID())
+        self.log.info("addDead|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         job.retries = 0
 
@@ -187,14 +189,11 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
-        self.log.debug("getNextPendingJob| Acquired lock to job queue.")
         for id,job in self.jobQueue.iteritems():
             if job.isNotAssigned():
                 self.queueLock.release()
-                self.log.debug("getNextPendingJob| Released1 lock to job queue.")
                 return id
         self.queueLock.release()
-        self.log.debug("getNextPendingJob| Released lock to job queue.")
         return None
 
     def getNextPendingJobReuse(self):
@@ -212,17 +211,10 @@ class JobQueue:
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
-                self.log.debug("getNextPendingJobReuse| Not assigned id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
                 vm = self.preallocator.allocVM(job.vm.name)
                 if vm:
-                    self.log.info("getNextPendingJobReuse| Found VM :" + str(vm))
                     self.queueLock.release()
-                    self.log.info("getNextPendingJobReuse| Released1 lock to job queue.")
                     return (id, vm)
-                else:
-                    self.log.info("getNextPendingJobReuse| No VMs")
-            else:
-                self.log.debug("getNextPendingJobReuse| Assigned id: %s, job: %s, vm: %s" % (str(id), str(job.name), str(job.vm.name)))
 
         self.queueLock.release()
         #self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
@@ -236,6 +228,7 @@ class JobQueue:
         self.log.debug("assignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
+        self.log.info("assignJob|Assigning job %s" % str(job.id))
         job.makeAssigned()
         
         self.log.debug("assignJob| Releasing lock to job queue.")
@@ -248,6 +241,7 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
         job = self.jobQueue.get(jobId)
+        self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         if job.retries is None:
             job.retries = 0
