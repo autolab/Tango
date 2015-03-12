@@ -2,8 +2,8 @@
 #
 # Implements objects used to pass state within Tango.
 #
-import redis, inspect
-import pickle, logging, Queue
+import redis
+import pickle, Queue
 from config import Config
 
 
@@ -98,15 +98,13 @@ class TangoJob():
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
             temp_job = dictionary.get(key)
-            self.updateSelf(dictionary.get(key))
+            self.updateSelf(temp_job)
 
     def updateRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:
             dict_hash = self._remoteLocation.split(":")[0]
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
-            curframe = inspect.currentframe()
-            calframe = inspect.getouterframes(curframe, 2)
             dictionary.set(key, self)
 
     def updateSelf(self, other_job):
@@ -120,6 +118,7 @@ class TangoJob():
         self.timeout = other_job.timeout
         self.trace = other_job.trace
         self.maxOutputFileSize = other_job.maxOutputFileSize
+
 
 
 def TangoIntValue(object_name, obj):
@@ -233,7 +232,6 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
         self.hash_name = object_name
-        self.log = logging.getLogger("Remote Dict["+ self.hash_name + "]")
 
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
@@ -260,7 +258,7 @@ class TangoRemoteDictionary():
         return valslist
 
     def delete(self, id):
-        # todo: should remove the reference to _remoteLocation
+        self._remoteLocation = None
         self.r.hdel(self.hash_name, id)
 
     def _clean(self):
@@ -273,6 +271,7 @@ class TangoRemoteDictionary():
         for key in keys:
             tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
             keyvals.append(tup)
+
 
         return iter(keyvals)
 
@@ -300,6 +299,7 @@ class TangoNativeDictionary():
     def delete(self, id):
         if str(id) in self.dict.keys():
             del self.dict[str(id)]
+
 
     def iteritems(self):
         return self.dict.iteritems()

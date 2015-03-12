@@ -19,221 +19,311 @@ import argparse, requests, json, urllib
 #
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-s', '--server', default='http://localhost',
-		help='Tango server endpoint (default = http://localhost)')
+        help='Tango server endpoint (default = http://localhost)')
 parser.add_argument('-P','--port', default=8080, type=int,
-		help='Tango server port number (default = 8080)')
-parser.add_argument('-k', '--key',
-		help='Key of client') 
+        help='Tango server port number (default = 8080)')
+parser.add_argument('-k', '--key', 
+        help='Key of client') 
 parser.add_argument('-l', '--courselab',
-		help='Lab of client')
+        help='Lab of client')
 
-parser.add_argument('-o', '--open', action='store_true',
-		help='Opens directory for lab. Creates new one if it does not exist. Must specify key with -k and courselab with -l. (modify default host with --server)')
-parser.add_argument('-u', '--upload', action='store_true',
-		help='Uploads a file with given filename. Must be supplied with --filename.')
-parser.add_argument('-a', '--addjob', action='store_true',
-		help='Submit a job (modify defaults with --image, --infiles, --jobname, --maxsize, --timeout)')
-parser.add_argument('-p', '--poll', action='store_true',
-		help='Poll a given output file (output file name must be supplied with --outputFile)')
-parser.add_argument('-i', '--info', action='store_true',
-		help='Obtain basic stats about the service such as uptime, number of jobs, number of threads etc')
-parser.add_argument('-j', '--jobs', action='store_true',
-		help='Obtain information of live jobs (deadJobs == 0) or dead jobs (deadJobs == 1). Must specify --deadJobs.')
-parser.add_argument('--pool', action='store_true', 
-		help='Obtain information about a pool of VMs spawned from a specific image. Must specify --image.')
-parser.add_argument('--prealloc', action='store_true',
-		help='Create a pool of instances spawned from a specific image (change defaults with --image --num --vmms --cores --memory)')
+open_help = 'Opens directory for lab. Creates new one if it does not exist. Must specify key with -k and courselab with -l.'
+parser.add_argument('-o', '--open', action='store_true', help=open_help)
+upload_help = 'Uploads a file. Must specify key with -k, courselab with -l, and filename with --filename.'
+parser.add_argument('-u', '--upload', action='store_true', help=upload_help)
+addJob_help = 'Submit a job. Must specify key with -k, courselab with -l, and input files with --infiles. Modify defaults with --image (rhel.img), --outputFile (result.out), --jobname (test_job), --maxsize(0), --timeout (0).'
+parser.add_argument('-a', '--addJob', action='store_true', help=addJob_help)
+poll_help = 'Poll a given output file. Must specify key with -k, courselab with -l. Modify defaults with --outputFile (result.out).'
+parser.add_argument('-p', '--poll', action='store_true', help=poll_help)
+info_help = 'Obtain basic stats about the service such as uptime, number of jobs, number of threads etc. Must specify key with -k.'
+parser.add_argument('-i', '--info', action='store_true', help=info_help)
+jobs_help = 'Obtain information of live jobs (deadJobs == 0) or dead jobs (deadJobs == 1). Must specify key with -k. Modify defaults with --deadJobs (0).'
+parser.add_argument('-j', '--jobs', action='store_true', help=jobs_help)
+pool_help = 'Obtain information about a pool of VMs spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel.img).'
+parser.add_argument('--pool', action='store_true', help=pool_help)
+prealloc_help = 'Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel.img), --num (2), --vmms (tashiSSH), --cores (1), and --memory (512).'
+parser.add_argument('--prealloc', action='store_true', help=prealloc_help)
+
+parser.add_argument('--runJob', help='Run a job from a specific directory')
+parser.add_argument('--numJobs', type=int, default=1, help='Number of jobs to run')
 
 parser.add_argument('--vmms', default='tashiSSH',
-		help='Choose vmms between localSSH, ec2SSH, tashiSSH')
+        help='Choose vmms between localSSH, ec2SSH, tashiSSH')
 parser.add_argument('--image', default='rhel.img',
-		help='VM image name (default "rhel.img")')
-parser.add_argument('--infiles', default=[], nargs='*',
-		help='Input files must be a list of maps with localFile and destFile, as follows:\n [{"localFile": <string>, "destFile": <string>}, ...]')
+        help='VM image name (default "rhel.img")')
+parser.add_argument('--infiles', nargs='+', type=json.loads,
+        help='Input files must be a list of maps with localFile and destFile, as follows:\n \'{"localFile": "<string>", "destFile": "<string>"}\', \'{"localFile" : "<string>", "destFile" : "<string>"}\'')
 parser.add_argument('--maxsize', default=0, type=int,
-		help='Max output filesize [KBytes] (default none)')
+        help='Max output filesize [KBytes] (default none)')
 parser.add_argument('--timeout', default=0, type=int,
-		help='Job timeout [secs] (default none)')
+        help='Job timeout [secs] (default none)')
 parser.add_argument('--filename',
-		help='Name of file that is being uploaded')
+        help='Name of file that is being uploaded')
 parser.add_argument('--outputFile', default='result.out',
-		help='Name of output file to copy output into')
+        help='Name of output file to copy output into')
 parser.add_argument('--deadJobs', default=0, type=int,
-		help='If deadJobs == 0, live jobs are obtained. If deadJobs == 1, dead jobs are obtained')
+        help='If deadJobs == 0, live jobs are obtained. If deadJobs == 1, dead jobs are obtained')
 parser.add_argument('--num', default=2, type=int,
-		help='Number of instances to preallocate')
+        help='Number of instances to preallocate')
 parser.add_argument('--cores', default=1, type=int,
-		help='Number of cores to allocate on machine')
+        help='Number of cores to allocate on machine')
 parser.add_argument('--memory', default=512, type=int,
-		help='Amount of memory to allocate on machine')
+        help='Amount of memory to allocate on machine')
 parser.add_argument('--jobname', default='test_job',
-		help='Job name')
+        help='Job name')
 parser.add_argument('--notifyURL',
-		help='Complete URL for Tango to give callback to once job is complete.')
+        help='Complete URL for Tango to give callback to once job is complete.')
 
 def checkKey():
-	if (args.key is None):
-		print "Failed to send request. Key must be specified with -k"
-		sys.exit(0)
+    if (args.key is None):
+        print "Key must be specified with -k"
+        return -1
+    return 0
 
 def checkCourselab():
-	if (args.courselab is None):
-		print "Failed to send request. Courselab must be specified with -l"
-		sys.exit(0)
+    if (args.courselab is None):
+        print "Courselab must be specified with -l"
+        return -1
+    return 0
+
+def checkFilename():
+    if (args.filename is None):
+        print "Filename must be specified with --filename"
+        return -1
+    return 0
+
+def checkInfiles():
+    if (args.infiles is None):
+        print "Input files must be specified with --infiles"
+        return -1
+    return 0
+
+def checkDeadjobs():
+    if (args.deadJobs is None):
+        print "Deadjobs must be specified with --deadJobs"
+        return -1
+    return 0
+
+# open
+def tango_open():
+    try:
+        res = checkKey() + checkCourselab()
+        if res != 0:
+            raise Exception("Invalid usage: [open] " + open_help)
+
+        response = requests.get('%s:%d/open/%s/%s/' % (args.server, args.port, args.key, args.courselab)) 
+        print "Sent request to %s:%d/open/%s/%s/" % (args.server, args.port, args.key, args.courselab)
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/open/%s/%s/" % (args.server, args.port, args.key, args.courselab)
+        print (str(err))
+        sys.exit(0)
+
+# upload
+def tango_upload():
+    try:
+        res = checkKey() + checkCourselab() + checkFilename()
+        if res != 0:
+            raise Exception("Invalid usage: [upload] " + upload_help)
+
+        f = open(args.filename)
+        dirs = args.filename.split("/")
+        filename = dirs[len(dirs)-1]
+        header = {'Filename': filename}
+
+        response = requests.post('%s:%d/upload/%s/%s/' % (args.server, args.port, args.key, args.courselab), data = f.read(), headers=header)
+        f.close()
+        print "Sent request to %s:%d/upload/%s/%s/ filename=%s" % (args.server, args.port, args.key, args.courselab, args.filename)
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/upload/%s/%s/ filename=%s" % (args.server, args.port, args.key, args.courselab, args.filename)
+        print (str(err))
+        sys.exit(0)
+
+# addJob
+def tango_addJob():
+    try:
+        requestObj = {}
+        res = checkKey() + checkCourselab() + checkInfiles()
+        if res != 0:
+            raise Exception("Invalid usage: [addJob] " + addJob_help)
+
+        requestObj['image'] = args.image
+        requestObj['files'] = args.infiles
+        requestObj['timeout'] = args.timeout
+        requestObj['max_kb'] = args.maxsize
+        requestObj['output_file'] = args.outputFile
+        requestObj['jobName'] = args.jobname
+        if (args.notifyURL):
+            requestObj['notifyURL'] = args.notifyURL
+
+        response = requests.post('%s:%d/addJob/%s/%s/' % (args.server, args.port, args.key, args.courselab), data = json.dumps(requestObj))
+        print "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
+        print (str(err))
+        sys.exit(0)
+
+# poll
+def tango_poll():
+    try:
+        res = checkKey() + checkCourselab()
+        if res != 0:
+            raise Exception("Invalid usage: [poll] " + poll_help)
+
+        response = requests.get('%s:%d/poll/%s/%s/%s/' % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile)))
+        print "Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile))
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile))
+        print (str(err))
+        sys.exit(0)
+
+# info
+def tango_info():
+    try:
+        res = checkKey()
+        if res != 0:
+            raise Exception("Invalid usage: [info] " + info_help)
+
+        response = requests.get('%s:%d/info/%s/' % (args.server, args.port, args.key))
+        print "Sent request to %s:%d/info/%s/" % (args.server, args.port, args.key)
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/info/%s/" % (args.server, args.port, args.key)
+        print (str(err))
+        sys.exit(0)
+
+# jobs
+def tango_jobs():
+    try:
+        res = checkKey() + checkDeadjobs()
+        if res != 0:
+            raise Exception("Invalid usage: [jobs] " + jobs_help)
+
+        response = requests.get('%s:%d/jobs/%s/%d/' % (args.server, args.port, args.key, args.deadJobs))
+        print "Sent request to %s:%d/jobs/%s/%d/" % (args.server, args.port, args.key, args.deadJobs)
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/jobs/%s/%d/" % (args.server, args.port, args.key, args.deadJobs)
+        print (str(err))
+        sys.exit(0)
+
+# pool
+def tango_pool():
+    try:
+        res = checkKey()
+        if res != 0:
+            raise Exception("Invalid usage: [pool] " + pool_help)
+
+        response = requests.get('%s:%d/pool/%s/%s/' % (args.server, args.port, args.key, args.image))
+        print "Sent request to %s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image)
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image)
+        print (str(err))
+        sys.exit(0)
+
+# prealloc
+def tango_prealloc():
+    try:
+        vmObj = {}
+        res = checkKey()
+        if res != 0:
+            raise Exception("Invalid usage: [prealloc] " + prealloc_help)
+
+        vmObj['vmms'] = args.vmms
+        vmObj['cores'] = args.cores
+        vmObj['memory'] = args.memory
+
+        response = requests.post('%s:%d/prealloc/%s/%s/%s/' % (args.server, args.port, args.key, args.image, args.num), data=json.dumps(vmObj))
+        print "Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" % (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj))
+        print response.content
+
+    except Exception as err:
+        print "Failed to send request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" % (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj))
+        print (str(err))
+        sys.exit(0)
+
+def file_to_dict(file):
+    if "Makefile" in file:
+        return {"localFile" : file, "destFile" : "Makefile"}
+    elif "handin.tgz" in file:
+        return {"localFile" : file, "destFile" : "handin.tgz"}
+    else:
+        return {"localFile" : file, "destFile" : file}
+
+# runJob
+def tango_runJob():
+    if args.runJob is None:
+        print "Invalid usage: [runJob]"
+        sys.exit(0)
+
+    dir = args.runJob
+    infiles = [ file for file in os.listdir(dir) if os.path.isfile(os.path.join(dir, file)) ]
+    files = [ os.path.join(dir, file) for file in infiles ]
+    args.infiles = map(file_to_dict, infiles)
+
+    args.jobname += "-0"
+    args.outputFile += "-0"
+    for i in xrange(1, args.numJobs+1):
+        print "----------------------------------------- STARTING JOB " + str(i) + " -----------------------------------------"
+        print "----------- OPEN"
+        tango_open()
+        print "----------- UPLOAD"
+        for file in files:
+            args.filename = file
+            tango_upload()
+        print "----------- ADDJOB"
+        length = len(str(i-1))
+        args.jobname = args.jobname[:-length] + str(i)
+        args.outputFile = args.outputFile[:-length] + str(i)
+        tango_addJob()
+        print "--------------------------------------------------------------------------------------------------\n"
+
+def router():
+    if (args.open):
+        tango_open()
+    elif (args.upload):
+        tango_upload()
+    elif (args.addJob):
+        tango_addJob()
+    elif (args.poll):
+        tango_poll()
+    elif (args.info):
+        tango_info()
+    elif (args.jobs):
+        tango_jobs()
+    elif (args.pool):
+        tango_pool()
+    elif (args.prealloc):
+        tango_prealloc()
+    elif (args.runJob):
+        tango_runJob()
 
 #
 # Parse the command line arguments
 #
 args = parser.parse_args()
-if (not args.open and not args.upload and not args.addjob
-		and not args.poll and not args.info and not args.jobs
-		and not args.pool and not args.prealloc):
-	parser.print_help()
-	sys.exit(0)
+if (not args.open and not args.upload and not args.addJob
+    and not args.poll and not args.info and not args.jobs
+    and not args.pool and not args.prealloc and not args.runJob):
+    parser.print_help()
+    sys.exit(0)
 
 try:
-	requests.get('%s:%d/' % (args.server, args.port))
+    response = requests.get('%s:%d/' % (args.server, args.port))
 except:
-	print 'Tango not reachable on %s:%d!\n' % (args.server, args.port)
-	sys.exit(0)
+    print 'Tango not reachable on %s:%d!\n' % (args.server, args.port)
+    sys.exit(0)
 
-#
-# Now make the requested HTTP call to the Tango server.
-#
-
-# open
-if (args.open):
-	try:
-		checkKey()
-		checkCourselab()
-		response = requests.get('%s:%d/open/%s/%s/' % (args.server, args.port, args.key, args.courselab)) 
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# upload
-if (args.upload):
-	try:
-		checkKey()
-		checkCourselab()
-
-		if (args.filename is None):
-			print "Must supply file to upload with --filename"
-			sys.exit(0)
-
-		f = open(args.filename)
-		dirs = args.filename.split("/")
-		filename = dirs[len(dirs)-1]
-		header = {'Filename': filename}
-		response = requests.post('%s:%d/upload/%s/%s/' % (args.server, args.port, args.key, args.courselab), data = f.read(), headers=header)
-		f.close()
-		print (response.content)
-
-	except Exception as err:
-		print "failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# addJob
-if (args.addjob):
-	try:
-		checkKey()
-		checkCourselab()
-		requestObj = {}
-		requestObj['image'] = args.image
-		requestObj['files'] = args.infiles
-		requestObj['timeout'] = args.timeout
-		requestObj['max_kb'] = args.maxsize
-		requestObj['output_file'] = args.outputFile
-		requestObj['jobName'] = args.jobname
-		if (args.notifyURL):
-			requestObj['notifyURL'] = args.notifyURL
-		print "Adding job"
-		for key in requestObj:
-			print "%s: %s" % (key, requestObj[key])
-
-		response = requests.post('%s:%d/addJob/%s/%s/' % (args.server, args.port, args.key, args.courselab), data = json.dumps(requestObj))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# poll
-if (args.poll):
-	try:
-		checkKey()
-		checkCourselab()
-		if (args.outputFile is None):
-			print "Must supply name of output file with --outputFile"
-			sys.exit(0)
-
-		response = requests.get('%s:%d/poll/%s/%s/%s/' % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile)))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# info
-if (args.info):
-	try:
-		checkKey()
-		response = requests.get('%s:%d/info/%s/' % (args.server, args.port, args.key))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# jobs
-if (args.jobs):
-	try:
-		checkKey()
-		response = requests.get('%s:%d/jobs/%s/%d/' % (args.server, args.port, args.key, args.deadJobs))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# pool
-if (args.pool):
-	try:
-		checkKey()
-		response = requests.get('%s:%d/pool/%s/%s/' % (args.server, args.port, args.key, args.image))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
-
-# prealloc
-if (args.prealloc):
-	try:
-		checkKey()
-		vmObj = {}
-		vmObj['vmms'] = args.vmms
-		vmObj['cores'] = args.cores
-		vmObj['memory'] = args.memory
-		print "Preallocating"
-		print "name: %s" % args.image
-		print "num: %d" % args.num
-		for key in vmObj:
-			print "%s: %s" % (key, vmObj[key])
-		response = requests.post('%s:%d/prealloc/%s/%s/%s/' % (args.server, args.port, args.key, args.image, args.num), data=json.dumps(vmObj))
-		print (response.content)
-
-	except Exception as err:
-		print "Failed to send request to %s:%d" % (args.server, args.port)
-		print ("\t" + str(err))
-		sys.exit(0)
+router()
 
