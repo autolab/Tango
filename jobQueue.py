@@ -201,7 +201,6 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
-        #self.log.debug("getNextPendingJobReuse| Acquired lock to job queue.")
         for id, job in self.jobQueue.iteritems():
 
             # Create a pool if necessary
@@ -217,8 +216,6 @@ class JobQueue:
                     return (id, vm)
 
         self.queueLock.release()
-        #self.log.debug("getNextPendingJobReuse|Released lock to job queue.")
-
         return (None, None)
 
     def assignJob(self, jobId):
