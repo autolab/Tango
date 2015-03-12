@@ -4,12 +4,13 @@
 # interface of Tango.
 #
 
-import sys, os, inspect, hashlib, json, logging, logging.handlers
+import sys, os, inspect, hashlib, json, subprocess, logging, copy, logging.handlers
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 
+from time import sleep
 from tangod import TangoServer
 from jobQueue import JobQueue
 from jobManager import JobManager
@@ -72,7 +73,7 @@ class TangoREST:
         self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
-        self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
+        #self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
         self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
         logging.basicConfig(
                 filename = self.LOGFILE,
@@ -83,6 +84,20 @@ class TangoREST:
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
         self.status = Status()
+        jobmanager_pid = self.initializeJobManager()
+        self.log.info("Server running with pid %s" % str(os.getpid()))
+        self.log.info("JobManager running with pid %s" % str(jobmanager_pid))
+
+    def initializeJobManager(self):
+        jm_vmms = copy.copy(self.vmms)
+        jm_preallocator = copy.copy(self.preallocator)
+        pid = os.fork()
+        if pid == 0:
+            JobManager(self.queue, jm_vmms, jm_preallocator)
+            while(1):
+                sleep(1)
+        else:
+            return pid
 
     def validateKey(self, key):
         """ validateKey - Validates key provided by client

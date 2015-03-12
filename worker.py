@@ -25,7 +25,7 @@ class Worker( threading.Thread ):
         self.preallocator = preallocator
         self.preVM = preVM
         threading.Thread.__init__(self)
-        self.log = logging.getLogger("Worker")
+        self.log = logging.getLogger("Worker-"+str(os.getpid()))
 
     #
     # Worker helper functions
