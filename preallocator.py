@@ -241,3 +241,4 @@ class Preallocator:
         result["pool"] = self.machines.get(vmName)[0]
         result["free"] = free_list
         return result
+
