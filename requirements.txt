@@ -1,0 +1,11 @@
+backports.ssl-match-hostname==3.4.0.2
+boto==2.27.0
+futures==2.2.0
+plumbum==1.4.2
+pyflakes==0.8.1
+redis==2.10.3
+requests==2.2.1
+rpyc==3.3.0
+wsgiref==0.1.2
+Flask==0.10
+Jinja2==2.6

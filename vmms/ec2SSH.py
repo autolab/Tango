@@ -245,6 +245,7 @@ class Ec2SSH:
                         (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
             if ret != 0:
                 return ret
+
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
