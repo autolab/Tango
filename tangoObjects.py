@@ -133,7 +133,9 @@ class TangoRemoteIntValue():
         """The default connection parameters are: host='localhost', port=6379, db=0"""
         self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
         self.key = '%s:%s' %(namespace, name)
-        self.set(value)
+        cur_val = self.__db.get(self.key)
+        if cur_val is None:
+            self.set(value)
 
     def increment(self):
         return self.__db.incr(self.key)
