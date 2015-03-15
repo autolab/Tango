@@ -59,6 +59,7 @@ class DockerSSH:
     _SSH_FLAGS = ["-o", "StrictHostKeyChecking no", "-o", "GSSAPIAuthentication no"]
     _OS_X = 'darwin'
     LOCALHOST = '127.0.0.1'
+    DOCKER_IMAGE = 'mihirpandya/autolab'
 
     def __init__(self):
         """
@@ -79,13 +80,6 @@ class DockerSSH:
         except Exception as e:
             self.log.error(e)
             exit(1)
-        # try:
-        #     checkBinary = subprocess.check_call(["which", "autodriver"])
-        #     checkAutogradeUser = subprocess.check_call("getent passwd | grep 'autograde'", shell=True)
-        # except subprocess.CalledProcessError as e:
-        #     print "Local machine has not been bootstrapped for autograding. Please run localBootstrap.sh"
-        #     self.log.error(e)
-        #     exit(1)
 
     def boot2dockerVM(self):
         """
@@ -96,18 +90,26 @@ class DockerSSH:
         init_ret = -1
         start_ret = -1
         env_ret = -1
+        image_ret = -1
 
-        # Initialize boot2docker VM
+        self.log.debug("Initializing boot2docker VM.")
         init_ret = timeout(['boot2docker', 'init'], 
                             config.Config.BOOT2DOCKER_INIT_TIMEOUT)
-        # Start boot2docker VM
+        
+        self.log.debug("Starting boot2docker VM.")
         if init_ret == 0:
-            start_ret = timeout(['boot2docker', 'init'], 
+            start_ret = timeout(['boot2docker', 'start'], 
                         config.Config.BOOT2DOCKER_START_TIMEOUT)
-        # Set environment variable sof boot2docker VM
+        
+        self.log.debug("Setting environment variables for boot2docker VM.")
         if start_ret == 0:
             env_ret = timeout(['$(boot2docker shellinit)'],
                         config.Config.BOOT2DOCKER_ENV_TIMEOUT)
+        
+        self.log.debug("Pulling the autolab docker image from docker hub.")
+        if env_ret == 0:
+            image_ret = timeout(['docker', 'pull', 'mihirpandya/autolab'],
+                        config.Config.DOCKER_IMAGE_TIMEOUT)
 
         if init_ret != 0:
             raise Exception('Could not initialize boot2docker.')
@@ -115,6 +117,8 @@ class DockerSSH:
             raise Exception('Could not start boot2docker VM.')
         if env_ret != 0:
             raise Exception('Could not set environment variables of boot2docker VM.')
+        if image_ret != 0:
+            raise Exception('Could not pull autolab docker image from docker hub.')
 
 
     def instanceName(self, id, name):
@@ -134,10 +138,16 @@ class DockerSSH:
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM - Set domain name to localhost
+        """ initializeVM - Start running a dockerized autograding container.
         """
-        # Create the instance and obtain the reservation
-        vm.domain_name = "127.0.0.1"
+        args = ['docker', 'run', '-d']
+        args.append('--name')
+        args.append(self.instanceName(vm.id, vm.name))
+        args.append(self.DOCKER_IMAGE)
+        args.append('/bin/bash')
+        args.append('-c')
+        args.append('while true; do sleep 1; done')
+        subprocess.Popen(args)
         return vm
 
     def waitVM(self, vm, max_secs):
@@ -146,51 +156,33 @@ class DockerSSH:
         be immediate since the VM is localhost.
         """
 
-        # First, wait for ping to the vm instance to work
-        instance_down = 1
         instanceName = self.instanceName(vm.id, vm.name)
         start_time = time.time()
         domain_name = self.domainName(vm)
-        while instance_down:
-            instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
-                                            shell=True,
-                                            stdout=open('/dev/null', 'w'),
-                                            stderr=subprocess.STDOUT)
+        echo_string = 'docker ready'
 
-            # Wait a bit and then try again if we haven't exceeded
-            # timeout
-            if instance_down:
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
-                elapsed_secs = time.time() - start_time
-                if (elapsed_secs > max_secs):
-                    return -1
+        while(True):
 
-            # The ping worked, so now wait for SSH to work before
-            # declaring that the VM is ready
-            self.log.debug("VM %s: ping completed" % (vm.name))
-            while(True):
+            elapsed_secs = time.time() - start_time
 
-                elapsed_secs = time.time() - start_time
+            # Give up if the elapsed time exceeds the allowable time
+            if elapsed_secs > max_secs:
+                self.log.info("Docker %s: Could not reach container after %d seconds." % (instanceName, elapsed_secs))
+                return -1
 
-                # Give up if the elapsed time exceeds the allowable time
-                if elapsed_secs > max_secs:
-                    self.log.info("VM %s: SSH timeout after %d secs" % (instanceName, elapsed_secs))
-                    return -1
+            # Give the docker container a string to echo back to us.
+            echo_args = ['docker', 'exec', instanceName]
+            echo_args.append('/bin/echo')
+            echo_args.append(echo_string)
+            echo = subprocess.check_output(echo_args).strip('\n')
 
-                # If the call to ssh returns timeout (-1) or ssh error
-                # (255), then success. Otherwise, keep trying until we run
-                # out of time.
-                ret = timeout(["ssh"] + LocalSSH._SSH_FLAGS +
-                                        ["%s" % (domain_name),
-                                        "(:)"], max_secs - elapsed_secs)
+            self.log.debug("Docker %s: echo returned with %d" % (instanceName, echo))
 
-                self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
+            if echo is echo_string:
+                return 0
 
-                if (ret != -1) and (ret != 255):
-                    return 0
-
-                # Sleep a bit before trying again
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            # Sleep a bit before trying again
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles):
         """ copyIn - Copy input files to VM

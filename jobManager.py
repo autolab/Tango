@@ -82,6 +82,9 @@ if __name__ == "__main__":
         elif Config.VMMS_NAME == "ec2SSH":
             from vmms.ec2SSH import Ec2SSH
             vmms = Ec2SSH()
+        elif Config.VMMS_NAME == "dockerSSH":
+            from vmms.dockerSSH import DockerSSH
+            vmms = DockerSSH()
 
         vmms = {Config.VMMS_NAME: vmms}
         preallocator = Preallocator(vmms)
