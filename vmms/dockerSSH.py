@@ -243,8 +243,8 @@ class DockerSSH:
         instanceName = self.instanceName(vm.id, vm.name)
         self.log.debug("runJob: Running job on VM %s" % instanceName)
         # Setting ulimits for VM and running job
-        runcmd = '"/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-            %d -o %d autolab &> output"' % (
+        runcmd = '"cd /home/autolab; /usr/bin/time --output=time.out autodriver \
+            -u %d -f %d -t %d -o %d autolab &> output"' % (
             config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, 1000 * 1024)
         args = ['su autolab -c ' + runcmd]

@@ -21,6 +21,7 @@ WORKDIR Tango/autodriver
 RUN ls .
 RUN make clean && make
 COPY autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
 
 # Clean up
 WORK /home
