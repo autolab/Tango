@@ -9,15 +9,25 @@ RUN apt-get install -y make
 RUN apt-get install -y build-essential
 
 # Install autodriver
-RUN apt-get install -y git
 WORKDIR /home
+RUN useradd autograde
+RUN useradd autolab
+RUN mkdir autograde
+RUN chown autograde autograde
+RUN chown :autograde autograde
+RUN apt-get install -y git
 RUN git clone https://github.com/autolab/Tango.git
 WORKDIR Tango/autodriver
 RUN ls .
 RUN make clean && make
-RUN cp autodriver /usr/bin/autodriver
-RUN which autodriver
+COPY autodriver /usr/bin/autodriver
 
 # Clean up
+WORK /home
 RUN apt-get remove -y git
 RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN autodriver
