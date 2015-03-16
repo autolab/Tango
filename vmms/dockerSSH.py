@@ -3,8 +3,8 @@
 #                docker containers. In this context, VMs are docker containers.
 #
 import random, subprocess, re, time, logging, threading, os, sys
-
 import config
+from tangoObjects import TangoMachine
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -66,8 +66,6 @@ def dockerExec(container, cmd, time_out=1):
 #
 
 class DockerSSH:
-    _SSH_FLAGS = ["-o", "StrictHostKeyChecking no", "-o", 
-                    "GSSAPIAuthentication no"]
     _OS_X = 'darwin'
     LOCALHOST = '127.0.0.1'
 
@@ -76,19 +74,21 @@ class DockerSSH:
 			Checks if the machine is ready to run docker containers.
             Initialize boot2docker if running on OS X.
         """
-        self.log = logging.getLogger("DockerSSH")
         try:
+            self.log = logging.getLogger("DockerSSH")
             # If running on OS X, create a boot2docker VM
-            if sys.platform is self._OS_X:
-                self.boot2dockerVM()
+            if sys.platform == self._OS_X:
+                # self.boot2dockerVM()
+                # boot2docker initialization will be part of initial
+                # set up with Tango.
                 self.docker_host_ip = subprocess.check_output(['boot2docker', 'ip']).strip('\n')
             else:
                 self.docker_host_ip = self.LOCALHOST
 
-            self.log.info("Docker host IP is %s" & self.docker_host_ip)
+            self.log.info("Docker host IP is %s" % self.docker_host_ip)
 
         except Exception as e:
-            self.log.error(e)
+            self.log.error(str(e))
             exit(1)
 
     def boot2dockerVM(self):
@@ -113,13 +113,14 @@ class DockerSSH:
         
         self.log.debug("Setting environment variables for boot2docker VM.")
         if start_ret == 0:
-            env_ret = timeout(['$(boot2docker shellinit)'],
+            env_ret = timeout(['boot2docker', 'shellinit'],
                         config.Config.BOOT2DOCKER_ENV_TIMEOUT)
         
         self.log.debug("Pulling the autolab docker image from docker hub.")
         if env_ret == 0:
-            image_ret = timeout(['docker', 'pull', 'mihirpandya/autolab'],
-                        config.Config.DOCKER_IMAGE_TIMEOUT)
+            image_ret = timeout(['docker', 'build', '-t', 
+                        self.config.Config.DOCKER_IMAGE, '.'],
+                        config.Config.DOCKER_IMAGE_BUILD_TIMEOUT)
 
         if init_ret != 0:
             raise Exception('Could not initialize boot2docker.')
@@ -296,6 +297,8 @@ class DockerSSH:
         machines = []
         containers_str = subprocess.check_output(['docker', 'ps'])
         containers_l = containers_str.split('\n')
+        containers_l.reverse()
+        containers_l.pop()
         for container in containers_l:
             machine = TangoMachine()
             machine.vmms = 'dockerSSH'
