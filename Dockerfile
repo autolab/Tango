@@ -24,11 +24,11 @@ COPY autodriver /usr/bin/autodriver
 RUN chmod +s /usr/bin/autodriver
 
 # Clean up
-WORK /home
+WORKDIR /home
 RUN apt-get remove -y git
 RUN apt-get -y autoremove
 RUN rm -rf Tango/
 
 # Check installation
 RUN ls -l /home
-RUN autodriver
+RUN which autodriver
