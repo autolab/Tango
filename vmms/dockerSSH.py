@@ -176,8 +176,6 @@ class DockerSSH:
 
         instanceName = self.instanceName(vm.id, vm.name)
         start_time = time.time()
-        domain_name = self.domainName(vm)
-        echo_string = 'docker ready'
 
         while(True):
 
@@ -205,7 +203,7 @@ class DockerSSH:
         """ copyIn - Copy input files to the docker container. This is
         a little hacky because it actually does:
 
-        `cat FILE | docker exec -i CONTAINER 'sh -c cat > FILE'
+        `cat FILE | docker exec -i CONTAINER 'sh -c cat > FILE'`
 
         This is because there is no direct way to copy files to a container
         unless the container is mounted to a specific directory on the host.
@@ -215,10 +213,13 @@ class DockerSSH:
         instanceName = self.instanceName(vm.id, vm.name)
 
         # Create a fresh input directory
-        mkdir = dockerExec(instanceName, 
-                        ['(rm -rf /home/autolab; mkdir /home/autolab)'])
+        mkdir = dockerExec(instanceName, ['(cd /home; \
+                            rm -rf autolab; mkdir autolab \
+                            chown autolab autolab; chown :autolab autolab \
+                            rm -rf output; mkdir output \
+                            chown autolab output; chown :autolab output)'])
         
-        if mkdir is None:
+        if mkdir != 0:
             self.log.error("Failed to create directory in container %s"
                 % instanceName)
             return -1
@@ -243,66 +244,77 @@ class DockerSSH:
         instanceName = self.instanceName(vm.id, vm.name)
         self.log.debug("runJob: Running job on VM %s" % instanceName)
         # Setting ulimits for VM and running job
-        runcmd = '"cd /home/autolab; /usr/bin/time --output=time.out autodriver \
-            -u %d -f %d -t %d -o %d autolab &> output"' % (
-            config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
-            runTimeout, 1000 * 1024)
+        runcmd = '"cd /home/; autodriver -u %d -f %d -t %d -o %d \
+                    autolab &> output/feedback.out"' % (config.Config.VM_ULIMIT_USER_PROC, 
+                        config.Config.VM_ULIMIT_FILE_SIZE, runTimeout, 1000 * 1024)
         args = ['su autolab -c ' + runcmd]
         return dockerExec(instanceName, args, runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
-        """ copyOut - Copy the file output on the VM to the file
-        outputFile on the Tango host.
+        """ copyOut - Copy the autograder feedback from container to
+        destFile on the Tango host.
         """
-        domain_name = self.domainName(vm)
+        instanceName = self.instanceName(vm.id, vm.name)
 
-        # Optionally log finer grained runtime info. Adds about 1 sec
-        # to the job latency, so we typically skip this.
-        if config.Config.LOG_TIMING:
-            try:
-                # regular expression matcher for error message from cat
-                no_file = re.compile('No such file or directory')
-                
-                time_info = subprocess.check_output(['ssh'] + LocalSSH._SSH_FLAGS +
-                                                     ['%s' % (domain_name),
-                                                     'cat time.out']).rstrip('\n')
+        cmd = ['docker', 'cp']
+        cmd.append('%s:/home/output/feedback.out' % instanceName)
+        cmd.append(destFile)
+        ret = timeout(cmd, config.Config.COPYOUT_TIMEOUT)
 
-                # If the output is empty, then ignore it (timing info wasn't
-                # collected), otherwise let's log it!
-                if no_file.match(time_info):
-                    # runJob didn't produce an output file
-                    pass
-                
-                else:
-                    # remove newline character printed in timing info
-                    # replaces first '\n' character with a space
-                    time_info = re.sub('\n', ' ', time_info, count = 1)
-                    self.log.info('Timing (%s): %s' % (domain_name, time_info))
-                    
-            except subprocess.CalledProcessError, re.error:
-                # Error copying out the timing data (probably runJob failed)
-                pass
-    
-        return timeout(["scp"] + LocalSSH._SSH_FLAGS +
-                        ["%s:output" % (domain_name), destFile],
-                       config.Config.COPYOUT_TIMEOUT)
+        return ret
 
     def destroyVM(self, vm):
-        """ destroyVM - Nothing to destroy for local.
+        """ destroyVM - Stop and delete the docker.
         """
+        instanceName = self.instanceName(vm.id, vm.name)
+        ret = timeout(['docker', 'stop', instanceName], 
+            config.Config.DOCKER_STOP_TIMEOUT)
+        if ret != 0:
+            self.log.error("Failed to stop container %s" % instanceName)
+        ret = timeout(['docker', 'run', instanceName],
+            config.Config.DOCKER_RM_TIMEOUT)
+        if ret != 0:
+            self.log.error("Failed to destroy container %s" % instanceName)
         return
 
     def safeDestroyVM(self, vm):
-        return self.destroyVM(vm)
+        start_time = time.time()
+        instanceName = self.instanceName(vm.id, vm.name)
+        while self.existsVM(vm):
+            if (time.time()-start_time > config.Config.DESTROY_SECS):
+                self.log.error("Failed to safely destroy container %s"
+                    % instanceName)
+                return
+            self.destroyVM(vm)
+        return
 
     def getVMs(self):
-        """ getVMs - Nothing to return for local.
+        """ getVMs - Executes and parses `docker ps`
         """
-        return []
+        # Get all docker containers
+        machines = []
+        containers_str = subprocess.check_output(['docker', 'ps'])
+        containers_l = containers_str.split('\n')
+        for container in containers_l:
+            machine = TangoMachine()
+            machine.vmms = 'dockerSSH'
+            c = container.split(' ')
+            machine.id = c[0]
+            c.reverse()
+            for el in c:
+                if len(el) > 0:
+                    machine.name = el
+            machines.append(machine)
+        return machines
 
     def existsVM(self, vm):
-        """ existsVM - VM is simply localhost which exists.
+        """ existsVM - Executes `docker inspect CONTAINER`, which returns
+        a non-zero status upon not finding a container.
         """
-        return True
+        instanceName = self.instanceName(vm.id, vm.name)
+        p = subprocess.Popen(['docker', 'inspect', instanceName],
+                            stdout=open('/dev/null'),
+                            stderr=open('/dev/null'))
+        return (p.poll() is 0)
 
