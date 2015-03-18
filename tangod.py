@@ -34,17 +34,14 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
-import threading, time, logging, sys, signal, re, gc
-import shlex, subprocess, random, string, os, urllib, stat
-from collections import deque
+import threading, time, logging, re
+import os, stat
 
-from config import *
-from preallocator import *
-from jobQueue import *
-from tangoObjects import *
+from config import Config
+from tangoObjects import TangoJob
 
-class tangoServer:
-    """ tangoServer - Implements the API functions that the server accepts
+class TangoServer:
+    """ TangoServer - Implements the API functions that the server accepts
     """
     def __init__(self, jobQueue, preallocator, vmms):
         self.daemon = True
@@ -203,6 +200,9 @@ class tangoServer:
                     log.warning("Killed these %s VMs on restart: %s" %
                             (vmms_name, namelist))
 
+            for job in self.jobQueue.jobQueue.values():
+                self.log.debug("job: %s, assigned: %s" % (str(job.name), str(job.assigned)))
+
         except Exception as err:
             log.error("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
             os._exit(1)
@@ -218,28 +218,23 @@ def validateJob(job, vmms):
     if (not isinstance(job, TangoJob)):
         return -1
 
-    # Create an empty trace in case we need to append any error
-    # messages there
-    if not job.trace:
-        job.trace = []
-
     # Every job must have a name
     if not job.name:
         log.error("validateJob: Missing job.name")
-        job.trace.append("%s|validateJob: Missing job.name" %
+        job.appendTrace("%s|validateJob: Missing job.name" %
                 (time.ctime(time.time()+time.timezone)))
         errors += 1
 
     # Check the virtual machine field
     if not job.vm:
         log.error("validateJob: Missing job.vm")
-        job.trace.append("%s|validateJob: Missing job.vm" %
+        job.appendTrace("%s|validateJob: Missing job.vm" %
                 (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not job.vm.image:
             log.error("validateJob: Missing job.vm.image")
-            job.trace.append("%s|validateJob: Missing job.vm.image" %
+            job.appendTrace("%s|validateJob: Missing job.vm.image" %
                     (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
@@ -249,13 +244,13 @@ def validateJob(job, vmms):
                 imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
                 if job.vm.image not in imgList:
                     log.error("validateJob: Image not found: %s" % job.vm.image)
-                    job.trace.append("%s|validateJob: Image not found: %s" %
+                    job.appendTrace("%s|validateJob: Image not found: %s" %
                             (time.ctime(time.time()+time.timezone), job.vm.image))
                     errors += 1
                 # Check if image has read permissions
                 elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
                     log.error("validateJob: Not readable: %s" % job.vm.image)
-                    job.trace.append("%s|validateJob: Not readable: %s" %
+                    job.appendTrace("%s|validateJob: Not readable: %s" %
                                 (time.ctime(time.time()+time.timezone), job.vm.image))
                     errors += 1
                 else:
@@ -264,26 +259,26 @@ def validateJob(job, vmms):
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
-            job.trace.append("%s|validateJob: Missing job.vm.vmms" %
+            job.appendTrace("%s|validateJob: Missing job.vm.vmms" %
                     (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if job.vm.vmms not in vmms:
                 log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
-                job.trace.append("%s|validateJob: Invalid vmms name: %s" %
+                job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
                         (time.ctime(time.time()+time.timezone), job.vm.vmms))
                 errors += 1
 
     # Check the output file
     if not job.outputFile:
         log.error("validateJob: Missing job.outputFile")
-        job.trace.append("%s|validateJob: Missing job.outputFile" %
+        job.appendTrace("%s|validateJob: Missing job.outputFile" %
                 (time.ctime(time.time()+time.timezone)))
         errors += 1
     else:
         if not os.path.exists(os.path.dirname(job.outputFile)):
             log.error("validateJob: Bad output path: %s", job.outputFile)
-            job.trace.append("%s|validateJob: Bad output path: %s" %
+            job.appendTrace("%s|validateJob: Bad output path: %s" %
                     (time.ctime(time.time()+time.timezone), job.outputFile))
             errors += 1
 
@@ -297,14 +292,14 @@ def validateJob(job, vmms):
     for inputFile in job.input:
         if not inputFile.localFile:
             log.error("validateJob: Missing inputFile.localFile")
-            job.trace.append("%s|validateJob: Missing inputFile.localFile" %
+            job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
                     (time.ctime(time.time()+time.timezone)))
             errors += 1
         else:
             if not os.path.exists(inputFile.localFile):
                 log.error("validateJob: Input file %s not found" %
                         (inputFile.localFile))
-                job.trace.append("%s|validateJob: Input file %s not found" %
+                job.appendTrace("%s|validateJob: Input file %s not found" %
                         (time.ctime(time.time()+time.timezone), inputFile.localFile))
                 errors += 1
 
@@ -317,7 +312,7 @@ def validateJob(job, vmms):
     # Any problems, return an error status
     if errors > 0:
         log.error("validateJob: Job rejected: %d errors" % errors)
-        job.trace.append("%s|validateJob: Job rejected: %d errors" %
+        job.timerace.append("%s|validateJob: Job rejected: %d errors" %
                 (time.ctime(time.time()+time.timezone), errors))
         return -1
     else:

@@ -2,6 +2,10 @@
 #
 # Implements objects used to pass state within Tango.
 #
+import redis
+import pickle, Queue
+from config import Config
+
 
 class InputFile():
     """
@@ -37,40 +41,91 @@ class TangoJob():
     """
         TangoJob - A job that is to be run on a TangoMachine
     """
-    def __init__(self, assigned = False, retries = 0, vm = None,
-                outputFile = None, name = None, input = [],
-                notifyURL = None, timeout = 0, trace = None, 
+    def __init__(self, vm = None,
+                outputFile = None, name = None, input = None,
+                notifyURL = None, timeout = 0, 
                 maxOutputFileSize = 4096):
-        self.assigned = assigned
-        self.retries = retries
+        self.assigned = False
+        self.retries = 0
+
         self.vm = vm
-        self.input = input
+        if input is None:
+            self.input = []
+        else:
+            self.input = input
+
         self.outputFile = outputFile
         self.name = name
         self.notifyURL = notifyURL
         self.timeout = timeout
-        self.trace = trace
+        self.trace = []
         self.maxOutputFileSize = maxOutputFileSize
         self._remoteLocation = None
 
+    def makeAssigned(self):
+        self.syncRemote()
+        self.assigned = True
+        self.updateRemote()
+
+    def makeUnassigned(self):
+        self.syncRemote()
+        self.assigned = False
+        self.updateRemote()
+
+    def isNotAssigned(self):
+        self.syncRemote()
+        return not self.assigned
+
     def appendTrace(self, trace_str):
-        if Config.USE_REDIS and self._remoteLocation is not None:
-            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.syncRemote()
+        self.trace.append(trace_str) 
+        self.updateRemote()
+
+    def setId(self, new_id):
+        self.id = new_id
+        if self._remoteLocation is not None:
             dict_hash = self._remoteLocation.split(":")[0]
             key = self._remoteLocation.split(":")[1]
             dictionary = TangoDictionary(dict_hash)
-            self.trace.append(trace_str)
+            dictionary.delete(key)
+            self._remoteLocation = dict_hash + ":" + str(new_id)
+            self.updateRemote()
+
+
+    def syncRemote(self):
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
+            dictionary = TangoDictionary(dict_hash)
+            temp_job = dictionary.get(key)
+            self.updateSelf(temp_job)
+
+    def updateRemote(self):
+        if Config.USE_REDIS and self._remoteLocation is not None:
+            dict_hash = self._remoteLocation.split(":")[0]
+            key = self._remoteLocation.split(":")[1]
+            dictionary = TangoDictionary(dict_hash)
             dictionary.set(key, self)
 
-        else:
-            self.trace.append(trace_str)
+    def updateSelf(self, other_job):
+        self.assigned = other_job.assigned
+        self.retries = other_job.retries
+        self.vm = other_job.vm
+        self.input = other_job.input
+        self.outputFile = other_job.outputFile
+        self.name = other_job.name
+        self.notifyURL = other_job.notifyURL
+        self.timeout = other_job.timeout
+        self.trace = other_job.trace
+        self.maxOutputFileSize = other_job.maxOutputFileSize
+
 
 
 def TangoIntValue(object_name, obj):
     if Config.USE_REDIS:
         return TangoRemoteIntValue(object_name, obj)
     else:
-        return TangoNativeIntValue()
+        return TangoNativeIntValue(object_name, obj)
 
 
 class TangoRemoteIntValue():
@@ -78,7 +133,9 @@ class TangoRemoteIntValue():
         """The default connection parameters are: host='localhost', port=6379, db=0"""
         self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
         self.key = '%s:%s' %(namespace, name)
-        self.set(value)
+        cur_val = self.__db.get(self.key)
+        if cur_val is None:
+            self.set(value)
 
     def increment(self):
         return self.__db.incr(self.key)
@@ -177,7 +234,7 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
         self.hash_name = object_name
-    
+
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
 
@@ -203,6 +260,7 @@ class TangoRemoteDictionary():
         return valslist
 
     def delete(self, id):
+        self._remoteLocation = None
         self.r.hdel(self.hash_name, id)
 
     def _clean(self):
@@ -216,7 +274,8 @@ class TangoRemoteDictionary():
             tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
             keyvals.append(tup)
 
-        return keyvals
+
+        return iter(keyvals)
 
 
 class TangoNativeDictionary():
@@ -228,7 +287,10 @@ class TangoNativeDictionary():
         self.dict[str(id)] = obj
 
     def get(self, id):
-        return self.dict[str(id)]
+        if str(id) in self.dict.keys():
+            return self.dict[str(id)]
+        else:
+            return None
 
     def keys(self):
         return self.dict.keys()
@@ -237,7 +299,9 @@ class TangoNativeDictionary():
         return self.dict.values()
 
     def delete(self, id):
-        del self.dict[id]
+        if str(id) in self.dict.keys():
+            del self.dict[str(id)]
+
 
     def iteritems(self):
         return self.dict.iteritems()
@@ -245,3 +309,4 @@ class TangoNativeDictionary():
     def _clean(self):
         # only for testing
         return
+

@@ -4,13 +4,20 @@
 # interface of Tango.
 #
 
-import sys, os, hashlib, time, json, random, logging, logging.handlers
+import sys, os, inspect, hashlib, json, logging, logging.handlers
 
-from tangod import *
-from jobQueue import *
-from preallocator import *
-from tangoObjects import *
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+
+from tangod import TangoServer
+from jobQueue import JobQueue
+from jobManager import JobManager
+from preallocator import Preallocator
+from tangoObjects import TangoJob, TangoMachine, InputFile
+
 from config import Config
+
 
 class Status:
 
@@ -50,15 +57,34 @@ class TangoREST:
     keys = Config.KEYS
 
     def __init__(self):
-        self.vmms = {Config.VMMS_NAME:Config.VMMS}
+
+        vmms = None
+
+        if Config.VMMS_NAME == "localSSH":
+            from vmms.localSSH import LocalSSH
+            vmms = LocalSSH()
+        elif Config.VMMS_NAME == "tashiSSH":
+            from vmms.tashiSSH import TashiSSH
+            vmms = TashiSSH()
+        elif Config.VMMS_NAME == "ec2SSH":
+            from vmms.ec2SSH import Ec2SSH
+            vmms = Ec2SSH()
+
+        self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
-        self.jobManager = JobManager(self.queue, self.vmms, self.preallocator)
-        self.tango = tangoServer(self.queue, self.preallocator, self.vmms)
+
+        if not Config.USE_REDIS:
+            # creates a local Job Manager if there is no persistent
+            # memory between processes. Otherwise, JobManager will
+            # be initiated separately
+            JobManager(self.queue, self.vmms, self.preallocator)
+
+        self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
         logging.basicConfig(
                 filename = self.LOGFILE,
                 format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                level = config.Config.LOGLEVEL
+                level = Config.LOGLEVEL
                 )
         logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")
@@ -282,6 +308,9 @@ class TangoREST:
                 result['jobId'] = jobId
                 return result
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("addJob request failed: %s" % str(e))
                 return self.status.create(-1, str(e))
         else:

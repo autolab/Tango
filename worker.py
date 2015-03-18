@@ -1,9 +1,9 @@
 #
 # worker.py - Thread that shepherds a job through it execution sequence
 #
-import threading, time, logging, signal, sys, urllib, tempfile, requests
+import threading, time, logging, tempfile, requests, subprocess, sys, os
 
-from config import *
+from config import Config
 
 #
 # Worker - The worker class is very simple and very dumb. The goal is
@@ -57,14 +57,14 @@ class Worker( threading.Thread ):
         """
         self.log.error("Job %s:%d failed: %s" %
                        (self.job.name, self.job.id, err))
-        self.job.trace.append("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
+        self.job.appendTrace("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
                                                            self.job.name, self.job.id, err))
 
         # Try a few times before giving up
         if self.job.retries < Config.JOB_RETRIES:
             subprocess.call("rm -f %s" % (hdrfile), shell=True)
             self.detachVM(return_vm=False, replace_vm=True)
-            self.jobQueue.unassignJob(self.job)
+            self.jobQueue.unassignJob(self.job.id)
 
         # Here is where we give up
         else:
@@ -127,28 +127,36 @@ class Worker( threading.Thread ):
             self.appendMsg(hdrfile, "Received job %s:%d" %
                            (self.job.name, self.job.id))
 
+            self.log.debug("Run worker")
+
             vm = None
 
             # Assigning job to a preallocated VM
             if self.preVM: #self.preVM:
+                self.log.debug("Assigning job to preallocated VM")
                 self.job.vm = self.preVM
+                self.job.updateRemote()
                 self.log.info("Assigned job %s:%d existing VM %s" %
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.preVM.id,
                                                       self.preVM.name)))
-                self.job.trace.append("%s|Assigned job %s:%d existing VM %s" %
+                self.job.appendTrace("%s|Assigned job %s:%d existing VM %s" %
                                       (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.preVM.id,
                                                               self.preVM.name)))
+            	self.log.debug("Assigned job to preallocated VM")
             # Assigning job to a new VM
             else:
+                self.log.debug("Assigning job to a new VM")
                 self.job.vm.id = self.job.id
+                self.job.updateRemote()
+
                 self.log.info("Assigned job %s:%d new VM %s" %
                               (self.job.name, self.job.id,
                                self.vmms.instanceName(self.job.vm.id,
                                                       self.job.vm.name)))
-                self.job.trace.append("%s|Assigned job %s:%d new VM %s" %
+                self.job.appendTrace("%s|Assigned job %s:%d new VM %s" %
                                       (time.ctime(time.time()+time.timezone),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.job.vm.id,
@@ -156,19 +164,24 @@ class Worker( threading.Thread ):
 
                 # Host name returned from EC2 is stored in the vm object
                 self.vmms.initializeVM(self.job.vm)
+                self.log.debug("Asigned job to a new VM")
 
             vm = self.job.vm
 
+            
             # Wait for the instance to be ready
             self.log.debug("Job %s:%d waiting for VM %s" %
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))
-            self.job.trace.append("%s|Job %s:%d waiting for VM %s" %
+            self.job.appendTrace("%s|Job %s:%d waiting for VM %s" %
                                   (time.ctime(time.time()+time.timezone), 
                                    self.job.name, self.job.id,
                                    self.vmms.instanceName(vm.id, vm.name)))
+            self.log.debug("Waiting for VM")
             ret["waitvm"] = self.vmms.waitVM(vm,
                                              Config.WAITVM_TIMEOUT)
+
+            self.log.debug("Waited for VM")
 
             # If the instance did not become ready in a reasonable
             # amount of time, then reschedule the job, detach the VM,
@@ -184,7 +197,7 @@ class Worker( threading.Thread ):
             self.log.info("VM %s ready for job %s:%d" %
                           (self.vmms.instanceName(vm.id, vm.name),
                            self.job.name, self.job.id))
-            self.job.trace.append("%s|VM %s ready for job %s:%d" %
+            self.job.appendTrace("%s|VM %s ready for job %s:%d" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.vmms.instanceName(vm.id, vm.name),
                                    self.job.name, self.job.id))
@@ -195,7 +208,7 @@ class Worker( threading.Thread ):
                 Config.copyin_errors += 1
             self.log.info("Input copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyin"]))
-            self.job.trace.append("%s|Input copied for job %s:%d [status=%d]" %
+            self.job.appendTrace("%s|Input copied for job %s:%d [status=%d]" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.job.name,
                                    self.job.id, ret["copyin"]))
@@ -208,7 +221,7 @@ class Worker( threading.Thread ):
                     Config.runjob_timeouts += 1
             self.log.info("Job %s:%d executed [status=%s]" %
                           (self.job.name, self.job.id, ret["runjob"]))
-            self.job.trace.append("%s|Job %s:%d executed [status=%s]" %
+            self.job.appendTrace("%s|Job %s:%d executed [status=%s]" %
                                   (time.ctime(time.time()+time.timezone),
                                    self.job.name, self.job.id,
                                    ret["runjob"]))
@@ -219,7 +232,7 @@ class Worker( threading.Thread ):
                 Config.copyout_errors += 1
             self.log.info("Output copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyout"]))
-            self.job.trace.append("%s|Output copied for job %s:%d [status=%d]"
+            self.job.appendTrace("%s|Output copied for job %s:%d [status=%d]"
                                   % (time.ctime(time.time()+time.timezone),
                                      self.job.name,
                                      self.job.id, ret["copyout"]))

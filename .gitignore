@@ -8,3 +8,12 @@ scripts/*.sh
 vmms/id_rsa*
 # config
 config.py
+
+# Virtualenv
+.Python
+bin
+lib
+include
+
+# Mac OS X custom attribute files
+.DS_Store
