@@ -15,10 +15,10 @@ class Config:
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = "mp"
+    PREFIX = "local"
 
     # Default port for the RESTful server to listen on. 
-    PORT = 2908
+    PORT = 3000
 
 	# Log file. Setting this to None sends the server output to stdout
     LOGFILE = "tango3.log"
@@ -27,7 +27,7 @@ class Config:
     LOGLEVEL = logging.DEBUG
 
     # Courselabs directory. Must be created before starting Tango
-    COURSELABS = "/usr/share/mpandyaAutolab/Tango/courselabs"
+    COURSELABS = "<INSERT_PATH_HERE>"
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango. Options are: "localSSH", "tashiSSH", "ec2SSH"
@@ -38,7 +38,7 @@ class Config:
     #
 
     # Keys for Tango to authenticate client requests
-    KEYS = ["mp_test"]
+    KEYS = ["test"]
 
     # Queue manager checks for new work every so many seconds
     DISPATCH_PERIOD = 0.2
