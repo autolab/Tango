@@ -138,7 +138,8 @@ class DockerSSH:
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
-        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+        # return str(id)
+        return "%s-%s-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, vm):
         """ Returns the domain name that is stored in the vm
@@ -165,7 +166,8 @@ class DockerSSH:
         args.append('while true; do sleep 1; done')
         ret = timeout(args, config.Config.INITIALIZEVM_TIMEOUT)
         if ret != 0:
-            self.log.error("Failed to create container %s", instanceName)
+            self.log.error("Failed to create container %s (%d)" %
+                (instanceName, ret))
             return None
         return vm
 
@@ -189,10 +191,10 @@ class DockerSSH:
                 return -1
 
             # Give the docker container a string to echo back to us.
-            ret = dockerExec(instanceName, ['/bin/echo', echo_string])
+            ret = dockerExec(instanceName, ['/bin/echo', 'echo_string'])
 
-            self.log.debug("Docker %s: echo returned with \
-                %d" % (instanceName, echo))
+            self.log.debug("Docker %s: echo terminated with status \
+                %d" % (instanceName, ret))
 
             if ret == 0:
                 return 0
@@ -272,11 +274,13 @@ class DockerSSH:
         ret = timeout(['docker', 'stop', instanceName], 
             config.Config.DOCKER_STOP_TIMEOUT)
         if ret != 0:
-            self.log.error("Failed to stop container %s" % instanceName)
+            self.log.error("Failed to stop container %s (%d)" % 
+                (instanceName, ret))
         ret = timeout(['docker', 'run', instanceName],
             config.Config.DOCKER_RM_TIMEOUT)
         if ret != 0:
-            self.log.error("Failed to destroy container %s" % instanceName)
+            self.log.error("Failed to destroy container %s" % 
+                (instanceName, ret))
         return
 
     def safeDestroyVM(self, vm):
@@ -303,11 +307,13 @@ class DockerSSH:
             machine = TangoMachine()
             machine.vmms = 'dockerSSH'
             c = container.split(' ')
-            machine.id = c[0]
+            # machine.id = c[0]
             c.reverse()
             for el in c:
                 if len(el) > 0:
                     machine.name = el
+                    machine.id = el
+                    break
             machines.append(machine)
         return machines
 
