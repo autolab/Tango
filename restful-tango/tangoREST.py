@@ -58,6 +58,12 @@ class TangoREST:
 
     def __init__(self):
 
+        logging.basicConfig(
+                filename = self.LOGFILE,
+                format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+                level = Config.LOGLEVEL
+                )
+
         vmms = None
 
         if Config.VMMS_NAME == "localSSH":
@@ -69,6 +75,10 @@ class TangoREST:
         elif Config.VMMS_NAME == "ec2SSH":
             from vmms.ec2SSH import Ec2SSH
             vmms = Ec2SSH()
+        elif Config.VMMS_NAME == "dockerSSH":
+            from vmms.dockerSSH import DockerSSH
+            vmms = DockerSSH()
+            
 
         self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
@@ -81,11 +91,6 @@ class TangoREST:
             JobManager(self.queue, self.vmms, self.preallocator)
 
         self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
-        logging.basicConfig(
-                filename = self.LOGFILE,
-                format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                level = Config.LOGLEVEL
-                )
         logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
