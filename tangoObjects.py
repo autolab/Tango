@@ -6,6 +6,15 @@ import redis
 import pickle, Queue
 from config import Config
 
+redisConnection = None
+
+def getRedisConnection():
+    global redisConnection
+    if redisConnection is None:
+        redisConnection = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
+
+    return redisConnection
+
 
 class InputFile():
     """
@@ -131,7 +140,7 @@ def TangoIntValue(object_name, obj):
 class TangoRemoteIntValue():
     def __init__(self, name, value, namespace="intvalue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
-        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.__db= getRedisConnection()
         self.key = '%s:%s' %(namespace, name)
         cur_val = self.__db.get(self.key)
         if cur_val is None:
@@ -174,7 +183,7 @@ class TangoRemoteQueue():
     """Simple Queue with Redis Backend"""
     def __init__(self, name, namespace="queue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
-        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.__db= getRedisConnection()
         self.key = '%s:%s' %(namespace, name)
 
     def qsize(self):
@@ -216,7 +225,7 @@ class TangoRemoteQueue():
         return ret
 
     def __setstate__(self, dict):
-        self.__db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+        self.__db= getRedisConnection()
         self.__dict__.update(dict)
 
 
@@ -232,7 +241,7 @@ def TangoDictionary(object_name):
 
 class TangoRemoteDictionary():
     def __init__(self, object_name):
-        self.r = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
+        self.r = getRedisConnection()
         self.hash_name = object_name
 
     def set(self, id, obj):
