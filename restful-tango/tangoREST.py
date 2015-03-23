@@ -25,6 +25,7 @@ class Status:
         self.found_dir = self.create(0, "Found directory")
         self.made_dir = self.create(0, "Created directory")
         self.file_uploaded = self.create(0, "Uploaded file")
+        self.file_exists = self.create(0, "File exists")
         self.job_added = self.create(0, "Job added")
         self.obtained_info = self.create(0, "Found info successfully")
         self.obtained_jobs = self.create(0, "Found list of jobs")
@@ -117,16 +118,16 @@ class TangoREST:
         labPath = self.getDirPath(key, courselab)
         return "%s/%s" % (labPath, self.OUTPUT_FOLDER)
 
-    def computeMD5(self, directory, files):
+    def computeMD5(self, directory):
         """ computeMD5 - Computes the MD5 hash of given files in the 
         given directory
         """
         result = []
-        for el in files:
+        for elem in os.listdir(directory):
             try:
-                body = open("%s/%s" % (directory, el)).read()
+                body = open("%s/%s" % (directory, elem)).read()
                 md5hash = hashlib.md5(body).hexdigest()
-                result.append({'md5': md5hash, 'localFile': el})
+                result.append({'md5': md5hash, 'localFile': elem})
             except IOError:
                 continue
         return result
@@ -248,8 +249,7 @@ class TangoREST:
                 if os.path.exists(labPath):
                     self.log.info("Found directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.found_dir
-                    files = os.listdir(labPath)
-                    statusObj['files'] = self.computeMD5(labPath, files)
+                    statusObj['files'] = self.computeMD5(labPath)
                     return statusObj
                 else: 
                     outputPath = self.getOutPath(key, courselab)
@@ -274,6 +274,10 @@ class TangoREST:
             try:
                 if os.path.exists(labPath):
                     absPath = "%s/%s" % (labPath, file)
+                    if os.path.exists(absPath):
+                        fileMD5 = hashlib.md5(body).hexdigest()
+                        if fileMD5 in [obj["md5"] for obj in self.computeMD5(labPath)]:
+                            return self.status.file_exists
                     fh = open(absPath, "wt")
                     fh.write(body)
                     fh.close()
