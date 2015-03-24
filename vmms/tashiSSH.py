@@ -280,7 +280,7 @@ class TashiSSH:
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
             %d -o %d autolab &> output" % (
             config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
-            runTimeout, maxOutputFileSize) 
+            runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE) 
         (ssh_tries, ret) = ssh_retry(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
                                 ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
