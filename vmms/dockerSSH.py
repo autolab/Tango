@@ -2,7 +2,7 @@
 # dockerSSH.py - Implements the Tango VMMS interface to run Tango jobs in 
 #                docker containers. In this context, VMs are docker containers.
 #
-import random, subprocess, re, time, logging, threading, os, sys
+import random, subprocess, re, time, logging, threading, os, sys, shutil
 import config
 from tangoObjects import TangoMachine
 
@@ -78,7 +78,6 @@ class DockerSSH:
             self.log = logging.getLogger("DockerSSH")
             # If running on OS X, create a boot2docker VM
             if sys.platform == self._OS_X:
-                # self.boot2dockerVM()
                 # boot2docker initialization will be part of initial
                 # set up with Tango.
                 self.docker_host_ip = subprocess.check_output(['boot2docker', 'ip']).strip('\n')
@@ -90,48 +89,6 @@ class DockerSSH:
         except Exception as e:
             self.log.error(str(e))
             exit(1)
-
-    def boot2dockerVM(self):
-        """ boot2dockerVM - Initializes and starts a boot2docker 
-            VM and sets its environment variables. If boot2docker
-            VM has already been set up on the machine, these steps
-            will simply exit gracefully.
-        """
-        init_ret = -1
-        start_ret = -1
-        env_ret = -1
-        image_ret = -1
-
-        self.log.debug("Initializing boot2docker VM.")
-        init_ret = timeout(['boot2docker', 'init'], 
-                            config.Config.BOOT2DOCKER_INIT_TIMEOUT)
-        
-        self.log.debug("Starting boot2docker VM.")
-        if init_ret == 0:
-            start_ret = timeout(['boot2docker', 'start'], 
-                        config.Config.BOOT2DOCKER_START_TIMEOUT)
-        
-        self.log.debug("Setting environment variables for boot2docker VM.")
-        if start_ret == 0:
-            env_ret = timeout(['boot2docker', 'shellinit'],
-                        config.Config.BOOT2DOCKER_ENV_TIMEOUT)
-        
-        self.log.debug("Pulling the autolab docker image from docker hub.")
-        if env_ret == 0:
-            image_ret = timeout(['docker', 'build', '-t', 
-                        self.config.Config.DOCKER_IMAGE, '.'],
-                        config.Config.DOCKER_IMAGE_BUILD_TIMEOUT)
-
-        if init_ret != 0:
-            raise Exception('Could not initialize boot2docker.')
-        if start_ret != 0:
-            raise Exception('Could not start boot2docker VM.')
-        if env_ret != 0:
-            raise Exception('Could not set environment variables \
-                of boot2docker VM.')
-        if image_ret != 0:
-            raise Exception('Could not pull autolab docker image \
-                from docker hub.')
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -151,108 +108,46 @@ class DockerSSH:
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM -  Start dockerized autograding container by 
-        running a trivially long-running process so that the container
-        continues to run. Otherwise, the container will stop running 
-        once the program has come to completion.
+        """ initializeVM -  Nothing to do for initializeVM
         """
-        instanceName = self.instanceName(vm.id, vm.name)
-        args = ['docker', 'run', '-d']
-        args.append('--name')
-        args.append(instanceName)
-        args.append(config.Config.DOCKER_IMAGE)
-        args.append('/bin/bash')
-        args.append('-c')
-        args.append('while true; do sleep 1; done')
-        ret = timeout(args, config.Config.INITIALIZEVM_TIMEOUT)
-        if ret != 0:
-            self.log.error("Failed to create container %s (%d)" %
-                (instanceName, ret))
-            return None
         return vm
 
     def waitVM(self, vm, max_secs):
-        """ waitVM - Wait at most max_secs for a docker container to become
-        ready. Return error if it takes too long. This should be immediate 
-        since the container is already initialized in initializeVM.
+        """ waitVM - Nothing to do for waitVM
         """
-
-        instanceName = self.instanceName(vm.id, vm.name)
-        start_time = time.time()
-
-        while(True):
-
-            elapsed_secs = time.time() - start_time
-
-            # Give up if the elapsed time exceeds the allowable time
-            if elapsed_secs > max_secs:
-                self.log.info("Docker %s: Could not reach container \
-                    after %d seconds." % (instanceName, elapsed_secs))
-                return -1
-
-            # Give the docker container a string to echo back to us.
-            ret = dockerExec(instanceName, ['/bin/echo', 'echo_string'])
-
-            self.log.debug("Docker %s: echo terminated with status \
-                %d" % (instanceName, ret))
-
-            if ret == 0:
-                return 0
-
-            # Sleep a bit before trying again
-            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+        return
 
     def copyIn(self, vm, inputFiles):
-        """ copyIn - Copy input files to the docker container. This is
-        a little hacky because it actually does:
-
-        `cat FILE | docker exec -i CONTAINER 'sh -c cat > FILE'`
-
-        This is because there is no direct way to copy files to a container
-        unless the container is mounted to a specific directory on the host.
-        The other option is to set up an ssh server on the container. This
-        option should be pursued in future.
+        """ copyIn - Create a directory to be mounted as a volume
+        for the docker containers. Copy input files to this directory.
         """
         instanceName = self.instanceName(vm.id, vm.name)
 
-        # Create a fresh input directory
-        mkdir = dockerExec(instanceName, ['(cd /home; \
-                            rm -rf autolab; mkdir autolab \
-                            chown autolab autolab; chown :autolab autolab \
-                            rm -rf output; mkdir output \
-                            chown autolab output; chown :autolab output)'])
-        
-        if mkdir != 0:
-            self.log.error("Failed to create directory in container %s"
-                % instanceName)
-            return -1
-
-        # Copy the input files to the input directory
+        # Create a fresh volume
+        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
+        os.makedirs(volume_path)
         for file in inputFiles:
-            ret = timeout(['cat', file.localFile, '|',
-                            'docker', 'exec', '-i', instanceName,
-                            'sh', '-c', 'cat > /home/autolab/' + file.destFile],
-                            config.Config.COPYIN_TIMEOUT)
-            if ret != 0:
-                self.log.error("Failed to copy file %s to container %s"
-                    % (file.localFile, instanceName))
-                return ret
+            shutil.copy(file.localFile, volume_path + file.destFile)
+        
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
-        """ runJob - Run the make command on a VM using SSH and
-        redirect output to file "output".
+        """ runJob - Run a docker container by doing the follows:
+        - mount directory corresponding to this job to /home/autolab
+          in the container
+        - run autodriver with corresponding ulimits and timeout as
+          autolab user
         """
-        domain_name = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.name)
-        self.log.debug("runJob: Running job on VM %s" % instanceName)
-        # Setting ulimits for VM and running job
-        runcmd = '"cd /home/; autodriver -u %d -f %d -t %d -o %d \
-                    autolab &> output/feedback.out"' % (config.Config.VM_ULIMIT_USER_PROC, 
-                        config.Config.VM_ULIMIT_FILE_SIZE, runTimeout, 1000 * 1024)
-        args = ['su autolab -c ' + runcmd]
-        return dockerExec(instanceName, args, runTimeout * 2)
-        # runTimeout * 2 is a temporary hack. The driver will handle the timout
+        args = ['docker', 'run', '--name', instanceName, -v]
+        args.append('%s:%s' % 
+                    (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/autolab'))
+        args.append(config.Config.DOCKER_IMAGE)
+        args.append('autodriver -u %d -f %d -t %d -o %d autolab &> output' %
+                    (config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
+                        runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE))
+        return timeout(args, runTimeout)
+
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the autograder feedback from container to
@@ -260,23 +155,15 @@ class DockerSSH:
         """
         instanceName = self.instanceName(vm.id, vm.name)
 
-        cmd = ['docker', 'cp']
-        cmd.append('%s:/home/output/feedback.out' % instanceName)
-        cmd.append(destFile)
-        ret = timeout(cmd, config.Config.COPYOUT_TIMEOUT)
+        shutil.copy(self.config.Config.DOCKER_VOLUME_PATH + instancName, destFile)
 
-        return ret
+        return 0
 
     def destroyVM(self, vm):
-        """ destroyVM - Stop and delete the docker.
+        """ destroyVM - Delete the docker container.
         """
         instanceName = self.instanceName(vm.id, vm.name)
-        ret = timeout(['docker', 'stop', instanceName], 
-            config.Config.DOCKER_STOP_TIMEOUT)
-        if ret != 0:
-            self.log.error("Failed to stop container %s (%d)" % 
-                (instanceName, ret))
-        ret = timeout(['docker', 'run', instanceName],
+        ret = timeout(['docker', 'run', '-f', instanceName],
             config.Config.DOCKER_RM_TIMEOUT)
         if ret != 0:
             self.log.error("Failed to destroy container %s" % 
@@ -284,6 +171,9 @@ class DockerSSH:
         return
 
     def safeDestroyVM(self, vm):
+        """ safeDestroyVM - Delete the docker container and make
+        sure it is removed.
+        """
         start_time = time.time()
         instanceName = self.instanceName(vm.id, vm.name)
         while self.existsVM(vm):
