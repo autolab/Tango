@@ -118,8 +118,7 @@ class DockerSSH:
         """ copyIn - Create a directory to be mounted as a volume
         for the docker containers. Copy input files to this directory.
         """
-        instanceName = self.instanceName(vm.id, vm.name)
-
+        instanceName = self.instanceName(vm.id, vm.image)
         # Create a fresh volume
         volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName +'/'
         os.makedirs(volume_path)
@@ -135,7 +134,7 @@ class DockerSSH:
         - run autodriver with corresponding ulimits and timeout as
           autolab user
         """
-        instanceName = self.instanceName(vm.id, vm.name)
+        instanceName = self.instanceName(vm.id, vm.image)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % 
                 (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/mount')]
@@ -159,24 +158,31 @@ class DockerSSH:
         """ copyOut - Copy the autograder feedback from container to
         destFile on the Tango host.
         """
-        instanceName = self.instanceName(vm.id, vm.name)
+        instanceName = self.instanceName(vm.id, vm.image)
         volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
-        shutil.copy(volume_path + '/feedback', destFile)
+        print os.listdir(volume_path)
+        print volume_path + '/feedback'
+        shutil.move(volume_path + '/feedback', destFile)
         self.log.info('Copied feedback file to %s' % destFile)
-        shutil.rmtree(volume_path)
-        self.log.info('Deleted directory %s' % volume_path)
+        
+        # Must always clean up containers in order to maintain statelessness.
+        # A solution with `docker attach` could be explored.
+        self.destroyVM(vm)
 
         return 0
 
     def destroyVM(self, vm):
         """ destroyVM - Delete the docker container.
         """
-        instanceName = self.instanceName(vm.id, vm.name)
-        ret = timeout(['docker', 'rm', '-f', instanceName],
+        instanceName = self.instanceName(vm.id, vm.image)
+        # Do a hard kill on corresponding docker container.
+        # Return status does not matter.
+        timeout(['docker', 'rm', '-f', instanceName],
             config.Config.DOCKER_RM_TIMEOUT)
-        if ret != 0:
-            self.log.error("Failed to destroy container %s" % 
-                (instanceName, ret))
+        # Destroy corresponding volume if it exists.
+        if instanceName in os.listdir(config.Config.DOCKER_VOLUME_PATH):
+            shutil.rmtree(config.Config.DOCKER_VOLUME_PATH + instanceName)
+            self.log.debug('Deleted volume %s' % instanceName)
         return
 
     def safeDestroyVM(self, vm):
@@ -184,11 +190,10 @@ class DockerSSH:
         sure it is removed.
         """
         start_time = time.time()
-        instanceName = self.instanceName(vm.id, vm.name)
         while self.existsVM(vm):
             if (time.time()-start_time > config.Config.DESTROY_SECS):
                 self.log.error("Failed to safely destroy container %s"
-                    % instanceName)
+                    % vm.name)
                 return
             self.destroyVM(vm)
         return
@@ -196,23 +201,15 @@ class DockerSSH:
     def getVMs(self):
         """ getVMs - Executes and parses `docker ps`
         """
-        # Get all docker containers
+        # Get all volumes of docker containers
         machines = []
-        containers_str = subprocess.check_output(['docker', 'ps'])
-        containers_l = containers_str.split('\n')
-        containers_l.reverse()
-        containers_l.pop()
-        for container in containers_l:
+        for volume in os.listdir(config.Config.DOCKER_VOLUME_PATH):
             machine = TangoMachine()
             machine.vmms = 'dockerSSH'
-            c = container.split(' ')
-            # machine.id = c[0]
-            c.reverse()
-            for el in c:
-                if len(el) > 0:
-                    machine.name = el
-                    machine.id = el
-                    break
+            machine.name = volume
+            volume_l = volume.split('-')
+            machine.id = volume_l[1]
+            machine.image = volume_l[2]
             machines.append(machine)
         return machines
 
@@ -221,8 +218,6 @@ class DockerSSH:
         a non-zero status upon not finding a container.
         """
         instanceName = self.instanceName(vm.id, vm.name)
-        p = subprocess.Popen(['docker', 'inspect', instanceName],
-                            stdout=open('/dev/null'),
-                            stderr=open('/dev/null'))
-        return (p.poll() is 0)
+        ret = timeout(['docker', 'inspect', instanceName])
+        return (ret is 0)
 
