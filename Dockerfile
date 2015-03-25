@@ -12,9 +12,8 @@ RUN apt-get install -y build-essential
 WORKDIR /home
 RUN useradd autolab
 RUN useradd autograde
-RUN mkdir autolab output autograde
+RUN mkdir autolab autograde
 RUN chown autolab:autolab autolab
-RUN chown autolab:autolab output
 RUN chown autograde:autograde autograde
 RUN apt-get install -y git
 RUN git clone https://github.com/autolab/Tango.git
@@ -32,3 +31,6 @@ RUN rm -rf Tango/
 # Check installation
 RUN ls -l /home
 RUN which autodriver
+
+# Job initialization steps
+CMD cp -r mount/* autolab/; su autolab -c
