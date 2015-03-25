@@ -124,11 +124,11 @@ class DockerSSH:
         instanceName = self.instanceName(vm.id, vm.name)
 
         # Create a fresh volume
-        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
+        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName +'/'
         os.makedirs(volume_path)
         for file in inputFiles:
             shutil.copy(file.localFile, volume_path + file.destFile)
-        
+            self.log.info('Copied in file %s to %s' % (file.localFile, volume_path + file.destFile))
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
@@ -139,13 +139,22 @@ class DockerSSH:
           autolab user
         """
         instanceName = self.instanceName(vm.id, vm.name)
-        args = ['docker', 'run', '--name', instanceName, -v]
-        args.append('%s:%s' % 
-                    (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/autolab'))
-        args.append(config.Config.DOCKER_IMAGE)
-        args.append('autodriver -u %d -f %d -t %d -o %d autolab &> output' %
-                    (config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
-                        runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE))
+        args = ['docker', 'run', '--name', instanceName, '-v']
+        args = args + ['%s:%s' % 
+                (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/mount')]
+        args = args + [config.Config.DOCKER_IMAGE]
+        args = args + ['sh', '-c']
+
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
+                        (config.Config.VM_ULIMIT_USER_PROC, 
+                        config.Config.VM_ULIMIT_FILE_SIZE,
+                        runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
+
+        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; \
+                        cp output/feedback mount/feedback' % autodriverCmd]
+
+        self.log.info('Running job: %s' % str(args))
+
         return timeout(args, runTimeout)
 
 
@@ -154,8 +163,11 @@ class DockerSSH:
         destFile on the Tango host.
         """
         instanceName = self.instanceName(vm.id, vm.name)
-
-        shutil.copy(self.config.Config.DOCKER_VOLUME_PATH + instancName, destFile)
+        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
+        shutil.copy(volume_path + '/feedback', destFile)
+        self.log.info('Copied feedback file to %s' % destFile)
+        shutil.rmtree(volume_path)
+        self.log.info('Deleted directory %s' % volume_path)
 
         return 0
 
@@ -163,7 +175,7 @@ class DockerSSH:
         """ destroyVM - Delete the docker container.
         """
         instanceName = self.instanceName(vm.id, vm.name)
-        ret = timeout(['docker', 'run', '-f', instanceName],
+        ret = timeout(['docker', 'rm', '-f', instanceName],
             config.Config.DOCKER_RM_TIMEOUT)
         if ret != 0:
             self.log.error("Failed to destroy container %s" % 

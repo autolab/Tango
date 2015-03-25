@@ -14,6 +14,9 @@ RUN useradd autolab
 RUN mkdir autolab
 RUN chown autolab autolab
 RUN chown :autolab autolab
+RUN mkdir output
+RUN chown autolab output
+RUN chown :autolab output
 RUN useradd autograde
 RUN mkdir autograde
 RUN chown autograde autograde
