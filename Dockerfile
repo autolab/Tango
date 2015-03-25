@@ -31,6 +31,3 @@ RUN rm -rf Tango/
 # Check installation
 RUN ls -l /home
 RUN which autodriver
-
-# Job initialization steps
-CMD cp -r mount/* autolab/; su autolab -c

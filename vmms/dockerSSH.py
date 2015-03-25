@@ -119,12 +119,13 @@ class DockerSSH:
         for the docker containers. Copy input files to this directory.
         """
         instanceName = self.instanceName(vm.id, vm.image)
-        # Create a fresh volume
         volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName +'/'
+
+        # Create a fresh volume
         os.makedirs(volume_path)
         for file in inputFiles:
             shutil.copy(file.localFile, volume_path + file.destFile)
-            self.log.info('Copied in file %s to %s' % (file.localFile, volume_path + file.destFile))
+            self.log.debug('Copied in file %s to %s' % (file.localFile, volume_path + file.destFile))
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
@@ -141,32 +142,28 @@ class DockerSSH:
         args = args + [config.Config.DOCKER_IMAGE]
         args = args + ['sh', '-c']
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> mount/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
-        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; \
-                        cp output/feedback mount/feedback' % autodriverCmd]
+        args = args + ['cp -r mount/* autolab/; su autolab -c "%s";' % 
+                        autodriverCmd]
 
-        self.log.info('Running job: %s' % str(args))
+        self.log.debug('Running job: %s' % str(args))
 
         return timeout(args, runTimeout)
 
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the autograder feedback from container to
-        destFile on the Tango host.
+        destFile on the Tango host. Then, destroy that container.
+        Containers are never reused.
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
-        print os.listdir(volume_path)
-        print volume_path + '/feedback'
         shutil.move(volume_path + '/feedback', destFile)
-        self.log.info('Copied feedback file to %s' % destFile)
-        
-        # Must always clean up containers in order to maintain statelessness.
-        # A solution with `docker attach` could be explored.
+        self.log.debug('Copied feedback file to %s' % destFile)
         self.destroyVM(vm)
 
         return 0
@@ -204,13 +201,14 @@ class DockerSSH:
         # Get all volumes of docker containers
         machines = []
         for volume in os.listdir(config.Config.DOCKER_VOLUME_PATH):
-            machine = TangoMachine()
-            machine.vmms = 'dockerSSH'
-            machine.name = volume
-            volume_l = volume.split('-')
-            machine.id = volume_l[1]
-            machine.image = volume_l[2]
-            machines.append(machine)
+            if re.match("%s-" % config.Config.PREFIX, volume):
+                machine = TangoMachine()
+                machine.vmms = 'dockerSSH'
+                machine.name = volume
+                volume_l = volume.split('-')
+                machine.id = volume_l[1]
+                machine.image = volume_l[2]
+                machines.append(machine)
         return machines
 
     def existsVM(self, vm):
