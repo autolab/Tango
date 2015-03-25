@@ -53,14 +53,6 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
                             stderr=subprocess.STDOUT)
     return ret
 
-def dockerExec(container, cmd, time_out=1):
-    """ docerExec - Executes `docker exec container cmd` and
-        returns output. Container is the name of the docker
-        container and cmd is a list of commands to run.
-    """
-    command = ['docker', 'exec', container, 'sh', '-c'] + cmd
-    return timeout(command, time_out)
-
 #
 # User defined exceptions
 #
@@ -70,9 +62,8 @@ class DockerSSH:
     LOCALHOST = '127.0.0.1'
 
     def __init__(self):
-        """
-			Checks if the machine is ready to run docker containers.
-            Initialize boot2docker if running on OS X.
+        """ Checks if the machine is ready to run docker containers.
+        Initialize boot2docker if running on OS X.
         """
         try:
             self.log = logging.getLogger("DockerSSH")
@@ -83,6 +74,13 @@ class DockerSSH:
                 self.docker_host_ip = subprocess.check_output(['boot2docker', 'ip']).strip('\n')
             else:
                 self.docker_host_ip = self.LOCALHOST
+
+            # Check import docker constants are defined in config
+            if len(config.Config.DOCKER_VOLUME_PATH) == 0:
+                raise Exception('DOCKER_VOLUME_PATH not defined in config.')
+
+            if len(config.Config.DOCKER_IMAGE) == 0:
+                raise Exception('DOCKER_IMAGE not defined in config.')
 
             self.log.info("Docker host IP is %s" % self.docker_host_ip)
 
@@ -95,7 +93,6 @@ class DockerSSH:
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
-        # return str(id)
         return "%s-%s-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, vm):
