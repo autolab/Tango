@@ -1,9 +1,8 @@
-import sys, os, hashlib, time, json, random
 import unittest
 import redis
 
-from jobQueue import *
-from tangoObjects import TangoIntValue
+from jobQueue import JobQueue
+from tangoObjects import TangoIntValue, TangoJob
 from config import Config
 
 class TestJobQueue(unittest.TestCase):
@@ -34,16 +33,18 @@ class TestJobQueue(unittest.TestCase):
 
 
         self.jobQueue = JobQueue(None)
-        self.jobQueue.jobQueue._clean()
-        self.jobQueue.deadJobs._clean()
+        self.jobQueue.reset()
         self.jobId1 = self.jobQueue.add(self.job1)
         self.jobId2 = self.jobQueue.add(self.job2)
 
     def test_sharedInt(self):
-        num1 = TangoIntValue("nextID", 1000)
-        num2 = TangoIntValue("nextID", 3000)
-        self.assertEqual(num1.get(), 1000)
-        self.assertEqual(num1.get(), num2.get())
+        if Config.USE_REDIS:
+            num1 = TangoIntValue("nextID", 1000)
+            num2 = TangoIntValue("nextID", 3000)
+            self.assertEqual(num1.get(), 1000)
+            self.assertEqual(num1.get(), num2.get())
+        else:
+            return
 
     def test_job(self):
         self.job1.makeUnassigned()
@@ -59,7 +60,6 @@ class TestJobQueue(unittest.TestCase):
 
 
     def test_add(self):
-        print self.jobQueue.jobQueue.keys()
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size'], 2)
 

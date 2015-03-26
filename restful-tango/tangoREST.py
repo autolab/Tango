@@ -180,7 +180,7 @@ class TangoREST:
                 input = input,
                 timeout = timeout,
                 notifyURL = notifyURL,
-                maxOutputFileSize = 4096)
+                maxOutputFileSize = maxOutputFileSize)
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
         return job

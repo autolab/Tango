@@ -8,11 +8,12 @@
 #   Ec2Exception - EC2 raises this if it encounters any problem
 #   ec2CallError - raised by ec2Call() function
 #
-import random, subprocess, re, time, logging, threading, os
+import subprocess, re, time, logging
 
 import config
 
-from boto import ec2, exception, config
+from boto import ec2
+from tangoObjects import TangoMachine
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -105,7 +106,6 @@ class Ec2SSH:
 
         memory = vm.memory # in Kbytes
         cores = vm.cores
-        image = vm.image
 
         if (cores == 1 and memory <= 613*1024):
             ec2instance['instance_type'] = 't1.micro'
@@ -259,8 +259,8 @@ class Ec2SSH:
                 %d -o %d autolab &> output" % (
                         config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, maxOutputFileSize) 
-                return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
-                        ["ubuntu@%s" % (domain_name), runcmd], runTimeout * 2)
+        return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+                ["ubuntu@%s" % (domain_name), runcmd], runTimeout * 2)
                 # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):

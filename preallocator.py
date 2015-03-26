@@ -1,7 +1,7 @@
 #
 # preallocator.py - maintains a pool of active virtual machines
 #
-import threading, logging, copy, Queue, time
+import threading, logging, copy, time
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config
 

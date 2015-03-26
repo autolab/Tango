@@ -5,7 +5,7 @@
 #
 
 
-import os, sys, time
+import os, sys
 
 sys.path.append('/usr/lib/python2.7/site-packages/')
 sys.path.append('gen-py')

@@ -1,7 +1,7 @@
 #
 # localSSH.py - Implements the Tango VMMS interface to run Tango jobs locally.
 #
-import random, subprocess, re, time, logging, threading, os
+import subprocess, re, time, logging
 
 import config
 

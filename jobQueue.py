@@ -27,7 +27,7 @@ from tangoObjects import TangoDictionary, TangoJob
 #
 class JobQueue:
     def __init__(self, preallocator):
-        self.jobQueue = TangoDictionary("jobQueue")
+        self.liveJobs = TangoDictionary("liveJobs")
         self.deadJobs = TangoDictionary("deadJobs")
         self.queueLock = threading.Lock()
         self.preallocator = preallocator
@@ -46,7 +46,7 @@ class JobQueue:
 
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
-        keys = self.jobQueue.keys()
+        keys = self.liveJobs.keys()
         if (str(id) in keys):
             id = -1
             for i in xrange(1, Config.MAX_JOBID + 1):
@@ -85,7 +85,7 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("add| Acquired lock to job queue.")
 
-        self.jobQueue.set(job.id, job)
+        self.liveJobs.set(job.id, job)
         job.appendTrace("%s|Added job %s:%d to queue" %
                 (time.ctime(time.time()+time.timezone), job.name, job.id))
         
@@ -131,8 +131,8 @@ class JobQueue:
         self.log.debug("remove|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.jobQueue.keys():
-            self.jobQueue.delete(id)
+        if str(id) in self.liveJobs.keys():
+            self.liveJobs.delete(id)
             status = 0
 
         self.queueLock.release()
@@ -176,8 +176,8 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("get| Acquired lock to job queue.")
-        if str(id) in self.jobQueue.keys():
-            job = self.jobQueue.get(id)
+        if str(id) in self.liveJobs.keys():
+            job = self.liveJobs.get(id)
         else:
             job = None
         self.queueLock.release()
@@ -189,7 +189,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
-        for id,job in self.jobQueue.iteritems():
+        for id,job in self.liveJobs.iteritems():
             if job.isNotAssigned():
                 self.queueLock.release()
                 return id
@@ -201,7 +201,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
-        for id, job in self.jobQueue.iteritems():
+        for id, job in self.liveJobs.iteritems():
 
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
@@ -223,7 +223,7 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
-        job = self.jobQueue.get(jobId)
+        job = self.liveJobs.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job %s" % str(job.id))
         job.makeAssigned()
@@ -237,7 +237,7 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
-        job = self.jobQueue.get(jobId)
+        job = self.liveJobs.get(jobId)
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         if job.retries is None:
@@ -256,11 +256,11 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
-        if str(id) in self.jobQueue.keys():
+        if str(id) in self.liveJobs.keys():
             self.log.info("makeDead| Job is in the queue")
             status = 0
-            job = self.jobQueue.get(id)
-            self.jobQueue.delete(id)
+            job = self.liveJobs.get(id)
+            self.liveJobs.delete(id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
@@ -272,7 +272,11 @@ class JobQueue:
     def getInfo(self):
 
         info = {}
-        info['size'] = len(self.jobQueue.keys())
+        info['size'] = len(self.liveJobs.keys())
         info['size_deadjobs'] = len(self.deadJobs.keys())
 
         return info
+
+    def reset(self):
+        self.liveJobs._clean()
+        self.deadJobs._clean()
