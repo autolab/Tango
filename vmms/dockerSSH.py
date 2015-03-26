@@ -139,7 +139,7 @@ class DockerSSH:
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % 
                 (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/mount')]
-        args = args + [config.Config.DOCKER_IMAGE]
+        args = args + [vm.image]
         args = args + ['sh', '-c']
 
         autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> mount/feedback' % \

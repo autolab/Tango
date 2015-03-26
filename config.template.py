@@ -27,7 +27,7 @@ class Config:
     LOGLEVEL = logging.DEBUG
 
     # Courselabs directory. Must be created before starting Tango
-    COURSELABS = "<INSERT_PATH_HERE>"
+    COURSELABS = "courselabs"
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango. Options are: "localSSH", "tashiSSH", "ec2SSH"
@@ -66,8 +66,7 @@ class Config:
     BOOT2DOCKER_ENV_TIMEOUT = 5
     DOCKER_IMAGE_BUILD_TIMEOUT = 300
     DOCKER_RM_TIMEOUT = 5
-    DOCKER_IMAGE = ''
-    DOCKER_VOLUME_PATH = ''
+    DOCKER_VOLUME_PATH = 'volumes/'
 
     # Maximum size for output file in bytes
     MAX_OUTPUT_FILE_SIZE = 1000 * 1024
@@ -95,10 +94,10 @@ class Config:
     POOL_SIZE = 2
 
     # Path for tashi images
-    TASHI_IMAGE_PATH = "/raid/tashi/images/"
+    TASHI_IMAGE_PATH = ''
 
     # Optionally log finer-grained timing information 
-    LOG_TIMING = True
+    LOG_TIMING = False
 
     # Largest job ID
     MAX_JOBID = 500
