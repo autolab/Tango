@@ -79,8 +79,8 @@ class DockerSSH:
             if len(config.Config.DOCKER_VOLUME_PATH) == 0:
                 raise Exception('DOCKER_VOLUME_PATH not defined in config.')
 
-            if len(config.Config.DOCKER_IMAGE) == 0:
-                raise Exception('DOCKER_IMAGE not defined in config.')
+            # if len(config.Config.DOCKER_IMAGE) == 0:
+            #     raise Exception('DOCKER_IMAGE not defined in config.')
 
             self.log.info("Docker host IP is %s" % self.docker_host_ip)
 
@@ -94,6 +94,13 @@ class DockerSSH:
         instance names manually.
         """
         return "%s-%s-%s" % (config.Config.PREFIX, id, name)
+
+    def getVolumePath(self, instanceName):
+        volumePath = config.Config.DOCKER_VOLUME_PATH
+        if '*' in volumePath:
+            volumePath = os.getcwd() + '/' + 'volumes/'
+        volumePath = volumePath + instanceName + '/'
+        return volumePath
 
     def domainName(self, vm):
         """ Returns the domain name that is stored in the vm
@@ -119,13 +126,13 @@ class DockerSSH:
         for the docker containers. Copy input files to this directory.
         """
         instanceName = self.instanceName(vm.id, vm.image)
-        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName +'/'
+        volumePath = self.getVolumePath(instanceName)
 
         # Create a fresh volume
-        os.makedirs(volume_path)
+        os.makedirs(volumePath)
         for file in inputFiles:
-            shutil.copy(file.localFile, volume_path + file.destFile)
-            self.log.debug('Copied in file %s to %s' % (file.localFile, volume_path + file.destFile))
+            shutil.copy(file.localFile, volumePath + file.destFile)
+            self.log.debug('Copied in file %s to %s' % (file.localFile, volumePath + file.destFile))
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
@@ -136,9 +143,9 @@ class DockerSSH:
           autolab user
         """
         instanceName = self.instanceName(vm.id, vm.image)
+        volumePath = self.getVolumePath(instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
-        args = args + ['%s:%s' % 
-                (config.Config.DOCKER_VOLUME_PATH + instanceName, '/home/mount')]
+        args = args + ['%s:%s' % (volumePath, '/home/mount')]
         args = args + [vm.image]
         args = args + ['sh', '-c']
 
@@ -147,7 +154,7 @@ class DockerSSH:
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
-        args = args + ['cp -r mount/* autolab/; su autolab -c "%s";' % 
+        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; cat mount/feedback; ls mount/' % 
                         autodriverCmd]
 
         self.log.debug('Running job: %s' % str(args))
@@ -161,8 +168,8 @@ class DockerSSH:
         Containers are never reused.
         """
         instanceName = self.instanceName(vm.id, vm.image)
-        volume_path = config.Config.DOCKER_VOLUME_PATH + instanceName
-        shutil.move(volume_path + '/feedback', destFile)
+        volumePath = self.getVolumePath(instanceName)
+        shutil.move(volumePath + '/feedback', destFile)
         self.log.debug('Copied feedback file to %s' % destFile)
         self.destroyVM(vm)
 
@@ -172,13 +179,14 @@ class DockerSSH:
         """ destroyVM - Delete the docker container.
         """
         instanceName = self.instanceName(vm.id, vm.image)
+        volumePath = self.getVolumePath('')
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
         timeout(['docker', 'rm', '-f', instanceName],
             config.Config.DOCKER_RM_TIMEOUT)
         # Destroy corresponding volume if it exists.
-        if instanceName in os.listdir(config.Config.DOCKER_VOLUME_PATH):
-            shutil.rmtree(config.Config.DOCKER_VOLUME_PATH + instanceName)
+        if instanceName in os.listdir(volumePath):
+            shutil.rmtree(volumePath + instanceName)
             self.log.debug('Deleted volume %s' % instanceName)
         return
 
@@ -200,7 +208,8 @@ class DockerSSH:
         """
         # Get all volumes of docker containers
         machines = []
-        for volume in os.listdir(config.Config.DOCKER_VOLUME_PATH):
+        volumePath = self.getVolumePath('')
+        for volume in os.listdir(volumePath):
             if re.match("%s-" % config.Config.PREFIX, volume):
                 machine = TangoMachine()
                 machine.vmms = 'dockerSSH'

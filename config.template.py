@@ -66,7 +66,9 @@ class Config:
     BOOT2DOCKER_ENV_TIMEOUT = 5
     DOCKER_IMAGE_BUILD_TIMEOUT = 300
     DOCKER_RM_TIMEOUT = 5
-    DOCKER_VOLUME_PATH = 'volumes/'
+    # Must be absolute path with trailing slash
+    # Default value of '*'' points this path to /path/to/Tango/volumes/
+    DOCKER_VOLUME_PATH = '*'
 
     # Maximum size for output file in bytes
     MAX_OUTPUT_FILE_SIZE = 1000 * 1024
