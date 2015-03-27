@@ -261,7 +261,7 @@ class Worker( threading.Thread ):
                 elif ret["runjob"] != 0:
                     if ret["runjob"] == 1: # This should never happen
                         msg = "Error: Autodriver usage error (status=%d)" % (ret["runjob"])
-                    elif ret["runjob"] == 2:
+                    elif ret["runjob"] == 2 or ret["runjob"] == -1:
                         msg = "Error: Job timed out after %d seconds" % (self.job.timeout)
                     else: # This should never happen
                         msg = "Error: Unknown autodriver error (status=%d)" % (ret["runjob"])
