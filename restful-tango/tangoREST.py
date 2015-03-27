@@ -76,9 +76,9 @@ class TangoREST:
         elif Config.VMMS_NAME == "ec2SSH":
             from vmms.ec2SSH import Ec2SSH
             vmms = Ec2SSH()
-        elif Config.VMMS_NAME == "dockerSSH":
-            from vmms.dockerSSH import DockerSSH
-            vmms = DockerSSH()
+        elif Config.VMMS_NAME == "localDocker":
+            from vmms.localDocker import LocalDocker
+            vmms = LocalDocker()
             
 
         self.vmms = {Config.VMMS_NAME: vmms}

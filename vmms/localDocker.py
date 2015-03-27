@@ -1,5 +1,5 @@
 #
-# dockerSSH.py - Implements the Tango VMMS interface to run Tango jobs in 
+# localDocker.py - Implements the Tango VMMS interface to run Tango jobs in 
 #                docker containers. In this context, VMs are docker containers.
 #
 import random, subprocess, re, time, logging, threading, os, sys, shutil
@@ -57,32 +57,18 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
 # User defined exceptions
 #
 
-class DockerSSH:
-    _OS_X = 'darwin'
-    LOCALHOST = '127.0.0.1'
+class LocalDocker:
 
     def __init__(self):
         """ Checks if the machine is ready to run docker containers.
         Initialize boot2docker if running on OS X.
         """
         try:
-            self.log = logging.getLogger("DockerSSH")
-            # If running on OS X, create a boot2docker VM
-            if sys.platform == self._OS_X:
-                # boot2docker initialization will be part of initial
-                # set up with Tango.
-                self.docker_host_ip = subprocess.check_output(['boot2docker', 'ip']).strip('\n')
-            else:
-                self.docker_host_ip = self.LOCALHOST
+            self.log = logging.getLogger("LocalDocker")
 
             # Check import docker constants are defined in config
             if len(config.Config.DOCKER_VOLUME_PATH) == 0:
                 raise Exception('DOCKER_VOLUME_PATH not defined in config.')
-
-            # if len(config.Config.DOCKER_IMAGE) == 0:
-            #     raise Exception('DOCKER_IMAGE not defined in config.')
-
-            self.log.info("Docker host IP is %s" % self.docker_host_ip)
 
         except Exception as e:
             self.log.error(str(e))
@@ -212,7 +198,7 @@ class DockerSSH:
         for volume in os.listdir(volumePath):
             if re.match("%s-" % config.Config.PREFIX, volume):
                 machine = TangoMachine()
-                machine.vmms = 'dockerSSH'
+                machine.vmms = 'localDocker'
                 machine.name = volume
                 volume_l = volume.split('-')
                 machine.id = volume_l[1]
