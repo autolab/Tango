@@ -157,8 +157,6 @@ class TangoREST:
         maxOutputFileSize = 4096
         if 'callback_url' in jobObj:
             notifyURL = jobObj['callback_url']
-        if 'max_kb' in jobObj:
-            maxOutputFileSize = jobObj['max_kb']
 
         # List of input files
         input = []
@@ -180,7 +178,8 @@ class TangoREST:
                 input = input,
                 timeout = timeout,
                 notifyURL = notifyURL,
-                maxOutputFileSize = maxOutputFileSize)
+                maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE)
+
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
         return job
