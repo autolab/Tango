@@ -144,8 +144,10 @@ class LocalDocker:
                         autodriverCmd]
 
         self.log.debug('Running job: %s' % str(args))
+        ret = timeout(args, runTimeout)
+        self.log.debug('runJob returning %d' % ret)
 
-        return timeout(args, runTimeout)
+        return ret
 
 
     def copyOut(self, vm, destFile):

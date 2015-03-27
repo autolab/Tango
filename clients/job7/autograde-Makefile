@@ -1,5 +1,5 @@
 autograde:
-	./bug
+	bash bug
 
 
 
