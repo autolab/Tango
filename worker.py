@@ -69,7 +69,7 @@ class Worker( threading.Thread ):
         # Here is where we give up
         else:
             self.jobQueue.makeDead(self.job.id, err)
-            self.appendMsg(hdrfile, "Internal error: Unable to complete job after %d tries. Pleae resubmit"  % (Config.JOB_RETRIES))
+            self.appendMsg(hdrfile, "Internal error: Unable to complete job after %d tries. Please resubmit"  % (Config.JOB_RETRIES))
             self.appendMsg(hdrfile, "Job status: waitVM=%s copyIn=%s runJob=%s copyOut=%s" % (ret["waitvm"], ret["copyin"], ret["runjob"], ret["copyout"]))
             self.catFiles(hdrfile, self.job.outputFile)
             self.detachVM(return_vm=False, replace_vm=True)
