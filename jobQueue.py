@@ -9,6 +9,7 @@
 #
 import time, threading, logging
 
+from datetime import datetime
 from config import Config
 from tangoObjects import TangoDictionary, TangoJob
  
@@ -87,7 +88,7 @@ class JobQueue:
 
         self.jobQueue.set(job.id, job)
         job.appendTrace("%s|Added job %s:%d to queue" %
-                (time.ctime(time.time()+time.timezone), job.name, job.id))
+                (datetime.utcnow().ctime(), job.name, job.id))
         
         self.log.debug("Ref: " + str(job._remoteLocation))
         self.log.debug("job_id: " + str(job.id))
@@ -264,7 +265,7 @@ class JobQueue:
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
-            job.appendTrace("%s|%s" %  (time.ctime(time.time()+time.timezone), reason))
+            job.appendTrace("%s|%s" %  (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status
