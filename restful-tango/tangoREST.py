@@ -381,7 +381,7 @@ class TangoREST:
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
             if not image or image == "" or not image.endswith(".img"):
-                self.log.info("Invalid pool image name")
+                self.log.info("Invalid image name")
                 return self.status.invalid_image
             image = image[:-4]
             info = self.preallocator.getPool(image)
@@ -402,6 +402,9 @@ class TangoREST:
         """
         self.log.debug("Received prealloc request(%s, %s, %s)" % (key, image, num))
         if self.validateKey(key):
+            if not image or image == "" or not image.endswith(".img"):
+                self.log.info("Invalid image name")
+                return self.status.invalid_image
             if vmStr != "":
                 vmObj = json.loads(vmStr)
                 vm = self.createTangoMachine(image, vmObj=vmObj)
