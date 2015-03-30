@@ -20,17 +20,10 @@ def timeout(command, time_out=1):
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
     """
-    if (config.Config.LOGLEVEL is logging.DEBUG) and ("ssh" in command or "scp" in command):
-        out = sys.stdout
-        err = sys.stderr
-    else:
-        out = open("/dev/null", 'w')
-        err = sys.stdout
-
     # Launch the command
     p = subprocess.Popen(command, 
-                         stdout=out, 
-                         stderr=err)
+                         stdout=open('/dev/null', 'w'), 
+                         stderr=subprocess.STDOUT)
 
     # Wait for the command to complete
     t = 0.0
@@ -42,7 +35,7 @@ def timeout(command, time_out=1):
     if p.poll() is None:
         subprocess.call(["/bin/kill", "-9", str(p.pid)])
         returncode = -1
-    else:                 
+    else:
         returncode = p.poll()
 
     return returncode
@@ -61,8 +54,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
 
     # Launch the command
     p = subprocess.Popen(command, 
-                         stdout=out, 
-                         stderr=err)
+                         stdout=open('/dev/null', 'w'), 
+                         stderr=subprocess.STDOUT)
 
     t = 0.0
     while t < time_out:
@@ -74,22 +67,9 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
             return ret
         else:
             p = subprocess.Popen(command, 
-                                 stdout=out, 
-                                 stderr=err)
+                                 stdout=open('/dev/null', 'w'), 
+                                 stderr=subprocess.STDOUT)
     return ret
-
-def ssh_retry(command, time_out=1):
-    ssh_tries = 0
-
-    while ssh_tries < config.Config.SSH_RETRIES:
-        ret = timeout(command, time_out)
-        if ret != 0:
-            ssh_tries = ssh_tries + 1
-            time.sleep(config.Config.SSH_INTERVAL)
-        else:
-            break
-
-    return (ssh_tries, ret)
 
 #
 # User defined exceptions
@@ -255,11 +235,9 @@ class TashiSSH:
         for file in inputFiles:
             self.log.debug("Copying file %s to VM %s" % (file.localFile, domain_name))
             
-            (ssh_tries, ret) = ssh_retry(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
+            ret = timeout(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
                                 [file.localFile, "autolab@%s:autolab/%s" %
                                 (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
-            
-            self.log.debug("copyIn: Number of SSH Attempts: %d", ssh_tries)
 
             if ret == 0:
                 self.log.debug("Success: copied file %s to VM %s with status %s" % (file.localFile, 
@@ -281,11 +259,9 @@ class TashiSSH:
             %d -o %d autolab &> output" % (
             config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
             runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE) 
-        (ssh_tries, ret) = ssh_retry(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
+        ret = timeout(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
                                 ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
-
-        self.log.debug("runJob: Number of SSH Attempts: %d", ssh_tries)
 
         return ret
         
@@ -323,11 +299,9 @@ class TashiSSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
     
-        (ssh_tries, ret) = ssh_retry(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
+        ret = timeout(["scp", "-vvv"] + TashiSSH._SSH_FLAGS +
                                 ["autolab@%s:output" % (domain_name), destFile],
                                 config.Config.COPYOUT_TIMEOUT)
-
-        self.log.debug("copyOut: Number of SSH Attempts: %d", ssh_tries)
 
         return ret
 
