@@ -154,7 +154,7 @@ class TangoREST:
             self.OUTPUT_FOLDER, jobObj['output_file'])
         timeout = jobObj['timeout']
         notifyURL = None
-        maxOutputFileSize = 4096
+        maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
         if 'callback_url' in jobObj:
             notifyURL = jobObj['callback_url']
         if 'max_kb' in jobObj:
@@ -180,7 +180,7 @@ class TangoREST:
                 input = input,
                 timeout = timeout,
                 notifyURL = notifyURL,
-                maxOutputFileSize = 4096)
+                maxOutputFileSize = maxOutputFileSize)
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
         return job
