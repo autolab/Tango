@@ -131,7 +131,6 @@ class Preallocator:
         newVM = copy.deepcopy(vm)
         self.lock.release()
 
-        self.removeVM(vm)
         vmms = self.vmms[vm.vmms]
         vmms.safeDestroyVM(vm)
 
