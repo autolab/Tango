@@ -53,7 +53,7 @@ class TangoJob():
     def __init__(self, vm = None,
                 outputFile = None, name = None, input = None,
                 notifyURL = None, timeout = 0, 
-                maxOutputFileSize = 4096):
+                maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE):
         self.assigned = False
         self.retries = 0
 
