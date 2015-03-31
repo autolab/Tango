@@ -137,8 +137,8 @@ class Preallocator:
         newVM.id = self._getNextID()
         vmms.initializeVM(newVM)
         vmms.addVM(newVM)
-        return newVM
 
+        return newVM
     def _getNextID(self):
         """ _getNextID - returns next ID to be used for a preallocated
         VM.  Preallocated VM's have 4-digit ID numbers between 1000
@@ -264,7 +264,11 @@ class Preallocator:
             self.machines.set(vmName, machine)
         self.lock.release()
 
+<<<<<<< HEAD
         result["pool"] = self.machines.get(vmName)[0]
+=======
+        result["pool"] = self.machines[vmName][0]
+>>>>>>> 7e264098d81a28c61a00148bd40b902b20070454
         result["free"] = free_list
         return result
 

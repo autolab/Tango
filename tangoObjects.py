@@ -30,7 +30,7 @@ class TangoMachine():
         TangoMachine - A description of the Autograding Virtual Machine
     """
     def __init__(self, name = "DefaultTestVM", image = None, vmms = None,
-                network = None, cores = None, memory = None, disk = None, 
+                network = None, cores = None, memory = None, disk = None,
                 domain_name = None, ec2_id = None, resume = None, id = None,
                 instance_id = None):
         self.name = name
@@ -52,7 +52,7 @@ class TangoJob():
     """
     def __init__(self, vm = None,
                 outputFile = None, name = None, input = None,
-                notifyURL = None, timeout = 0, 
+                notifyURL = None, timeout = 0,
                 maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE):
         self.assigned = False
         self.retries = 0
@@ -87,7 +87,7 @@ class TangoJob():
 
     def appendTrace(self, trace_str):
         self.syncRemote()
-        self.trace.append(trace_str) 
+        self.trace.append(trace_str)
         self.updateRemote()
 
     def setId(self, new_id):
@@ -200,7 +200,7 @@ class TangoRemoteQueue():
         self.__db.rpush(self.key, pickled_item)
 
     def get(self, block=True, timeout=None):
-        """Remove and return an item from the queue. 
+        """Remove and return an item from the queue.
 
         If optional args block is true and timeout is None (the default), block
         if necessary until an item is available."""
@@ -229,7 +229,7 @@ class TangoRemoteQueue():
         self.__dict__.update(dict)
 
 
-# This is an abstract class that decides on 
+# This is an abstract class that decides on
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
 # Since there are no abstract classes in Python, we use a simple method
 def TangoDictionary(object_name):
@@ -318,4 +318,3 @@ class TangoNativeDictionary():
     def _clean(self):
         # only for testing
         return
-
