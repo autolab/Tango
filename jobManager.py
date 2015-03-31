@@ -11,6 +11,7 @@
 #
 import time, threading, logging
 
+from datetime import datetime
 from config import Config
 from worker import Worker
 
@@ -52,7 +53,7 @@ class JobManager:
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                   (job.name, job.id, preVM.name, job.retries))
                     job.appendTrace("%s|Dispatched job %s:%d [try %d]" %
-                                     (time.ctime(time.time()+time.timezone), job.name, job.id,
+                                     (datetime.utcnow().ctime(), job.name, job.id,
                                       job.retries))
                     vmms = self.vmms[job.vm.vmms] # Create new vmms object
                     Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
