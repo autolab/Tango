@@ -5,32 +5,33 @@ from jobQueue import JobQueue
 from tangoObjects import TangoIntValue, TangoJob
 from config import Config
 
+
 class TestJobQueue(unittest.TestCase):
+
     def setUp(self):
 
         if Config.USE_REDIS:
-            __db= redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            __db = redis.StrictRedis(
+                Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
 
         self.job1 = TangoJob(
-                    name = "sample_job_1",
-                    vm = "ilter.img",
-                    outputFile = "sample_job_1_output",
-                    input = [],
-                    timeout = 30,
-                    notifyURL = "notifyMeUrl",
-                    maxOutputFileSize = 4096)
+            name="sample_job_1",
+            vm="ilter.img",
+            outputFile="sample_job_1_output",
+            input=[],
+            timeout=30,
+            notifyURL="notifyMeUrl",
+            maxOutputFileSize=4096)
 
         self.job2 = TangoJob(
-                    name = "sample_job_2",
-                    vm = "ilter.img",
-                    outputFile = "sample_job_2_output",
-                    input = [],
-                    timeout = 30,
-                    notifyURL = "notifyMeUrl",
-                    maxOutputFileSize = 4096)
-
-
+            name="sample_job_2",
+            vm="ilter.img",
+            outputFile="sample_job_2_output",
+            input=[],
+            timeout=30,
+            notifyURL="notifyMeUrl",
+            maxOutputFileSize=4096)
 
         self.jobQueue = JobQueue(None)
         self.jobQueue.reset()
@@ -58,14 +59,12 @@ class TestJobQueue(unittest.TestCase):
         self.assertFalse(self.job1.isNotAssigned())
         self.assertFalse(job.isNotAssigned())
 
-
     def test_add(self):
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size'], 2)
 
-
     def test_addDead(self):
-        return self.assertEqual(1,1)
+        return self.assertEqual(1, 1)
 
     def test_remove(self):
         self.jobQueue.remove(self.jobId1)
@@ -82,13 +81,11 @@ class TestJobQueue(unittest.TestCase):
         self.assertEqual(info['size'], 1)
         self.assertEqual(info['size_deadjobs'], 1)
 
-
         self.jobQueue.delJob(self.jobId1, 1)
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size_deadjobs'], 0)
 
         return False
-
 
     def test_get(self):
         ret_job_1 = self.jobQueue.get(self.jobId1)
@@ -97,23 +94,19 @@ class TestJobQueue(unittest.TestCase):
         ret_job_2 = self.jobQueue.get(self.jobId2)
         self.assertEqual(str(ret_job_2.id), self.jobId2)
 
-
     def test_getNextPendingJob(self):
         self.jobQueue.assignJob(self.jobId2)
         self.jobQueue.unassignJob(self.jobId1)
         exp_id = self.jobQueue.getNextPendingJob()
         self.assertMultiLineEqual(exp_id, self.jobId1)
 
-
     def test_getNextPendingJobReuse(self):
         return False
-
 
     def test_assignJob(self):
         self.jobQueue.assignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
         self.assertFalse(job.isNotAssigned())
-
 
     def test_unassignJob(self):
         self.jobQueue.assignJob(self.jobId1)
@@ -123,7 +116,6 @@ class TestJobQueue(unittest.TestCase):
         self.jobQueue.unassignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
         return self.assertEqual(job.assigned, False)
-
 
     def test_makeDead(self):
         info = self.jobQueue.getInfo()
@@ -143,4 +135,3 @@ class TestJobQueue(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

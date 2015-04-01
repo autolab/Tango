@@ -1,7 +1,10 @@
 #
 # preallocator.py - maintains a pool of active virtual machines
 #
-import threading, logging, copy, time
+import threading
+import logging
+import copy
+import time
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config
 
@@ -14,7 +17,10 @@ from config import Config
 # Element 1 is a queue of the VMs in this pool that are available to
 # be assigned to workers.
 #
+
+
 class Preallocator:
+
     def __init__(self, vmms):
         self.machines = TangoDictionary("machines")
         self.lock = threading.Lock()
@@ -22,7 +28,7 @@ class Preallocator:
         self.vmms = vmms
         self.log = logging.getLogger("Preallocator")
 
-    def poolSize(self, vmName):     
+    def poolSize(self, vmName):
         """ poolSize - returns the size of the vmName pool, for external callers
         """
         if vmName not in self.machines.keys():
@@ -47,18 +53,20 @@ class Preallocator:
 
         delta = num - len(self.machines.get(vm.name)[0])
         if delta > 0:
-            # We need more self.machines, spin them up. 
-            self.log.debug("update: Creating %d new %s instances" % (delta, vm.name))
+            # We need more self.machines, spin them up.
+            self.log.debug(
+                "update: Creating %d new %s instances" % (delta, vm.name))
             threading.Thread(target=self.__create(vm, delta)).start()
 
-        elif delta < 0: 
+        elif delta < 0:
             # We have too many self.machines, remove them from the pool
-            self.log.debug("update: Destroying %d preallocated %s instances" % (-delta, vm.name))
+            self.log.debug(
+                "update: Destroying %d preallocated %s instances" %
+                (-delta, vm.name))
             for i in range(-1 * delta):
                 threading.Thread(target=self.__destroy(vm)).start()
 
-        # If delta == 0 then we are the perfect number! 
-
+        # If delta == 0 then we are the perfect number!
 
     def allocVM(self, vmName):
         """ allocVM - Allocate a VM from the free list
@@ -69,11 +77,11 @@ class Preallocator:
 
         if not self.machines.get(vmName)[1].empty():
             vm = self.machines.get(vmName)[1].get_nowait()
-        
+
         self.lock.release()
 
         # If we're not reusing instances, then crank up a replacement
-        if vm and not Config.REUSE_VMS: 
+        if vm and not Config.REUSE_VMS:
             threading.Thread(target=self.__create(vm, 1)).start()
 
         return vm
@@ -82,7 +90,7 @@ class Preallocator:
         """ freeVM - Returns a VM instance to the free list
         """
         # Sanity check: Return a VM to the free list only if it is
-        # still a member of the pool. 
+        # still a member of the pool.
         not_found = False
         self.lock.acquire()
         if vm and vm.id in self.machines.get(vm.name)[0]:
@@ -90,7 +98,7 @@ class Preallocator:
             machine[1].put(vm)
             self.machines.set(vm.name, machine)
         else:
-            not_found = True;
+            not_found = True
         self.lock.release()
 
         # The VM is no longer in the pool.
@@ -116,7 +124,6 @@ class Preallocator:
         self.machines.set(vm.name, machine)
         self.lock.release()
 
-
     def _getNextID(self):
         """ _getNextID - returns next ID to be used for a preallocated
         VM.  Preallocated VM's have 4-digit ID numbers between 1000
@@ -132,7 +139,7 @@ class Preallocator:
 
         self.lock.release()
         return id
-    
+
     def __create(self, vm, cnt):
         """ __create - Creates count VMs and adds them to the pool
 
@@ -151,7 +158,8 @@ class Preallocator:
 
             self.addVM(newVM)
             self.freeVM(newVM)
-            self.log.debug("__create: Added vm %s to pool %s " % (newVM.id, newVM.name))
+            self.log.debug("__create: Added vm %s to pool %s " %
+                           (newVM.id, newVM.name))
 
     def __destroy(self, vm):
         """ __destroy - Removes a VM from the pool
@@ -171,12 +179,11 @@ class Preallocator:
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(dieVM)
 
-
     def createVM(self, vm):
         """ createVM - Called in non-thread context to create a single
         VM and add it to the pool
         """
-    
+
         vmms = self.vmms[vm.vmms]
         newVM = copy.deepcopy(vm)
         newVM.id = self._getNextID()
@@ -187,7 +194,8 @@ class Preallocator:
 
         self.addVM(newVM)
         self.freeVM(newVM)
-        self.log.debug("createVM: Added vm %s to pool %s" % (newVM.id, newVM.name))  
+        self.log.debug("createVM: Added vm %s to pool %s" %
+                       (newVM.id, newVM.name))
 
     def destroyVM(self, vmName, id):
         """ destroyVM - Called by the delVM API function to remove and
@@ -207,7 +215,7 @@ class Preallocator:
                 if vm.id != id:
                     self.machines.get(vmName)[1].put(vm)
                 else:
-                    dieVM = vm;
+                    dieVM = vm
         self.lock.release()
 
         if dieVM:
@@ -237,8 +245,7 @@ class Preallocator:
             machine[1].put(vm)
             self.machines.set(vmName, machine)
         self.lock.release()
-        
+
         result["pool"] = self.machines.get(vmName)[0]
         result["free"] = free_list
         return result
-
