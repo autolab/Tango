@@ -154,7 +154,7 @@ class TangoREST:
             self.OUTPUT_FOLDER, jobObj['output_file'])
         timeout = jobObj['timeout']
         notifyURL = None
-        maxOutputFileSize = 4096
+        maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
         if 'callback_url' in jobObj:
             notifyURL = jobObj['callback_url']
 
@@ -178,7 +178,7 @@ class TangoREST:
                 input = input,
                 timeout = timeout,
                 notifyURL = notifyURL,
-                maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE)
+                maxOutputFileSize = maxOutputFileSize)
 
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
@@ -380,7 +380,7 @@ class TangoREST:
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
             if not image or image == "" or not image.endswith(".img"):
-                self.log.info("Invalid pool image name")
+                self.log.info("Invalid image name")
                 return self.status.invalid_image
             image = image[:-4]
             info = self.preallocator.getPool(image)
@@ -401,6 +401,9 @@ class TangoREST:
         """
         self.log.debug("Received prealloc request(%s, %s, %s)" % (key, image, num))
         if self.validateKey(key):
+            if not image or image == "" or not image.endswith(".img"):
+                self.log.info("Invalid image name")
+                return self.status.invalid_image
             if vmStr != "":
                 vmObj = json.loads(vmStr)
                 vm = self.createTangoMachine(image, vmObj=vmObj)

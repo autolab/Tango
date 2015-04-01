@@ -3,6 +3,7 @@
 #
 import threading, time, logging, tempfile, requests, subprocess
 
+from datetime import datetime
 from config import Config
 
 #
@@ -57,7 +58,7 @@ class Worker( threading.Thread ):
         """
         self.log.error("Job %s:%d failed: %s" %
                        (self.job.name, self.job.id, err))
-        self.job.appendTrace("%s|Job %s:%d failed: %s" % (time.ctime(time.time()+time.timezone),
+        self.job.appendTrace("%s|Job %s:%d failed: %s" % (datetime.utcnow().ctime(),
                                                            self.job.name, self.job.id, err))
 
         # Try a few times before giving up
@@ -79,7 +80,7 @@ class Worker( threading.Thread ):
         """ appendMsg - Append a timestamped Tango message to a file
         """
         f = open(filename, "a")
-        f.write("Autograder [%s]: %s\n" % (time.ctime(time.time()+time.timezone), msg))
+        f.write("Autograder [%s]: %s\n" % (datetime.utcnow().ctime(), msg))
         f.close
 
     def catFiles(self, f1, f2):
@@ -141,7 +142,7 @@ class Worker( threading.Thread ):
                                self.vmms.instanceName(self.preVM.id,
                                                       self.preVM.name)))
                 self.job.appendTrace("%s|Assigned job %s:%d existing VM %s" %
-                                      (time.ctime(time.time()+time.timezone),
+                                      (datetime.utcnow().ctime(),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.preVM.id,
                                                               self.preVM.name)))
@@ -157,7 +158,7 @@ class Worker( threading.Thread ):
                                self.vmms.instanceName(self.job.vm.id,
                                                       self.job.vm.name)))
                 self.job.appendTrace("%s|Assigned job %s:%d new VM %s" %
-                                      (time.ctime(time.time()+time.timezone),
+                                      (datetime.utcnow().ctime(),
                                        self.job.name, self.job.id,
                                        self.vmms.instanceName(self.job.vm.id,
                                                               self.job.vm.name)))
@@ -174,7 +175,7 @@ class Worker( threading.Thread ):
                            (self.job.name, self.job.id,
                             self.vmms.instanceName(vm.id, vm.name)))
             self.job.appendTrace("%s|Job %s:%d waiting for VM %s" %
-                                  (time.ctime(time.time()+time.timezone), 
+                                  (datetime.utcnow().ctime(), 
                                    self.job.name, self.job.id,
                                    self.vmms.instanceName(vm.id, vm.name)))
             self.log.debug("Waiting for VM")
@@ -198,7 +199,7 @@ class Worker( threading.Thread ):
                           (self.vmms.instanceName(vm.id, vm.name),
                            self.job.name, self.job.id))
             self.job.appendTrace("%s|VM %s ready for job %s:%d" %
-                                  (time.ctime(time.time()+time.timezone),
+                                  (datetime.utcnow().ctime(),
                                    self.vmms.instanceName(vm.id, vm.name),
                                    self.job.name, self.job.id))
 
@@ -209,7 +210,7 @@ class Worker( threading.Thread ):
             self.log.info("Input copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyin"]))
             self.job.appendTrace("%s|Input copied for job %s:%d [status=%d]" %
-                                  (time.ctime(time.time()+time.timezone),
+                                  (datetime.utcnow().ctime(),
                                    self.job.name,
                                    self.job.id, ret["copyin"]))
 
@@ -222,7 +223,7 @@ class Worker( threading.Thread ):
             self.log.info("Job %s:%d executed [status=%s]" %
                           (self.job.name, self.job.id, ret["runjob"]))
             self.job.appendTrace("%s|Job %s:%d executed [status=%s]" %
-                                  (time.ctime(time.time()+time.timezone),
+                                  (datetime.utcnow().ctime(),
                                    self.job.name, self.job.id,
                                    ret["runjob"]))
 
@@ -233,7 +234,7 @@ class Worker( threading.Thread ):
             self.log.info("Output copied for job %s:%d [status=%d]" %
                           (self.job.name, self.job.id, ret["copyout"]))
             self.job.appendTrace("%s|Output copied for job %s:%d [status=%d]"
-                                  % (time.ctime(time.time()+time.timezone),
+                                  % (datetime.utcnow().ctime(),
                                      self.job.name,
                                      self.job.id, ret["copyout"]))
 
