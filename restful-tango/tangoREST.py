@@ -4,11 +4,18 @@
 # interface of Tango.
 #
 
-import sys, os, inspect, hashlib, json, logging, logging.handlers
+import sys
+import os
+import inspect
+import hashlib
+import json
+import logging
+import logging.handlers
 
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+currentdir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir) 
+sys.path.insert(0, parentdir)
 
 from tangod import TangoServer
 from jobQueue import JobQueue
@@ -47,6 +54,7 @@ class Status:
         result["statusMsg"] = msg
         return result
 
+
 class TangoREST:
 
     COURSELABS = Config.COURSELABS
@@ -83,10 +91,10 @@ class TangoREST:
 
         self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
         logging.basicConfig(
-                filename = self.LOGFILE,
-                format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                level = Config.LOGLEVEL
-                )
+            filename=self.LOGFILE,
+            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+            level=Config.LOGLEVEL
+        )
         logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
@@ -119,7 +127,7 @@ class TangoREST:
         return "%s/%s" % (labPath, self.OUTPUT_FOLDER)
 
     def computeMD5(self, directory):
-        """ computeMD5 - Computes the MD5 hash of given files in the 
+        """ computeMD5 - Computes the MD5 hash of given files in the
         given directory
         """
         result = []
@@ -132,33 +140,33 @@ class TangoREST:
                 continue
         return result
 
-    def createTangoMachine(self, image, vmms = Config.VMMS_NAME, 
-        vmObj={'cores': 1, 'memory' : 512}):
+    def createTangoMachine(self, image, vmms=Config.VMMS_NAME,
+                           vmObj={'cores': 1, 'memory': 512}):
         """ createTangoMachine - Creates a tango machine object from image
         """
         return TangoMachine(
-                name = image,
-                vmms = vmms,
-                image = "%s" % (image),
-                cores = vmObj["cores"],
-                memory = vmObj["memory"],
-                disk = None,
-                network = None)
+            name=image,
+            vmms=vmms,
+            image="%s" % (image),
+            cores=vmObj["cores"],
+            memory=vmObj["memory"],
+            disk=None,
+            network=None)
 
     def convertJobObj(self, dirName, jobObj):
         """ convertJobObj - Converts a dictionary into a TangoJob object
         """
 
         name = jobObj['jobName']
-        outputFile = "%s/%s/%s/%s" % (self.COURSELABS, dirName, 
-            self.OUTPUT_FOLDER, jobObj['output_file'])
+        outputFile = "%s/%s/%s/%s" % (self.COURSELABS,
+                                      dirName,
+                                      self.OUTPUT_FOLDER,
+                                      jobObj['output_file'])
         timeout = jobObj['timeout']
         notifyURL = None
         maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
         if 'callback_url' in jobObj:
             notifyURL = jobObj['callback_url']
-        if 'max_kb' in jobObj:
-            maxOutputFileSize = jobObj['max_kb']
 
         # List of input files
         input = []
@@ -166,30 +174,30 @@ class TangoREST:
             inFile = file['localFile']
             vmFile = file['destFile']
             handinfile = InputFile(
-                    localFile = "%s/%s/%s" % (self.COURSELABS, dirName, inFile),
-                    destFile = vmFile)
+                localFile="%s/%s/%s" % (self.COURSELABS, dirName, inFile),
+                destFile=vmFile)
             input.append(handinfile)
 
-        # VM object 
+        # VM object
         vm = self.createTangoMachine(jobObj["image"])
 
         job = TangoJob(
-                name = name,
-                vm = vm,
-                outputFile = outputFile,
-                input = input,
-                timeout = timeout,
-                notifyURL = notifyURL,
-                maxOutputFileSize = maxOutputFileSize)
+            name=name,
+            vm=vm,
+            outputFile=outputFile,
+            input=input,
+            timeout=timeout,
+            notifyURL=notifyURL,
+            maxOutputFileSize=maxOutputFileSize)
+
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)
         return job
 
-
     def convertTangoMachineObj(self, tangoMachine):
         """ convertVMObj - Converts a TangoMachine object into a dictionary
         """
-                # May need to convert instance_id
+        # May need to convert instance_id
         vm = dict()
         vm['network'] = tangoMachine.network
         vm['resume'] = tangoMachine.resume
@@ -225,10 +233,10 @@ class TangoREST:
         job['id'] = tangoJobObj.id
         job['trace'] = tangoJobObj.trace
 
-        #Convert VM object
+        # Convert VM object
         job['vm'] = self.convertTangoMachineObj(tangoJobObj.vm)
 
-        #Convert InputFile objects
+        # Convert InputFile objects
         inputFiles = list()
         for inputFile in tangoJobObj.input:
             inputFiles.append(self.convertInputFileObj(inputFile))
@@ -238,8 +246,9 @@ class TangoREST:
     ##
     # Tango RESTful API
     ##
+
     def open(self, key, courselab):
-        """ open - Return a list of md5 hashes for each input file in the 
+        """ open - Return a list of md5 hashes for each input file in the
         key-courselab directory and make one if the directory doesn't exist
         """
         self.log.debug("Received open request(%s, %s)" % (key, courselab))
@@ -247,14 +256,16 @@ class TangoREST:
             labPath = self.getDirPath(key, courselab)
             try:
                 if os.path.exists(labPath):
-                    self.log.info("Found directory for (%s, %s)" % (key, courselab))
+                    self.log.info(
+                        "Found directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.found_dir
                     statusObj['files'] = self.computeMD5(labPath)
                     return statusObj
-                else: 
+                else:
                     outputPath = self.getOutPath(key, courselab)
                     os.makedirs(outputPath)
-                    self.log.info("Created directory for (%s, %s)" % (key, courselab))
+                    self.log.info(
+                        "Created directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.made_dir
                     statusObj["files"] = []
                     return statusObj
@@ -268,7 +279,8 @@ class TangoREST:
     def upload(self, key, courselab, file, body):
         """ upload - Upload file as an input file in key-courselab
         """
-        self.log.debug("Received upload request(%s, %s, %s)" % (key, courselab, file))
+        self.log.debug("Received upload request(%s, %s, %s)" %
+                       (key, courselab, file))
         if (self.validateKey(key)):
             labPath = self.getDirPath(key, courselab)
             try:
@@ -276,15 +288,19 @@ class TangoREST:
                     absPath = "%s/%s" % (labPath, file)
                     if os.path.exists(absPath):
                         fileMD5 = hashlib.md5(body).hexdigest()
-                        if fileMD5 in [obj["md5"] for obj in self.computeMD5(labPath)]:
+                        if fileMD5 in [obj["md5"]
+                                       for obj in self.computeMD5(labPath)]:
                             return self.status.file_exists
                     fh = open(absPath, "wt")
                     fh.write(body)
                     fh.close()
-                    self.log.info("Uploaded file to (%s, %s, %s)" % (key, courselab, file))
+                    self.log.info(
+                        "Uploaded file to (%s, %s, %s)" %
+                        (key, courselab, file))
                     return self.status.file_uploaded
                 else:
-                    self.log.info("Courselab for (%s, %s) not found" % (key, courselab))
+                    self.log.info(
+                        "Courselab for (%s, %s) not found" % (key, courselab))
                     return self.status.wrong_courselab
             except Exception as e:
                 self.log.error("upload request failed: %s" % str(e))
@@ -296,7 +312,8 @@ class TangoREST:
     def addJob(self, key, courselab, jobStr):
         """ addJob - Add the job to be processed by Tango
         """
-        self.log.debug("Received addJob request(%s, %s, %s)" % (key, courselab, jobStr))
+        self.log.debug("Received addJob request(%s, %s, %s)" %
+                       (key, courselab, jobStr))
         if (self.validateKey(key)):
             labName = self.getDirName(key, courselab)
             try:
@@ -324,17 +341,20 @@ class TangoREST:
     def poll(self, key, courselab, outputFile):
         """ poll - Poll for the output file in key-courselab
         """
-        self.log.debug("Received poll request(%s, %s, %s)" % (key, courselab, outputFile))
+        self.log.debug("Received poll request(%s, %s, %s)" %
+                       (key, courselab, outputFile))
         if (self.validateKey(key)):
             outputPath = self.getOutPath(key, courselab)
             outfilePath = "%s/%s" % (outputPath, outputFile)
             if os.path.exists(outfilePath):
-                self.log.info("Output file (%s, %s, %s) found" % (key, courselab, outputFile))
+                self.log.info("Output file (%s, %s, %s) found" %
+                              (key, courselab, outputFile))
                 output = open(outfilePath)
                 result = output.read()
                 output.close()
                 return result
-            self.log.info("Output file (%s, %s, %s) not found" % (key, courselab, outputFile))
+            self.log.info("Output file (%s, %s, %s) not found" %
+                          (key, courselab, outputFile))
             return self.status.out_not_found
         else:
             self.log.info("Key not recognized: %s" % key)
@@ -362,10 +382,12 @@ class TangoREST:
             result = self.status.obtained_jobs
             if (int(deadJobs) == 0):
                 jobs = self.tango.getJobs(0)
-                self.log.debug("Retrieved live jobs (deadJobs = %s)" % deadJobs)
+                self.log.debug(
+                    "Retrieved live jobs (deadJobs = %s)" % deadJobs)
             elif (int(deadJobs) == 1):
                 jobs = self.tango.getJobs(-1)
-                self.log.debug("Retrieved dead jobs (deadJobs = %s)" % deadJobs)
+                self.log.debug(
+                    "Retrieved dead jobs (deadJobs = %s)" % deadJobs)
             result['jobs'] = list()
             for job in jobs:
                 result['jobs'].append(self.convertTangoJobObj(job))
@@ -400,7 +422,8 @@ class TangoREST:
     def prealloc(self, key, image, num, vmStr):
         """ prealloc - Create a pool of num instances spawned from image
         """
-        self.log.debug("Received prealloc request(%s, %s, %s)" % (key, image, num))
+        self.log.debug("Received prealloc request(%s, %s, %s)" %
+                       (key, image, num))
         if self.validateKey(key):
             if not image or image == "" or not image.endswith(".img"):
                 self.log.info("Invalid image name")
