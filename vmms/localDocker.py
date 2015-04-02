@@ -157,7 +157,7 @@ class LocalDocker:
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
-        shutil.move(volumePath + '/feedback', destFile)
+        shutil.move(volumePath + 'feedback', destFile)
         self.log.debug('Copied feedback file to %s' % destFile)
         self.destroyVM(vm)
 
