@@ -135,12 +135,13 @@ class LocalDocker:
         args = args + [vm.image]
         args = args + ['sh', '-c']
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> mount/feedback' % \
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
-        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; cat mount/feedback; ls mount/' % 
+        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; \
+                        cp output/feedback mount/feedback' % 
                         autodriverCmd]
 
         self.log.debug('Running job: %s' % str(args))
