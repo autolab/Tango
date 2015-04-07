@@ -9,7 +9,9 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import time, threading, logging
+import time
+import threading
+import logging
 
 from datetime import datetime
 from config import Config
@@ -18,8 +20,9 @@ from worker import Worker
 from jobQueue import JobQueue
 from preallocator import Preallocator
 
+
 class JobManager:
-    
+
     def __init__(self, queue, vmms, preallocator):
         self.daemon = True
         self.jobQueue = queue
@@ -28,11 +31,10 @@ class JobManager:
         self.log = logging.getLogger("JobManager")
         threading.Thread(target=self.__manage).start()
 
-
     def __manage(self):
         while True:
             if Config.REUSE_VMS:
-                id,vm  = self.jobQueue.getNextPendingJobReuse()
+                id, vm = self.jobQueue.getNextPendingJobReuse()
             else:
                 id = self.jobQueue.getNextPendingJob()
 
@@ -52,15 +54,19 @@ class JobManager:
                     # Now dispatch the job to a worker
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                   (job.name, job.id, preVM.name, job.retries))
-                    job.appendTrace("%s|Dispatched job %s:%d [try %d]" %
-                                     (datetime.utcnow().ctime(), job.name, job.id,
-                                      job.retries))
-                    vmms = self.vmms[job.vm.vmms] # Create new vmms object
-                    Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
+                    job.appendTrace(
+                        "%s|Dispatched job %s:%d [try %d]" %
+                        (datetime.utcnow().ctime(), job.name, job.id, job.retries))
+                    vmms = self.vmms[job.vm.vmms]  # Create new vmms object
+                    Worker(
+                        job,
+                        vmms,
+                        self.jobQueue,
+                        self.preallocator,
+                        preVM).start()
 
-                except Exception, err:
+                except Exception as err:
                     self.jobQueue.makeDead(job.id, str(err))
-
 
             # Sleep for a bit and then check again
             time.sleep(Config.DISPATCH_PERIOD)
@@ -94,4 +100,3 @@ if __name__ == "__main__":
         JobManager(queue, vmms, preallocator)
 
         print("Starting the stand-alone Tango JobManager")
-

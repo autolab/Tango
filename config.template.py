@@ -4,7 +4,9 @@
 
 import logging
 
-# Config - defines 
+# Config - defines
+
+
 class Config:
     #####
     # Part 1: Tango constants for developers
@@ -17,10 +19,10 @@ class Config:
     # unique identifier. The "prod" prefix is reserved for production
     PREFIX = "local"
 
-    # Default port for the RESTful server to listen on. 
+    # Default port for the RESTful server to listen on.
     PORT = 3000
 
-	# Log file. Setting this to None sends the server output to stdout
+    # Log file. Setting this to None sends the server output to stdout
     LOGFILE = "tango3.log"
 
     # Logging level
@@ -34,7 +36,7 @@ class Config:
     VMMS_NAME = "localSSH"
 
     #####
-    # Part 2: Constants that shouldn't need to change very often. 
+    # Part 2: Constants that shouldn't need to change very often.
     #
 
     # Keys for Tango to authenticate client requests
@@ -48,7 +50,7 @@ class Config:
 
     # Number of server threads
     NUM_THREADS = 20
-    
+
     # We have the option to reuse VMs or discard them after each use
     REUSE_VMS = True
 
@@ -98,8 +100,10 @@ class Config:
     # Path for tashi images
     TASHI_IMAGE_PATH = ''
 
-    # Optionally log finer-grained timing information 
+
+    # Optionally log finer-grained timing information
     LOG_TIMING = False
+
 
     # Largest job ID
     MAX_JOBID = 500
@@ -111,10 +115,10 @@ class Config:
     job_requests = 0
     job_retries = 0
     waitvm_timeouts = 0
-    copyin_errors=0
-    runjob_timeouts=0
-    runjob_errors=0
-    copyout_errors=0
+    copyin_errors = 0
+    runjob_timeouts = 0
+    runjob_errors = 0
+    copyout_errors = 0
 
     ######
     # Part 4: Settings for shared memory
@@ -133,4 +137,4 @@ class Config:
     SECURITY_KEY_PATH = ''
     SECURITY_KEY_NAME = ''
     TANGO_RESERVATION_ID = ''
-    INSTANCE_RUNNING = 16 # Status code of a instance that is running
+    INSTANCE_RUNNING = 16  # Status code of a instance that is running

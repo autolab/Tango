@@ -1,20 +1,24 @@
 #
 # localSSH.py - Implements the Tango VMMS interface to run Tango jobs locally.
 #
-import random, subprocess, re, time, logging, threading, os
+import subprocess
+import re
+import time
+import logging
 
 import config
+
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
-    """ 
+    """
 
     # Launch the command
     p = subprocess.Popen(command,
-                        stdout=open("/dev/null", 'w'),
-                        stderr=subprocess.STDOUT)
+                         stdout=open("/dev/null", 'w'),
+                         stderr=subprocess.STDOUT)
 
     # Wait for the command to complete
     t = 0.0
@@ -30,12 +34,14 @@ def timeout(command, time_out=1):
         returncode = p.poll()
     return returncode
 
-def timeoutWithReturnStatus(command, time_out, returnValue = 0):
+
+def timeoutWithReturnStatus(command, time_out, returnValue=0):
     """ timeoutWithReturnStatus - Run a Unix command with a timeout,
     until the expected value is returned by the command; On timeout,
     return last error code obtained from the command.
     """
-    p = subprocess.Popen(command, stdout=open("/dev/null", 'w'), stderr=subprocess.STDOUT)
+    p = subprocess.Popen(
+        command, stdout=open("/dev/null", 'w'), stderr=subprocess.STDOUT)
     t = 0.0
     while (t < time_out):
         ret = p.poll()
@@ -46,33 +52,38 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
             return ret
         else:
             p = subprocess.Popen(command,
-                            stdout=open("/dev/null", 'w'),
-                            stderr=subprocess.STDOUT)
+                                 stdout=open("/dev/null", 'w'),
+                                 stderr=subprocess.STDOUT)
     return ret
 
 #
 # User defined exceptions
 #
 # ec2Call() exception
+
+
 class localCallError(Exception):
     pass
 
+
 class LocalSSH:
-    _SSH_FLAGS = ["-o", "StrictHostKeyChecking no", "-o", "GSSAPIAuthentication no"]
+    _SSH_FLAGS = [
+        "-o", "StrictHostKeyChecking no", "-o", "GSSAPIAuthentication no"]
 
     def __init__(self):
         """
-			Checks if the machine is ready to run Tango jobs. 
+                        Checks if the machine is ready to run Tango jobs.
         """
         self.log = logging.getLogger("LocalSSH")
-        self.log.info("LocalSSH ready.")
-        # try:
-        #     checkBinary = subprocess.check_call(["which", "autodriver"])
-        #     checkAutogradeUser = subprocess.check_call("getent passwd | grep 'autograde'", shell=True)
-        # except subprocess.CalledProcessError as e:
-        #     print "Local machine has not been bootstrapped for autograding. Please run localBootstrap.sh"
-        #     self.log.error(e)
-        #     exit(1)
+
+        try:
+            checkBinary = subprocess.check_call(["which", "autodriver"])
+            checkAutogradeUser = subprocess.check_call(
+                "getent passwd | grep 'autograde'", shell=True)
+        except subprocess.CalledProcessError as e:
+            print "Local machine has not been bootstrapped for autograding. Please run localBootstrap.sh"
+            self.log.error(e)
+            exit(1)
 
 
     def instanceName(self, id, name):
@@ -132,17 +143,20 @@ class LocalSSH:
 
                 # Give up if the elapsed time exceeds the allowable time
                 if elapsed_secs > max_secs:
-                    self.log.info("VM %s: SSH timeout after %d secs" % (instanceName, elapsed_secs))
+                    self.log.info(
+                        "VM %s: SSH timeout after %d secs" %
+                        (instanceName, elapsed_secs))
                     return -1
 
                 # If the call to ssh returns timeout (-1) or ssh error
                 # (255), then success. Otherwise, keep trying until we run
                 # out of time.
                 ret = timeout(["ssh"] + LocalSSH._SSH_FLAGS +
-                                        ["%s" % (domain_name),
-                                        "(:)"], max_secs - elapsed_secs)
+                              ["%s" % (domain_name),
+                               "(:)"], max_secs - elapsed_secs)
 
-                self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
+                self.log.debug("VM %s: ssh returned with %d" %
+                               (instanceName, ret))
 
                 if (ret != -1) and (ret != 255):
                     return 0
@@ -157,13 +171,14 @@ class LocalSSH:
 
         # Create a fresh input directory
         ret = subprocess.call(["ssh"] + LocalSSH._SSH_FLAGS +
-                               ["%s" % (domain_name),
+                              ["%s" % (domain_name),
                                "(rm -rf autolab; mkdir autolab)"])
-        
+
         # Copy the input files to the input directory
         for file in inputFiles:
-            ret = timeout(["scp"] + LocalSSH._SSH_FLAGS +
-                           [file.localFile, "%s:autolab/%s" %
+            ret = timeout(["scp"] +
+                          LocalSSH._SSH_FLAGS +
+                          [file.localFile, "%s:autolab/%s" %
                            (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
             if ret != 0:
                 return ret
@@ -175,14 +190,16 @@ class LocalSSH:
         """
         print "IN RUN JOB!!!"
         domain_name = self.domainName(vm)
-        self.log.debug("runJob: Running job on VM %s" % self.instanceName(vm.id, vm.name))
+        self.log.debug("runJob: Running job on VM %s" %
+                       self.instanceName(vm.id, vm.name))
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-            %d -o %d autolab &> output" % (
-            config.Config.VM_ULIMIT_USER_PROC, config.Config.VM_ULIMIT_FILE_SIZE,
-            runTimeout, maxOutputFileSize) 
+            %d -o %d autolab &> output" % (config.Config.VM_ULIMIT_USER_PROC,
+                                           config.Config.VM_ULIMIT_FILE_SIZE,
+                                           runTimeout,
+                                           maxOutputFileSize)
         return timeout(["ssh"] + LocalSSH._SSH_FLAGS +
-                        ["%s" % (domain_name), runcmd], runTimeout * 2)
+                       ["%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
@@ -197,29 +214,30 @@ class LocalSSH:
             try:
                 # regular expression matcher for error message from cat
                 no_file = re.compile('No such file or directory')
-                
-                time_info = subprocess.check_output(['ssh'] + LocalSSH._SSH_FLAGS +
-                                                     ['%s' % (domain_name),
-                                                     'cat time.out']).rstrip('\n')
+
+                time_info = subprocess.check_output(
+                    ['ssh'] + LocalSSH._SSH_FLAGS + ['%s' % (domain_name), 'cat time.out']).rstrip('\n')
 
                 # If the output is empty, then ignore it (timing info wasn't
                 # collected), otherwise let's log it!
                 if no_file.match(time_info):
                     # runJob didn't produce an output file
                     pass
-                
+
                 else:
                     # remove newline character printed in timing info
                     # replaces first '\n' character with a space
-                    time_info = re.sub('\n', ' ', time_info, count = 1)
+                    time_info = re.sub('\n', ' ', time_info, count=1)
                     self.log.info('Timing (%s): %s' % (domain_name, time_info))
-                    
-            except subprocess.CalledProcessError, re.error:
+
+            except subprocess.CalledProcessError as xxx_todo_changeme:
+                # Error copying out the timing data (probably runJob failed)
+                re.error = xxx_todo_changeme
                 # Error copying out the timing data (probably runJob failed)
                 pass
-    
+
         return timeout(["scp"] + LocalSSH._SSH_FLAGS +
-                        ["%s:output" % (domain_name), destFile],
+                       ["%s:output" % (domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
@@ -239,4 +257,3 @@ class LocalSSH:
         """ existsVM - VM is simply localhost which exists.
         """
         return True
-

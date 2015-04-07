@@ -7,12 +7,14 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
-import time, threading, logging
+import time
+import threading
+import logging
 
 from datetime import datetime
 from config import Config
 from tangoObjects import TangoDictionary, TangoJob
- 
+
 #
 # JobQueue - This class defines the job queue and the functions for
 # manipulating it. The actual queue is made up of two smaller
@@ -26,14 +28,17 @@ from tangoObjects import TangoDictionary, TangoJob
 #
 # - The dead list is a dictionary of the jobs that have completed.
 #
+
+
 class JobQueue:
+
     def __init__(self, preallocator):
-        self.jobQueue = TangoDictionary("jobQueue")
+        self.liveJobs = TangoDictionary("liveJobs")
         self.deadJobs = TangoDictionary("deadJobs")
         self.queueLock = threading.Lock()
         self.preallocator = preallocator
         self.log = logging.getLogger("JobQueue")
-        self.nextID= 1
+        self.nextID = 1
 
     def _getNextID(self):
         """_getNextID - updates and returns the next ID to be used for a job
@@ -47,7 +52,7 @@ class JobQueue:
 
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
-        keys = self.jobQueue.keys()
+        keys = self.liveJobs.keys()
         if (str(id) in keys):
             id = -1
             for i in xrange(1, Config.MAX_JOBID + 1):
@@ -68,7 +73,7 @@ class JobQueue:
         This function assigns an ID number to a job and then adds it
         to the queue of live jobs.
         """
-        if (not isinstance(job,TangoJob)):
+        if (not isinstance(job, TangoJob)):
             return -1
         self.log.debug("add|Getting next ID")
         job.setId(self._getNextID())
@@ -86,10 +91,10 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("add| Acquired lock to job queue.")
 
-        self.jobQueue.set(job.id, job)
+        self.liveJobs.set(job.id, job)
         job.appendTrace("%s|Added job %s:%d to queue" %
-                (datetime.utcnow().ctime(), job.name, job.id))
-        
+                        (datetime.utcnow().ctime(), job.name, job.id))
+
         self.log.debug("Ref: " + str(job._remoteLocation))
         self.log.debug("job_id: " + str(job.id))
         self.log.debug("job_name: " + str(job.name))
@@ -108,7 +113,7 @@ class JobQueue:
 
         Called by validateJob when a job validation fails.
         """
-        if (not isinstance(job,TangoJob)):
+        if (not isinstance(job, TangoJob)):
             return -1
         job.setId(self._getNextID())
         self.log.info("addDead|Unassigning job %s" % str(job.id))
@@ -132,8 +137,8 @@ class JobQueue:
         self.log.debug("remove|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.jobQueue.keys():
-            self.jobQueue.delete(id)
+        if str(id) in self.liveJobs.keys():
+            self.liveJobs.delete(id)
             status = 0
 
         self.queueLock.release()
@@ -170,15 +175,14 @@ class JobQueue:
                 self.log.error("Job %s not found in dead queue" % id)
             return status
 
-
     def get(self, id):
         """get - retrieve job from live queue
         @param id - the id of the job to retrieve
         """
         self.queueLock.acquire()
         self.log.debug("get| Acquired lock to job queue.")
-        if str(id) in self.jobQueue.keys():
-            job = self.jobQueue.get(id)
+        if str(id) in self.liveJobs.keys():
+            job = self.liveJobs.get(id)
         else:
             job = None
         self.queueLock.release()
@@ -190,7 +194,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
-        for id,job in self.jobQueue.iteritems():
+        for id, job in self.liveJobs.iteritems():
             if job.isNotAssigned():
                 self.queueLock.release()
                 return id
@@ -202,7 +206,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
-        for id, job in self.jobQueue.iteritems():
+        for id, job in self.liveJobs.iteritems():
 
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
@@ -224,11 +228,11 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
-        job = self.jobQueue.get(jobId)
+        job = self.liveJobs.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job %s" % str(job.id))
         job.makeAssigned()
-        
+
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
@@ -238,7 +242,7 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
-        job = self.jobQueue.get(jobId)
+        job = self.liveJobs.get(jobId)
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         if job.retries is None:
@@ -257,15 +261,15 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
-        if str(id) in self.jobQueue.keys():
+        if str(id) in self.liveJobs.keys():
             self.log.info("makeDead| Job is in the queue")
             status = 0
-            job = self.jobQueue.get(id)
-            self.jobQueue.delete(id)
+            job = self.liveJobs.get(id)
+            self.liveJobs.delete(id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
-            job.appendTrace("%s|%s" %  (datetime.utcnow().ctime(), reason))
+            job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status
@@ -273,7 +277,11 @@ class JobQueue:
     def getInfo(self):
 
         info = {}
-        info['size'] = len(self.jobQueue.keys())
+        info['size'] = len(self.liveJobs.keys())
         info['size_deadjobs'] = len(self.deadJobs.keys())
 
         return info
+
+    def reset(self):
+        self.liveJobs._clean()
+        self.deadJobs._clean()

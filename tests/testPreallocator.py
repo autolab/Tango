@@ -1,11 +1,12 @@
-import sys, os, hashlib, time, json, random
 import unittest
 
 from preallocator import *
 
 from config import Config
 
+
 class TestPreallocator(unittest.TestCase):
+
     def setUp(self):
         return False
 
@@ -38,7 +39,7 @@ class TestPreallocator(unittest.TestCase):
 
     def test_createVM(self):
         return False
- 
+
     def test_destroyVM(self):
         return False
 
@@ -48,4 +49,3 @@ class TestPreallocator(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
