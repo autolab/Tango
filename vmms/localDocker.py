@@ -223,7 +223,7 @@ class LocalDocker:
         images that can be used to boot a docker container with. This 
         function is a lot of parsing and so can break easily.
         """
-        result = []
+        result = set()
         cmd = "docker images"
         o = subprocess.check_output("docker images", shell=True)
         o_l = o.split('\n')
@@ -232,7 +232,7 @@ class LocalDocker:
         o_l.pop()
         for row in o_l:
             row_l = row.split(' ')
-            result.append(row_l[0])
-        return result
+            result.add(row_l[0])
+        return list(result)
 
 
