@@ -1,4 +1,2 @@
 autograde:
-	./hello.sh
-
-
+	bash hello.sh

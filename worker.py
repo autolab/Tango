@@ -82,6 +82,7 @@ class Worker(threading.Thread):
         # Here is where we give up
         else:
             self.jobQueue.makeDead(self.job.id, err)
+
             self.appendMsg(
                 hdrfile,
                 "Internal error: Unable to complete job after %d tries. Pleae resubmit" %
@@ -93,6 +94,7 @@ class Worker(threading.Thread):
                  ret["copyin"],
                     ret["runjob"],
                     ret["copyout"]))
+
             self.catFiles(hdrfile, self.job.outputFile)
             self.detachVM(return_vm=False, replace_vm=True)
             self.notifyServer(self.job)
@@ -301,6 +303,7 @@ class Worker(threading.Thread):
                     else:  # This should never happen
                         msg = "Error: Unknown autodriver error (status=%d)" % (
                             ret["runjob"])
+
                 elif ret["copyout"] != 0:
                     msg += "Error: Copy out from VM failed (status=%d)" % (
                         ret["copyout"])

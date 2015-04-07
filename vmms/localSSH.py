@@ -75,6 +75,7 @@ class LocalSSH:
                         Checks if the machine is ready to run Tango jobs.
         """
         self.log = logging.getLogger("LocalSSH")
+
         try:
             checkBinary = subprocess.check_call(["which", "autodriver"])
             checkAutogradeUser = subprocess.check_call(
@@ -83,6 +84,7 @@ class LocalSSH:
             print "Local machine has not been bootstrapped for autograding. Please run localBootstrap.sh"
             self.log.error(e)
             exit(1)
+
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use

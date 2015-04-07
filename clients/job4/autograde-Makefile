@@ -1,5 +1,5 @@
 autograde:
-	(./hello.sh; exit 2)
+	(bash hello.sh; exit 2)
 
 
 
