@@ -1,0 +1,26 @@
+language: python
+python:
+  - "2.7"
+
+install:
+  - sudo sh -c "wget -qO- https://get.docker.io/gpg | apt-key add -"
+  - sudo sh -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+  - sudo apt-get update
+  - sudo mkdir -p /var/lib/docker
+  - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
+  - sudo chmod +x /usr/sbin/policy-rc.d
+  - sudo apt-get install -y slirp lxc lxc-docker aufs-tools cgroup-lite
+
+script:
+  - sudo docker ps
+  - git clone https://github.com/autolab/Tango.git; cd Tango
+  - sudo docker build -t autograding_image vmms/
+  - sudo docker images autograding_image
+  - sudo pip install -r requirements.txt
+  - mkdir volumns
+  - cp config.template.py config.py
+  - echo "    VMMS_NAME = \"localDocker\""
+  - sudo python $PWD/restful-tango/server.py &
+  - sudo python clients/tango-rest.py -P 3000 -k test -l docker_test --runJob clients/job1/ --image autograding_image
+  - cat tango3.log
+  - cat courselabs/test-docker_test/output/result.out-1

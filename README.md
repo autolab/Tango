@@ -19,14 +19,15 @@ In order to run Tango locally, the VMM API needs to be implemented such that job
 
 A brief overview of the Tango respository:
 
-* tangod.py - Main tango program
-* jobQueue.py - Manages the job queue
-* preallocator.py - Manages a pool of preallocated VMs
-* worker.py - Shepherds a job through its execution
-* vmms - VMM system library implementations
-* restful-tango - HTTP server layer on the main tango
+* `tangod.py` - Main tango program
+* `jobQueue.py` - Manages the job queue
+* `preallocator.py` - Manages a pool of preallocated VMs
+* `worker.py` - Shepherds a job through its execution
+* `vmms` - VMM system library implementations
+* `restful-tango` - HTTP server layer on the main tango
 
 ## Testing
+[![Build Status](https://travis-ci.org/autolab/Tango.svg)](https://travis-ci.org/autolab/Tango) [![Code Health](https://landscape.io/github/autolab/Tango/master/landscape.svg?style=flat)](https://landscape.io/github/autolab/Tango/master)
 
 To test whether Tango is running and accepting jobs, a tango command-line client is included in `clients/` along with sample jobs.
 

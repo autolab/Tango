@@ -8,6 +8,8 @@ scripts/*.sh
 vmms/id_rsa*
 # config
 config.py
+# Tango log
+*.log
 
 # Virtualenv
 .Python
