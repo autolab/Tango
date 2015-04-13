@@ -92,14 +92,16 @@ class TangoREST:
         self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
         self.queue = JobQueue(self.preallocator)
+        
+        self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
 
         if not Config.USE_REDIS:
             # creates a local Job Manager if there is no persistent
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
+            self.resetTango()
             JobManager(self.queue, self.vmms, self.preallocator)
 
-        self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
 
         logging.basicConfig(
             filename=self.LOGFILE,

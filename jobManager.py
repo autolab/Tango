@@ -17,6 +17,7 @@ from datetime import datetime
 from config import Config
 from worker import Worker
 
+import tangoREST
 from jobQueue import JobQueue
 from preallocator import Preallocator
 
@@ -78,6 +79,9 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
+        tangoREST = tangoREST.TangoREST()
+        tangoREST.resetTango()
+
         vmms = None
 
         if Config.VMMS_NAME == "localSSH":

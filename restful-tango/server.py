@@ -140,6 +140,5 @@ if __name__ == "__main__":
         port = int(sys.argv[1])
 
     print("Starting the RESTful Tango server on port %d..." % (port))
-    tangoREST.resetTango()
     application.listen(port)
     tornado.ioloop.IOLoop.instance().start()
