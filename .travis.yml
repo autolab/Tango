@@ -4,7 +4,7 @@ python:
 
 install:
   - sudo apt-get update
-  - sudo apt-get install linux-image-generic-lts-trusty
+  - sudo apt-get install liberror-perl linux-image-generic-lts-trusty
   - sudo sh -c "wget -qO- https://get.docker.io/ | sudo sh"
   - sudo mkdir -p /var/lib/docker
   - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
