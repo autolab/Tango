@@ -3,13 +3,13 @@ python:
   - "2.7"
 
 install:
-  - sudo sh -c "wget -qO- https://get.docker.io/gpg | apt-key add -"
-  - sudo sh -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
   - sudo apt-get update
+  - sudo apt-get install linux-image-generic-lts-trusty
+  - sudo sh -c "wget -qO- https://get.docker.io/ | sudo sh"
   - sudo mkdir -p /var/lib/docker
   - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
   - sudo chmod +x /usr/sbin/policy-rc.d
-  - sudo apt-get install -y slirp lxc lxc-docker aufs-tools cgroup-lite
+  - sudo apt-get install -y slirp aufs-tools cgroup-lite
 
 script:
   - sudo docker ps
