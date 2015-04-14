@@ -178,6 +178,7 @@ class TashiSSH:
         """ initializeVM - Ask Tashi to create a new VM instance
         """
         # Create the instance
+        vm.image = vm.image + ".img"
         instance = self.tangoMachineToInstance(vm)
         tashiInst = self.tashiCall("createVm", [instance])
         vm.instance_id = tashiInst.id
