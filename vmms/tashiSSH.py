@@ -239,7 +239,6 @@ class TashiSSH:
         """ copyIn - Copy input files to VM
         """
         domain_name = self.domainName(vm.id, vm.name)
-        ssh_tries = 0
         self.log.debug("Creating autolab directory on VM")
         # Create a fresh input directory
         ret = subprocess.call(["ssh"] + TashiSSH._SSH_FLAGS +

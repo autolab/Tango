@@ -7,9 +7,7 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
-import time
-import threading
-import logging
+import time, threading, logging
 
 from datetime import datetime
 from config import Config
