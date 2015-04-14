@@ -9,14 +9,11 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import time
-import threading
-import logging
+import time, threading, logging
 
 from datetime import datetime
 from config import Config
 from worker import Worker
-
 from jobQueue import JobQueue
 from preallocator import Preallocator
 
