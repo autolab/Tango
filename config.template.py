@@ -23,7 +23,7 @@ class Config:
     PORT = 3000
 
     # Log file. Setting this to None sends the server output to stdout
-    LOGFILE = "tango3.log"
+    LOGFILE = None
 
     # Logging level
     LOGLEVEL = logging.DEBUG
@@ -100,10 +100,8 @@ class Config:
     # Path for tashi images
     TASHI_IMAGE_PATH = ''
 
-
     # Optionally log finer-grained timing information
     LOG_TIMING = False
-
 
     # Largest job ID
     MAX_JOBID = 500

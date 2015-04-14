@@ -326,7 +326,8 @@ class TangoNativeDictionary():
             del self.dict[str(id)]
 
     def iteritems(self):
-        return self.dict.iteritems()
+        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                if self.get(i) != None])
 
     def _clean(self):
         # only for testing
