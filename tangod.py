@@ -208,9 +208,10 @@ class TangoServer:
                                 (vmms_name, namelist))
 
             for job in self.jobQueue.liveJobs.values():
+                if not job.isNotAssigned():
+                    job.makeUnassigned()
                 self.log.debug("job: %s, assigned: %s" %
                                (str(job.name), str(job.assigned)))
-
         except Exception as err:
             log.error("resetTango: Call to VMMS %s failed: %s" %
                       (vmms_name, err))
