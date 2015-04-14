@@ -90,6 +90,9 @@ if __name__ == "__main__":
         elif Config.VMMS_NAME == "localDocker":
             from vmms.localDocker import LocalDocker
             vmms = LocalDocker()
+        elif Config.VMMS_NAME == "distDocker":
+            from vmms.distDocker import DistDocker
+            vmms = DistDocker()
 
         vmms = {Config.VMMS_NAME: vmms}
         preallocator = Preallocator(vmms)

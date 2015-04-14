@@ -75,7 +75,7 @@ class DistDocker:
         """
         try:
             self.log = logging.getLogger("DistDocker")
-            self.hosts = ['127.0.0.1']
+            self.hosts = ['54.186.238.205']
             self.hostIdx = 0
             self.hostLock = threading.Lock()
             self.hostUser = "ubuntu"
@@ -133,26 +133,9 @@ class DistDocker:
         """
         domain_name = self.domainName(vm)
 
-        # First, wait for ping to the vm instance to work
-        instance_down = 1
         start_time = time.time()
-        while instance_down:
-            instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
-                                            shell=True,
-                                            stdout=open('/dev/null', 'w'),
-                                            stderr=subprocess.STDOUT)
 
-            # Wait a bit and then try again if we haven't exceeded
-            # timeout
-            if instance_down:
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
-                elapsed_secs = time.time() - start_time
-                if (elapsed_secs > max_secs):
-                    return -1
-
-        # The ping worked, so now wait for SSH to work before
-        # declaring that the VM is ready
-        self.log.debug("VM %s: ping completed" % (domain_name))
+        # Wait for SSH to work before declaring that the VM is ready
         while (True):
 
             elapsed_secs = time.time() - start_time
@@ -197,8 +180,8 @@ class DistDocker:
             return ret
         
         for file in inputFiles:
-            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + file.localFile +
-                            ["%s@%s:%s/%s" % 
+            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + [file.localFile] +
+                            ["%s@%s:%s/%s" % \
                             (self.hostUser, domainName, volumePath, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
             if ret == 0:
@@ -207,7 +190,7 @@ class DistDocker:
             else:
                 self.log.error(
                     "Error: failed to copy file %s to VM %s with status %s" %
-                    (file.localFile, domain_name, str(ret)))
+                    (file.localFile, domainName, str(ret)))
                 return ret
 
         return 0
@@ -231,14 +214,14 @@ class DistDocker:
         setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
                 cp output/feedback mount/feedback' % autodriverCmd
 
-        args = '(docker run --name %s -v %s:/home/mount %s sh -c "%s")' %
+        args = "(docker run --name %s -v %s:/home/mount %s sh -c '%s')" % \
                 (instanceName, volumePath, vm.image, setupCmd)
 
-        self.log.debug('Running job: %s' % str(args))
+        self.log.debug('Running job: %s' % args)
 
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                        ["%s@%s" % (self.hostUser, domain_name),
-                        args, config.Config.RUNJOB_TIMEOUT)
+                        ["%s@%s" % (self.hostUser, domainName), args],
+                        config.Config.RUNJOB_TIMEOUT)
 
         self.log.debug('runJob return status %d' % ret)
 
@@ -256,12 +239,12 @@ class DistDocker:
 
         ret = timeout(["scp"] + DistDocker._SSH_FLAGS +
                       ["%s@%s:%s" % 
-                      (self.hostUser, domain_name, volumePath + 'feedback'), 
+                      (self.hostUser, domainName, volumePath + 'feedback'), 
                       destFile],
                       config.Config.COPYOUT_TIMEOUT)
         
         self.log.debug('Copied feedback file to %s' % destFile)
-        self.destroyVM(vm)
+        # self.destroyVM(vm)
 
         return 0
 
@@ -270,17 +253,19 @@ class DistDocker:
         """
         domainName = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.image)
-        volumePath = self.getVolumePath('')
+        volumePath = self.getVolumePath(instanceName)
+        self.log.debug(volumePath)
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
         args = '(docker rm -f %s)' % (instanceName)
         timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                ["%s@%s" % (self.hostUser, domainName), args]
-            config.Config.DOCKER_RM_TIMEOUT)
+                ["%s@%s" % (self.hostUser, domainName), args],
+                config.Config.DOCKER_RM_TIMEOUT)
         # Destroy corresponding volume if it exists.
         timeout(["ssh"] + DistDocker._SSH_FLAGS +
                 ["%s@%s" % (self.hostUser, domainName),
-                "(rm -rf %s" % (volumePath)])
+                "(rm -rf %s)" % (volumePath)],
+                config.Config.DOCKER_RM_TIMEOUT)
         self.log.debug('Deleted volume %s' % instanceName)
         return
 
