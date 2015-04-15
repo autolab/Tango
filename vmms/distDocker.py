@@ -59,10 +59,6 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
                             stderr=subprocess.STDOUT)
     return ret
 
-#
-# User defined exceptions
-#
-
 class DistDocker:
 
     _SSH_FLAGS = ["-q", "-i", "/Users/Mihir/Documents/prog/Autolab/mp_tango.pem",
@@ -106,7 +102,8 @@ class DistDocker:
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM -  Nothing to do for initializeVM
+        """ initializeVM -  Assign a host machine for this container to 
+        run on.
         """
         self.hostLock.acquire()
         host = self.hosts[self.hostIdx]
@@ -114,12 +111,14 @@ class DistDocker:
         if self.hostIdx >= len(self.hosts):
             self.hostIdx = 0
         self.hostLock.release()
+
         vm.domain_name = host
-        self.log.info("Assign host %s to VM %s." % (host, vm.name))
+        self.log.info("Assigned host %s to VM %s." % (host, vm.name))
         return vm
 
     def waitVM(self, vm, max_secs):
-        """ waitVM - Nothing to do for waitVM
+        """ waitVM - Wait at most max_secs for a VM to become
+        ready. Return error if it takes too long.
         """
         start_time = time.time()
 
@@ -197,6 +196,9 @@ class DistDocker:
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
+        # IMPORTANT: The single and double quotes are important, since we
+        #            are switching to the autolab user and then running
+        #            bash commands.
         setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
                 cp output/feedback mount/feedback' % autodriverCmd
 
@@ -266,9 +268,8 @@ class DistDocker:
         return
 
     def getVMs(self):
-        """ getVMs - Executes and parses `docker ps`
+        """ getVMs - Get all volumes of docker containers
         """
-        # Get all volumes of docker containers
         machines = []
         volumePath = self.getVolumePath('')
         for host in self.hosts:
@@ -288,7 +289,8 @@ class DistDocker:
         return machines
 
     def existsVM(self, vm):
-        """ existsVM
+        """ existsVM - Returns true if volume exists for corresponding
+        container.
         """
         vms = self.getVMs()
         vmnames = [vm.name for vm in vms]
@@ -312,4 +314,5 @@ class DistDocker:
             for row in o_l:
                 row_l = row.split(' ')
                 result.add(row_l[0])
+
         return list(result)
