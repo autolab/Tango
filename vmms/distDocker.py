@@ -75,7 +75,7 @@ class DistDocker:
         """
         try:
             self.log = logging.getLogger("DistDocker")
-            self.hosts = ['54.186.238.205']
+            self.hosts = ['54.186.238.205', '54.68.89.235']
             self.hostIdx = 0
             self.hostLock = threading.Lock()
             self.hostUser = "ubuntu"
@@ -87,15 +87,6 @@ class DistDocker:
         except Exception as e:
             self.log.error(str(e))
             exit(1)
-
-    def getHost(self):
-        self.hostLock.acquire()
-        host = self.hosts[self.hostIdx]
-        self.hostIdx = self.hostIdx + 1
-        if self.hostIdx >= len(self.hosts):
-            self.hostIdx = 0
-        self.hostLock.release()
-        return host
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a Docker instance name. Always use
@@ -111,19 +102,18 @@ class DistDocker:
         volumePath = volumePath + instanceName + '/'
         return volumePath
 
-    def domainName(self, vm):
-        """ Returns the domain name that is stored in the vm
-        instance.
-        """
-        return vm.domain_name
-
     #
     # VMMS API functions
     #
     def initializeVM(self, vm):
         """ initializeVM -  Nothing to do for initializeVM
         """
-        host = self.getHost()
+        self.hostLock.acquire()
+        host = self.hosts[self.hostIdx]
+        self.hostIdx = self.hostIdx + 1
+        if self.hostIdx >= len(self.hosts):
+            self.hostIdx = 0
+        self.hostLock.release()
         vm.domain_name = host
         self.log.info("Assign host %s to VM %s." % (host, vm.name))
         return vm
@@ -131,8 +121,6 @@ class DistDocker:
     def waitVM(self, vm, max_secs):
         """ waitVM - Nothing to do for waitVM
         """
-        domain_name = self.domainName(vm)
-
         start_time = time.time()
 
         # Wait for SSH to work before declaring that the VM is ready
@@ -143,17 +131,17 @@ class DistDocker:
             # Give up if the elapsed time exceeds the allowable time
             if elapsed_secs > max_secs:
                 self.log.info("VM %s: SSH timeout after %d secs" %
-                              (domain_name, elapsed_secs))
+                              (vm.domain_name, elapsed_secs))
                 return -1
 
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                          ["%s@%s" % (self.hostUser, domain_name),
+                          ["%s@%s" % (self.hostUser, vm.domain_name),
                            "(:)"], max_secs - elapsed_secs)
             self.log.debug("VM %s: ssh returned with %d" %
-                           (domain_name, ret))
+                           (vm.domain_name, ret))
             if (ret != -1) and (ret != 255):
                 return 0
 
@@ -165,13 +153,12 @@ class DistDocker:
         for the docker containers on the host machine for this VM.
         Copy input files to this directory on the host machine.
         """
-        domainName = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
         # Create a fresh volume
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                        ["%s@%s" % (self.hostUser, domainName),
+                        ["%s@%s" % (self.hostUser, vm.domain_name),
                         "(rm -rf %s; mkdir %s)" % (volumePath, volumePath)],
                         config.Config.COPYIN_TIMEOUT)
         if ret == 0:
@@ -182,7 +169,7 @@ class DistDocker:
         for file in inputFiles:
             ret = timeout(["scp"] + DistDocker._SSH_FLAGS + [file.localFile] +
                             ["%s@%s:%s/%s" % \
-                            (self.hostUser, domainName, volumePath, file.destFile)],
+                            (self.hostUser, vm.domain_name, volumePath, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
             if ret == 0:
                 self.log.debug('Copied in file %s to %s' % 
@@ -190,7 +177,7 @@ class DistDocker:
             else:
                 self.log.error(
                     "Error: failed to copy file %s to VM %s with status %s" %
-                    (file.localFile, domainName, str(ret)))
+                    (file.localFile, vm.domain_name, str(ret)))
                 return ret
 
         return 0
@@ -202,7 +189,6 @@ class DistDocker:
         - run autodriver with corresponding ulimits and timeout as
           autolab user
         """
-        domainName = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
@@ -220,7 +206,7 @@ class DistDocker:
         self.log.debug('Running job: %s' % args)
 
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                        ["%s@%s" % (self.hostUser, domainName), args],
+                        ["%s@%s" % (self.hostUser, vm.domain_name), args],
                         config.Config.RUNJOB_TIMEOUT)
 
         self.log.debug('runJob return status %d' % ret)
@@ -233,37 +219,34 @@ class DistDocker:
         destFile on the Tango host. Then, destroy that container.
         Containers are never reused.
         """
-        domainName = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
         ret = timeout(["scp"] + DistDocker._SSH_FLAGS +
                       ["%s@%s:%s" % 
-                      (self.hostUser, domainName, volumePath + 'feedback'), 
+                      (self.hostUser, vm.domain_name, volumePath + 'feedback'), 
                       destFile],
                       config.Config.COPYOUT_TIMEOUT)
         
         self.log.debug('Copied feedback file to %s' % destFile)
-        # self.destroyVM(vm)
+        self.destroyVM(vm)
 
         return 0
 
     def destroyVM(self, vm):
         """ destroyVM - Delete the docker container.
         """
-        domainName = self.domainName(vm)
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
-        self.log.debug(volumePath)
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
         args = '(docker rm -f %s)' % (instanceName)
         timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                ["%s@%s" % (self.hostUser, domainName), args],
+                ["%s@%s" % (self.hostUser, vm.domain_name), args],
                 config.Config.DOCKER_RM_TIMEOUT)
         # Destroy corresponding volume if it exists.
         timeout(["ssh"] + DistDocker._SSH_FLAGS +
-                ["%s@%s" % (self.hostUser, domainName),
+                ["%s@%s" % (self.hostUser, vm.domain_name),
                 "(rm -rf %s)" % (volumePath)],
                 config.Config.DOCKER_RM_TIMEOUT)
         self.log.debug('Deleted volume %s' % instanceName)
@@ -311,3 +294,22 @@ class DistDocker:
         vmnames = [vm.name for vm in vms]
         return (vm.name in vmname)
 
+    def getImages(self):
+        """ getImages - Executes `docker images` on every host and 
+        returns a list of images that can be used to boot a docker 
+        container with. This function is a lot of parsing and so 
+        can break easily.
+        """
+        result = set()
+        for host in self.hosts:
+            o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
+                                        ["%s@%s" % (self.hostUser, host),
+                                        "(docker images)"])
+            o_l.split('\n')
+            o_l.pop()
+            o_l.reverse()
+            o_l.pop()
+            for row in o_l:
+                row_l = row.split(' ')
+                result.add(row_l[0])
+        return list(result)
