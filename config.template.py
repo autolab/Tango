@@ -97,9 +97,6 @@ class Config:
     # Default vm pool size
     POOL_SIZE = 2
 
-    # Path for tashi images
-    TASHI_IMAGE_PATH = ''
-
     # Optionally log finer-grained timing information
     LOG_TIMING = False
 
