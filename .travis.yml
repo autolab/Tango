@@ -10,7 +10,7 @@ before_install:
 
 install:
   - sudo apt-get -qqy update
-  - sudo apt-get -qqy install liberror-perl linux-image-generic-lts-trusty linux-image-virtual linux-image-extra-virtual
+  - sudo apt-get -qqy install liberror-perl linux-image-generic-lts-trusty
   - sudo apt-get -qqy upgrade -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
   - sudo apt-get -qqy install lxc lxc-docker slirp
   - sudo mkdir -p /var/lib/docker
