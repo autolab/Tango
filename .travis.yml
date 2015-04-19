@@ -10,7 +10,7 @@ install:
   - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
   - sudo chmod +x /usr/sbin/policy-rc.d
   - sudo apt-get install -y slirp aufs-tools cgroup-lite
-  - sudo service docker restart
+  - sudo service docker.io restart
   - sudo docker -d &
 
 script:
