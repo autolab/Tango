@@ -10,11 +10,11 @@ before_install:
 
 install:
   - sudo apt-get -qqy update
-  - sudo apt-get install liberror-perl linux-image-generic-lts-trusty linux-image-virtual linux-image-extra-virtual
-  - sudo apt-get upgrade
+  - sudo apt-get -qqy install liberror-perl linux-image-generic-lts-trusty linux-image-virtual linux-image-extra-virtual
+  - sudo apt-get -qqy upgrade
   - sudo apt-get -qqy install lxc lxc-docker slirp
   - sudo mkdir -p /var/lib/docker
-  - sudo apt-get install -y slirp aufs-tools cgroup-lite
+  - sudo apt-get -qqy install slirp aufs-tools cgroup-lite
   - sudo docker -d &
 
 script:

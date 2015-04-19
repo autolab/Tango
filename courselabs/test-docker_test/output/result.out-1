@@ -1,0 +1,11 @@
+Autograder [Wed Apr  8 15:51:19 2015]: Received job test_job-1:1
+Autograder [Wed Apr  8 15:51:21 2015]: Success: Autodriver returned normally
+Autograder [Wed Apr  8 15:51:21 2015]: Here is the output from the autograder:
+---
+Autodriver: Job exited with status 0
+bash hello.sh
+Hello from 5808aae26138:/home/autograde/autolab
+I have the following files:
+total 8
+-rw-r--r-- 1 autograde autograde  28 Apr  8 15:51 Makefile
+-rw-r--r-- 1 autograde autograde 127 Apr  8 15:51 hello.sh
