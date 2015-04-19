@@ -2,13 +2,18 @@ language: python
 python:
   - "2.7"
 
-install:
-  - sudo apt-get update
-  - sudo apt-get install liberror-perl linux-image-generic-lts-trusty linux-image-virtual linux-image-extra-virtual
-  - sudo sh -c "wget -qO- https://get.docker.io/ | sudo sh"
-  - sudo mkdir -p /var/lib/docker
+before_install:
+  - sudo sh -c "wget -qO- https://get.docker.io/gpg | apt-key add -"
+  - sudo sh -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
   - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
   - sudo chmod +x /usr/sbin/policy-rc.d
+
+install:
+  - sudo apt-get -qqy update
+  - sudo apt-get install liberror-perl linux-image-generic-lts-trusty linux-image-virtual linux-image-extra-virtual
+  - sudo apt-get upgrade
+  - sudo apt-get -qqy install lxc lxc-docker slirp
+  - sudo mkdir -p /var/lib/docker
   - sudo apt-get install -y slirp aufs-tools cgroup-lite
   - sudo docker -d &
 
@@ -21,6 +26,7 @@ script:
   - mkdir volumns
   - cp config.template.py config.py
   - echo "    VMMS_NAME = \"localDocker\""
+  - echo "    LOGFILE = \"tango3.log\""
   - sudo python $PWD/restful-tango/server.py &
   - sudo python clients/tango-rest.py -P 3000 -k test -l docker_test --runJob clients/job1/ --image autograding_image
   - cat tango3.log
