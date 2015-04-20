@@ -47,11 +47,10 @@ pool_help = 'Obtain information about a pool of VMs spawned from a specific imag
 parser.add_argument('--pool', action='store_true', help=pool_help)
 prealloc_help = 'Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel.img), --num (2), --vmms (tashiSSH), --cores (1), and --memory (512).'
 parser.add_argument('--prealloc', action='store_true', help=prealloc_help)
-
 parser.add_argument('--runJob', help='Run a job from a specific directory')
+parser.add_argument('--delJob', help='Delete a job with given id. Must specify key with -k. Modify defaults with --deadJobs (0).')
 parser.add_argument(
     '--numJobs', type=int, default=1, help='Number of jobs to run')
-
 parser.add_argument('--vmms', default='tashiSSH',
                     help='Choose vmms between localSSH, ec2SSH, tashiSSH')
 parser.add_argument('--image', default='rhel.img',
@@ -359,6 +358,12 @@ def tango_runJob():
         tango_addJob()
         print "--------------------------------------------------------------------------------------------------\n"
 
+# delJob
+
+def tango_delJob():
+    if args.delJob is None:
+        print "Invalid usage: [delJob]"
+        sys.exit(0)
 
 def router():
     if (args.open):
@@ -379,6 +384,8 @@ def router():
         tango_prealloc()
     elif (args.runJob):
         tango_runJob()
+    elif (args.delJob):
+        tango_delJob()
 
 #
 # Parse the command line arguments

@@ -77,6 +77,11 @@ class AddJobHandler(tornado.web.RequestHandler):
         """ post - Handles the post request to add a job."""
         return tangoREST.addJob(key, courselab, self.request.body)
 
+class DelJobHandler(tornado.web.RequestHandler):
+    @unblock
+    def get(self, key, id, deadjobs):
+        """ get - Handles the get request to delete a job."""
+        return tangoREST.delJob(key, id, deadjobs)
 
 class PollHandler(tornado.web.RequestHandler):
 
@@ -124,6 +129,7 @@ application = tornado.web.Application([
     (r"/open/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), OpenHandler),
     (r"/upload/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), UploadHandler),
     (r"/addJob/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), AddJobHandler),
+    (r"/delJob/(%s)/(%s)/(%s)/" % (SHA1_KEY, NUM, DEADJOBS), DelJobHandler),
     (r"/poll/(%s)/(%s)/(%s)/" %
      (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
     (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
