@@ -45,6 +45,7 @@ class Status:
         self.invalid_image = self.create(-1, "Invalid image name")
         self.invalid_prealloc_size = self.create(-1, "Invalid prealloc size")
         self.pool_not_found = self.create(-1, "Pool not found")
+        self.prealloc_failed = self.create(-1, "Preallocate VM failed")
 
     def create(self, id, msg):
         """ create - Constructs a dict with the given ID and message
@@ -447,9 +448,12 @@ class TangoREST:
             ret = self.tango.preallocVM(vm, int(num))
 
             if ret == -1:
+                self.log.error("Prealloc failed")
+                return self.status.prealloc_failed
+            if ret == -2:
                 self.log.error("Invalid prealloc size")
                 return self.status.invalid_prealloc_size
-            if ret == -2:
+            if ret == -3:
                 self.log.error("Invalid image name")
                 return self.status.invalid_image
             self.log.info("Successfully preallocated VMs")
