@@ -3,36 +3,44 @@
 # Implements objects used to pass state within Tango.
 #
 import redis
-import pickle, Queue
+import pickle
+import Queue
 from config import Config
 
 redisConnection = None
 
+
 def getRedisConnection():
     global redisConnection
     if redisConnection is None:
-        redisConnection = redis.StrictRedis(host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
+        redisConnection = redis.StrictRedis(
+            host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
 
     return redisConnection
 
 
 class InputFile():
+
     """
         InputFile - Stores pointer to the path on the local machine and the
         name of the file on the destination machine
     """
+
     def __init__(self, localFile, destFile):
         self.localFile = localFile
         self.destFile = destFile
 
+
 class TangoMachine():
+
     """
         TangoMachine - A description of the Autograding Virtual Machine
     """
-    def __init__(self, name = "DefaultTestVM", image = None, vmms = None,
-                network = None, cores = None, memory = None, disk = None,
-                domain_name = None, ec2_id = None, resume = None, id = None,
-                instance_id = None):
+
+    def __init__(self, name="DefaultTestVM", image=None, vmms=None,
+                 network=None, cores=None, memory=None, disk=None,
+                 domain_name=None, ec2_id=None, resume=None, id=None,
+                 instance_id=None):
         self.name = name
         self.image = image
         self.network = network
@@ -46,14 +54,17 @@ class TangoMachine():
         self.id = id
         self.instance_id = id
 
+
 class TangoJob():
+
     """
         TangoJob - A job that is to be run on a TangoMachine
     """
-    def __init__(self, vm = None,
-                outputFile = None, name = None, input = None,
-                notifyURL = None, timeout = 0,
-                maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE):
+
+    def __init__(self, vm=None,
+                 outputFile=None, name=None, input=None,
+                 notifyURL=None, timeout=0,
+                 maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE):
         self.assigned = False
         self.retries = 0
 
@@ -100,7 +111,6 @@ class TangoJob():
             self._remoteLocation = dict_hash + ":" + str(new_id)
             self.updateRemote()
 
-
     def syncRemote(self):
         if Config.USE_REDIS and self._remoteLocation is not None:
             dict_hash = self._remoteLocation.split(":")[0]
@@ -129,7 +139,6 @@ class TangoJob():
         self.maxOutputFileSize = other_job.maxOutputFileSize
 
 
-
 def TangoIntValue(object_name, obj):
     if Config.USE_REDIS:
         return TangoRemoteIntValue(object_name, obj)
@@ -138,10 +147,11 @@ def TangoIntValue(object_name, obj):
 
 
 class TangoRemoteIntValue():
+
     def __init__(self, name, value, namespace="intvalue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
-        self.__db= getRedisConnection()
-        self.key = '%s:%s' %(namespace, name)
+        self.__db = getRedisConnection()
+        self.key = '%s:%s' % (namespace, name)
         cur_val = self.__db.get(self.key)
         if cur_val is None:
             self.set(value)
@@ -157,8 +167,9 @@ class TangoRemoteIntValue():
 
 
 class TangoNativeIntValue():
+
     def __init__(self, name, value, namespace="intvalue"):
-        self.key = '%s:%s' %(namespace, name)
+        self.key = '%s:%s' % (namespace, name)
         self.val = value
 
     def increment(self):
@@ -179,12 +190,15 @@ def TangoQueue(object_name):
     else:
         return Queue.Queue()
 
+
 class TangoRemoteQueue():
+
     """Simple Queue with Redis Backend"""
+
     def __init__(self, name, namespace="queue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
-        self.__db= getRedisConnection()
-        self.key = '%s:%s' %(namespace, name)
+        self.__db = getRedisConnection()
+        self.key = '%s:%s' % (namespace, name)
 
     def qsize(self):
         """Return the approximate size of the queue."""
@@ -225,7 +239,7 @@ class TangoRemoteQueue():
         return ret
 
     def __setstate__(self, dict):
-        self.__db= getRedisConnection()
+        self.__db = getRedisConnection()
         self.__dict__.update(dict)
 
 
@@ -240,6 +254,7 @@ def TangoDictionary(object_name):
 
 
 class TangoRemoteDictionary():
+
     def __init__(self, object_name):
         self.r = getRedisConnection()
         self.hash_name = object_name
@@ -283,7 +298,6 @@ class TangoRemoteDictionary():
             tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
             keyvals.append(tup)
 
-
         return iter(keyvals)
 
 
@@ -311,9 +325,9 @@ class TangoNativeDictionary():
         if str(id) in self.dict.keys():
             del self.dict[str(id)]
 
-
     def iteritems(self):
-        return self.dict.iteritems()
+        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                if self.get(i) != None])
 
     def _clean(self):
         # only for testing
