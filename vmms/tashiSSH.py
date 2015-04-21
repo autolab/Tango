@@ -405,6 +405,7 @@ class TashiSSH:
         return False
 
     def getImages(self):
-        """ getImages - Lists all images in TASHI_IMAGE_PATH
+        """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
+        .img extension
         """
-        return os.listdir(Config.TASHI_IMAGE_PATH)
+        return [img for img in os.listdir(Config.TASHI_IMAGE_PATH) if img.endswith('.img')]
