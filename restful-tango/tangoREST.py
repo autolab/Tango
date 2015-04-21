@@ -43,6 +43,7 @@ class Status:
         self.wrong_courselab = self.create(-1, "Courselab not found")
         self.out_not_found = self.create(-1, "Output file not found")
         self.invalid_image = self.create(-1, "Invalid image name")
+        self.invalid_prealloc_size = self.create(-1, "Invalid prealloc size")
         self.pool_not_found = self.create(-1, "Pool not found")
         self.prealloc_failed = self.create(-1, "Preallocate VM failed")
 
@@ -414,13 +415,9 @@ class TangoREST:
         """
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
-            if not image or image == "" or not image.endswith(".img"):
-                self.log.info("Invalid image name")
-                return self.status.invalid_image
-            image = image[:-4]
             info = self.preallocator.getPool(image)
             if len(info["pool"]) == 0:
-                self.log.info("Pool image not found: %s" % image)
+                self.log.info("Pool not found: %s" % image)
                 return self.status.pool_not_found
             self.log.info("Pool image found: %s" % image)
             result = self.status.obtained_pool
@@ -437,18 +434,23 @@ class TangoREST:
         self.log.debug("Received prealloc request(%s, %s, %s)" %
                        (key, image, num))
         if self.validateKey(key):
-            if not image or image == "" or not image.endswith(".img"):
-                self.log.info("Invalid image name")
-                return self.status.invalid_image
             if vmStr != "":
                 vmObj = json.loads(vmStr)
                 vm = self.createTangoMachine(image, vmObj=vmObj)
             else:
                 vm = self.createTangoMachine(image)
-            success = self.tango.preallocVM(vm, int(num))
-            if (success == -1):
-                self.log.info("Failed to preallocated VMs")
+
+            ret = self.tango.preallocVM(vm, int(num))
+
+            if ret == -1:
+                self.log.error("Prealloc failed")
                 return self.status.prealloc_failed
+            if ret == -2:
+                self.log.error("Invalid prealloc size")
+                return self.status.invalid_prealloc_size
+            if ret == -3:
+                self.log.error("Invalid image name")
+                return self.status.invalid_image
             self.log.info("Successfully preallocated VMs")
             return self.status.preallocated
         else:

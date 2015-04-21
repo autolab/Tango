@@ -193,7 +193,8 @@ class LocalDocker:
         return
 
     def getVMs(self):
-        """ getVMs - Executes and parses `docker ps`
+        """ getVMs - Executes and parses `docker ps`. This function
+        is a lot of parsing and can break easily.
         """
         # Get all volumes of docker containers
         machines = []
@@ -216,4 +217,22 @@ class LocalDocker:
         instanceName = self.instanceName(vm.id, vm.name)
         ret = timeout(['docker', 'inspect', instanceName])
         return (ret is 0)
+
+    def getImages(self):
+        """ getImages - Executes `docker images` and returns a list of
+        images that can be used to boot a docker container with. This 
+        function is a lot of parsing and so can break easily.
+        """
+        result = set()
+        cmd = "docker images"
+        o = subprocess.check_output("docker images", shell=True)
+        o_l = o.split('\n')
+        o_l.pop()
+        o_l.reverse()
+        o_l.pop()
+        for row in o_l:
+            row_l = row.split(' ')
+            result.add(row_l[0])
+        return list(result)
+
 

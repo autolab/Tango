@@ -43,6 +43,7 @@ import stat
 
 from config import Config
 from tangoObjects import TangoJob
+from datetime import datetime
 
 
 class TangoServer:
@@ -110,10 +111,14 @@ class TangoServer:
         self.log.debug("Received preallocVM(%s,%d)request"
                        % (vm.name, num))
         try:
+            vmms = self.vmms[vm.vmms]
             if not vm or num < 0:
-                return -1
-            (base, ext) = os.path.splitext(vm.image)
-            vm.name = base
+                return -2
+            if vm.image not in vmms.getImages():
+                self.log.error("Invalid image name")
+                return -3
+            (name, ext) = os.path.splitext(vm.image)
+            vm.name = name
             self.preallocator.update(vm, num)
             return 0
         except Exception as err:
@@ -247,25 +252,17 @@ def validateJob(job, vmms):
                             (datetime.utcnow().ctime()))
             errors += 1
         else:
-            if job.vm.vmms == "tashiSSH":
-                # Check if VM name exists in Tashi directory
-                imgList = os.listdir(Config.TASHI_IMAGE_PATH)
-                imgPath = Config.TASHI_IMAGE_PATH + job.vm.image
-                if job.vm.image not in imgList:
-                    log.error("validateJob: Image not found: %s" %
-                              job.vm.image)
-                    job.appendTrace("%s|validateJob: Image not found: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.image))
-                    errors += 1
-                # Check if image has read permissions
-                elif not (os.stat(imgPath).st_mode & stat.S_IRUSR):
-                    log.error("validateJob: Not readable: %s" % job.vm.image)
-                    job.appendTrace("%s|validateJob: Not readable: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.image))
-                    errors += 1
-                else:
-                    (base, ext) = os.path.splitext(job.vm.image)
-                    job.vm.name = base
+            vobj = vmms[Config.VMMS_NAME]
+            imgList = vobj.getImages()
+            if job.vm.image not in imgList:
+                log.error("validateJob: Image not found: %s" %
+                          job.vm.image)
+                job.appendTrace("%s|validateJob: Image not found: %s" %
+                                (datetime.utcnow().ctime(), job.vm.image))
+                errors += 1
+            else:
+                (name, ext) = os.path.splitext(job.vm.image)
+                job.vm.name = name
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
@@ -323,7 +320,7 @@ def validateJob(job, vmms):
     # Any problems, return an error status
     if errors > 0:
         log.error("validateJob: Job rejected: %d errors" % errors)
-        job.timerace.append("%s|validateJob: Job rejected: %d errors" %
+        job.appendTrace("%s|validateJob: Job rejected: %d errors" %
                             (datetime.utcnow().ctime(), errors))
         return -1
     else:
