@@ -225,7 +225,29 @@ class Preallocator:
             return 0
         else:
             return -1
+    def replaceVM(self, vm):
+        """replaceVM - Replaces a VM running a job with a new VM, atomically.
+           Returns a reference to the VM that has been replaced.
+           The replaced VM must be freed manually. If the VM to be replaced
+           is not found, returns a status code of -1. Otherwise, returns the
+           new VM.
+        """
+        #Atomically remove and destroy the VM.
+        self.lock.acquire()
+        machine = self.machines.get(vm.name)
+        machine[0].remove(vm.id)
+        self.machines.set(vm.name, machine)
+        newVM = copy.deepcopy(vm)
+        self.lock.release()
 
+        vmms = self.vmms[vm.vmms]
+        vmms.safeDestroyVM(vm)
+
+        newVM.id = self._getNextID()
+        vmms.initializeVM(newVM)
+        self.addVM(newVM)
+
+        return newVM
     def getPool(self, vmName):
         """ getPool - returns the members of a pool and its free list
         """

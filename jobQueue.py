@@ -148,7 +148,7 @@ class JobQueue:
             self.log.debug("Removed job %s from queue" % id)
         else:
             self.log.error("Job %s not found in queue" % id)
-        return status
+        return str(status)
 
     def delJob(self, id, deadjob):
         """ delJob - Implements delJob() interface call
@@ -173,7 +173,7 @@ class JobQueue:
                 self.log.debug("Removed job %s from dead queue" % id)
             else:
                 self.log.error("Job %s not found in dead queue" % id)
-            return status
+            return str(status)
 
     def get(self, id):
         """get - retrieve job from live queue
@@ -265,14 +265,19 @@ class JobQueue:
             self.log.info("makeDead| Job is in the queue")
             status = 0
             job = self.liveJobs.get(id)
-            self.liveJobs.delete(id)
+            if job.assigned:
+                newVM = self.preallocator.replaceVM(job.vm)
+                self.liveJobs.delete(id)
+                self.preallocator.freeVM(newVM)
+            else:
+                self.liveJobs.delete(id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
-        return status
+        return str(status)
 
     def getInfo(self):
 

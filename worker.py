@@ -215,6 +215,11 @@ class Worker(threading.Thread):
             # If the instance did not become ready in a reasonable
             # amount of time, then reschedule the job, detach the VM,
             # and exit worker
+            inLiveQueue = self.jobQueue.get(self.job.id) != None
+            if not inLiveQueue:
+                self.job.appendTrace("Job %s:%d not found in live queue, terminating worker thread." %
+                                     (self.job.name, self.job.id))
+                return
             if ret["waitvm"] == -1:
                 Config.waitvm_timeouts += 1
                 self.rescheduleJob(

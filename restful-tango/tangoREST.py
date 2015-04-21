@@ -88,7 +88,7 @@ class TangoREST:
         elif Config.VMMS_NAME == "localDocker":
             from vmms.localDocker import LocalDocker
             vmms = LocalDocker()
-            
+
 
         self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
@@ -347,6 +347,17 @@ class TangoREST:
                 print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("addJob request failed: %s" % str(e))
                 return self.status.create(-1, str(e))
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+
+    def delJob(self, key, id, deadJobs):
+        """ delJob - Delete the job corresponding to id.
+        """
+        self.log.debug("Received delete request(%s, %s, %s)" %
+                       (key, id, deadJobs))
+        if (self.validateKey(key)):
+            return self.tango.delJob(int(id), int(deadJobs))
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
