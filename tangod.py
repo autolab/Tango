@@ -114,9 +114,11 @@ class TangoServer:
             vmms = self.vmms[vm.vmms]
             if not vm or num < 0:
                 return -2
-            if vm.name not in vmms.getImages():
+            if vm.image not in vmms.getImages():
                 self.log.error("Invalid image name")
                 return -3
+            (name, ext) = os.path.splitext(vm.image)
+            vm.name = name
             self.preallocator.update(vm, num)
             return 0
         except Exception as err:
