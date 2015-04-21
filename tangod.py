@@ -259,7 +259,8 @@ def validateJob(job, vmms):
                                 (datetime.utcnow().ctime(), job.vm.image))
                 errors += 1
             else:
-                job.vm.name = job.vm.image
+                (name, ext) = os.path.splitext(job.vm.image)
+                job.vm.name = name
 
         if not job.vm.vmms:
             log.error("validateJob: Missing job.vm.vmms")
