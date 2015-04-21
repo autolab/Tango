@@ -102,11 +102,10 @@ class JobsHandler(tornado.web.RequestHandler):
         """ get - Handles the get request to jobs."""
         return tangoREST.jobs(key, deadJobs)
 
-
 class PoolHandler(tornado.web.RequestHandler):
 
     @unblock
-    def get(self, key, image):
+    def get(self, key, image=''):
         """ get - Handles the get request to pool."""
         return tangoREST.pool(key, image)
 
@@ -128,7 +127,7 @@ application = tornado.web.Application([
      (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
     (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
     (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
-    (r"/pool/(%s)/(%s)/" % (SHA1_KEY, IMAGE), PoolHandler),
+    (r"/pool/(%s)/(%s)" % (SHA1_KEY, '.*'), PoolHandler),
     (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
 ])
 
