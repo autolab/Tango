@@ -236,11 +236,11 @@ class Preallocator:
         """ getPool - returns the members of a pool and its free list
         """
         result = {}
-        result["total"] = []
-        result["free"] = []
         if vmName not in self.machines.keys():
             return result
 
+        result["total"] = []
+        result["free"] = []
         free_list = []
         self.lock.acquire()
         size = self.machines.get(vmName)[1].qsize()
