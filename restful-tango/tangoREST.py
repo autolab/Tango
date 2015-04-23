@@ -415,14 +415,22 @@ class TangoREST:
         """
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
-            info = self.preallocator.getPool(image)
-            if len(info["pool"]) == 0:
-                self.log.info("Pool not found: %s" % image)
-                return self.status.pool_not_found
-            self.log.info("Pool image found: %s" % image)
-            result = self.status.obtained_pool
-            result["total"] = info["pool"]
-            result["free"] = info["free"]
+            if image == "":
+                pools = self.preallocator.getAllPools()
+            else:
+                info = self.preallocator.getPool(image)
+                pools = {}
+                if len(info) > 0:
+                    pools[image] = info
+                    
+            if len(pools) > 0:
+                self.log.info("Pool image found: %s" % image)
+                result = self.status.obtained_pool
+            else:
+                self.log.info("Invalid image name: %s" % image)
+                result = self.status.pool_not_found
+            
+            result["pools"] = pools
             return result
         else:
             self.log.info("Key not recognized: %s" % key)

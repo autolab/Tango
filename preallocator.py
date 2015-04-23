@@ -226,15 +226,21 @@ class Preallocator:
         else:
             return -1
 
+    def getAllPools(self):
+        result = {}
+        for vmName in self.machines.keys():
+            result[vmName] = self.getPool(vmName)
+        return result
+
     def getPool(self, vmName):
         """ getPool - returns the members of a pool and its free list
         """
         result = {}
-        result["pool"] = []
-        result["free"] = []
         if vmName not in self.machines.keys():
             return result
 
+        result["total"] = []
+        result["free"] = []
         free_list = []
         self.lock.acquire()
         size = self.machines.get(vmName)[1].qsize()
@@ -246,6 +252,6 @@ class Preallocator:
             self.machines.set(vmName, machine)
         self.lock.release()
 
-        result["pool"] = self.machines.get(vmName)[0]
+        result["total"] = self.machines.get(vmName)[0]
         result["free"] = free_list
         return result
