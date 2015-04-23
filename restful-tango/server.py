@@ -133,7 +133,6 @@ application = tornado.web.Application([
     (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
     (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
     (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
-    (r"/pool/(%s)/(%s)" % (SHA1_KEY, '.*'), PoolHandler),
     (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
 ])
 
