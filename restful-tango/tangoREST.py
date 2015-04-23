@@ -420,9 +420,16 @@ class TangoREST:
             else:
                 info = self.preallocator.getPool(image)
                 pools = {}
-                pools[image] = info
-            self.log.info("Pool image found: %s" % image)
-            result = self.status.obtained_pool
+                if len(info) > 0:
+                    pools[image] = info
+                    
+            if len(pools) > 0:
+                self.log.info("Pool image found: %s" % image)
+                result = self.status.obtained_pool
+            else:
+                self.log.info("Invalid image name: %s" % image)
+                result = self.status.pool_not_found
+            
             result["pools"] = pools
             return result
         else:
