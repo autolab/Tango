@@ -307,7 +307,7 @@ class DistDocker:
             o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                         ["%s@%s" % (self.hostUser, host),
                                         "(docker images)"])
-            o_l.split('\n')
+            o_l = o.split('\n')
             o_l.pop()
             o_l.reverse()
             o_l.pop()
