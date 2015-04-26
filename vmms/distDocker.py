@@ -65,13 +65,15 @@ class DistDocker:
               "-o", "StrictHostKeyChecking=no",
               "-o", "GSSAPIAuthentication=no"]
 
+    HOSTS_FILE = 'hosts'
+
     def __init__(self):
         """ Checks if the machine is ready to run docker containers.
         Initialize boot2docker if running on OS X.
         """
         try:
             self.log = logging.getLogger("DistDocker")
-            self.hosts = ['54.186.238.205', '54.68.89.235']
+            self.hosts = self.readHosts()
             self.hostIdx = 0
             self.hostLock = threading.Lock()
             self.hostUser = "ubuntu"
@@ -83,6 +85,18 @@ class DistDocker:
         except Exception as e:
             self.log.error(str(e))
             exit(1)
+
+    def readHosts(self):
+        f = open(self.HOSTS_FILE, 'r')
+        hosts = []
+        hosts_str = f.read()
+        hosts_l = hosts_str.split('\n')
+        for host in hosts_l:
+            if len(host) > 0:
+                hosts.append(host)
+        self.log.info("Current host machines: %s" % hosts)
+        return hosts
+
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a Docker instance name. Always use
