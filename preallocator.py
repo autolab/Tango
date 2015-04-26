@@ -40,10 +40,10 @@ class Preallocator:
         """ update - Updates the number of machines of a certain type
         to be preallocated.
 
-        This function is called via the TangoServer HTTP interface, and
-        therefore should do as little as possible before returning.
-        It will update the machine list, and then spawn child threads
-        to do the creation and destruction of machines as necessary.
+        This function is called via the TangoServer HTTP interface.
+        It will validate the request,update the machine list, and 
+        then spawn child threads to do the creation and destruction 
+        of machines as necessary.
         """
         self.lock.acquire()
         if vm.name not in self.machines.keys():

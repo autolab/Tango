@@ -85,8 +85,6 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
 # User defined exceptions
 #
 # tashiCall() exception
-
-
 class tashiCallError(Exception):
     pass
 
@@ -95,6 +93,8 @@ class TashiSSH:
     _SSH_FLAGS = ["-q", "-i", os.path.dirname(__file__) + "/id_rsa",
                   "-o", "StrictHostKeyChecking=no",
                   "-o", "GSSAPIAuthentication=no"]
+
+    TASHI_IMAGE_PATH = '/raid/tashi/images'
 
     def __init__(self):
         self.config = getConfig(["Client"])[0]
@@ -403,3 +403,9 @@ class TashiSSH:
             if vm.instance_id == instance.id:
                 return True
         return False
+
+    def getImages(self):
+        """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
+        .img extension
+        """
+        return [img for img in os.listdir(Config.TASHI_IMAGE_PATH) if img.endswith('.img')]

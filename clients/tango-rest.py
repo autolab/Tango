@@ -35,7 +35,7 @@ open_help = 'Opens directory for lab. Creates new one if it does not exist. Must
 parser.add_argument('-o', '--open', action='store_true', help=open_help)
 upload_help = 'Uploads a file. Must specify key with -k, courselab with -l, and filename with --filename.'
 parser.add_argument('-u', '--upload', action='store_true', help=upload_help)
-addJob_help = 'Submit a job. Must specify key with -k, courselab with -l, and input files with --infiles. Modify defaults with --image (rhel.img), --outputFile (result.out), --jobname (test_job), --maxsize(0), --timeout (0).'
+addJob_help = 'Submit a job. Must specify key with -k, courselab with -l, and input files with --infiles. Modify defaults with --image (rhel), --outputFile (result.out), --jobname (test_job), --maxsize(0), --timeout (0).'
 parser.add_argument('-a', '--addJob', action='store_true', help=addJob_help)
 poll_help = 'Poll a given output file. Must specify key with -k, courselab with -l. Modify defaults with --outputFile (result.out).'
 parser.add_argument('-p', '--poll', action='store_true', help=poll_help)
@@ -43,9 +43,9 @@ info_help = 'Obtain basic stats about the service such as uptime, number of jobs
 parser.add_argument('-i', '--info', action='store_true', help=info_help)
 jobs_help = 'Obtain information of live jobs (deadJobs == 0) or dead jobs (deadJobs == 1). Must specify key with -k. Modify defaults with --deadJobs (0).'
 parser.add_argument('-j', '--jobs', action='store_true', help=jobs_help)
-pool_help = 'Obtain information about a pool of VMs spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel.img).'
+pool_help = 'Obtain information about a pool of VMs spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel).'
 parser.add_argument('--pool', action='store_true', help=pool_help)
-prealloc_help = 'Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel.img), --num (2), --vmms (tashiSSH), --cores (1), and --memory (512).'
+prealloc_help = 'Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (rhel), --num (2), --vmms (tashiSSH), --cores (1), and --memory (512).'
 parser.add_argument('--prealloc', action='store_true', help=prealloc_help)
 
 parser.add_argument('--runJob', help='Run a job from a specific directory')
@@ -54,8 +54,8 @@ parser.add_argument(
 
 parser.add_argument('--vmms', default='tashiSSH',
                     help='Choose vmms between localSSH, ec2SSH, tashiSSH')
-parser.add_argument('--image', default='rhel.img',
-                    help='VM image name (default "rhel.img")')
+parser.add_argument('--image', default='rhel',
+                    help='VM image name (default "rhel")')
 parser.add_argument(
     '--infiles',
     nargs='+',
