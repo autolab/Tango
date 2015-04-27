@@ -308,7 +308,7 @@ class DistDocker:
         """
         vms = self.getVMs()
         vmnames = [vm.name for vm in vms]
-        return (vm.name in vmname)
+        return (vm.name in vmnames)
 
     def getImages(self):
         """ getImages - Executes `docker images` on every host and 
