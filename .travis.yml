@@ -1,0 +1,33 @@
+language: python
+python:
+  - "2.7"
+
+before_install:
+  - sudo sh -c "wget -qO- https://get.docker.io/gpg | apt-key add -"
+  - sudo sh -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+  - echo exit 101 | sudo tee /usr/sbin/policy-rc.d
+  - sudo chmod +x /usr/sbin/policy-rc.d
+
+install:
+  - sudo apt-get -qqy update
+  - sudo apt-get -qqy install liberror-perl linux-image-generic-lts-trusty
+  - sudo apt-get -qqy upgrade -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+  - sudo apt-get -qqy install lxc lxc-docker slirp
+  - sudo mkdir -p /var/lib/docker
+  - sudo apt-get -qqy install slirp aufs-tools cgroup-lite
+  - sudo docker -d &
+
+script:
+  - sudo docker ps
+  - git clone https://github.com/autolab/Tango.git; cd Tango
+  - sudo docker build -t autograding_image vmms/
+  - sudo docker images autograding_image
+  - sudo pip install -r requirements.txt
+  - mkdir volumns
+  - cp config.template.py config.py
+  - echo "    VMMS_NAME = \"localDocker\""
+  - echo "    LOGFILE = \"tango3.log\""
+  - sudo python $PWD/restful-tango/server.py &
+  - sudo python clients/tango-rest.py -P 3000 -k test -l docker_test --runJob clients/job1/ --image autograding_image
+  - cat tango3.log
+  - cat courselabs/test-docker_test/output/result.out-1
