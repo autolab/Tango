@@ -32,8 +32,9 @@ class Config:
     COURSELABS = "courselabs"
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
-    # starting Tango. Options are: "localSSH", "tashiSSH", "ec2SSH"
-    VMMS_NAME = "localSSH"
+    # starting Tango.  Options are: "localDocker", "distDocker",
+    # "tashiSSH", "localSSH", and "ec2SSH"
+    VMMS_NAME = "localDocker"
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
@@ -88,7 +89,7 @@ class Config:
     # Frequency of retrying SSH connections (in seconds)
     SSH_INTERVAL = 0.5
 
-    # Give Tashi this many seconds to destroy a VM before giving up
+    # Give VMMS this many seconds to destroy a VM before giving up
     DESTROY_SECS = 5
 
     # Time to wait between creating VM instances to give DNS time to cool down
