@@ -145,7 +145,7 @@ class LocalDocker:
                         autodriverCmd]
 
         self.log.debug('Running job: %s' % str(args))
-        ret = timeout(args, runTimeout)
+        ret = timeout(args, runTimeout * 2)
         self.log.debug('runJob returning %d' % ret)
 
         return ret

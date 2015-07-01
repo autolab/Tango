@@ -223,7 +223,7 @@ class DistDocker:
 
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS +
                         ["%s@%s" % (self.hostUser, vm.domain_name), args],
-                        config.Config.RUNJOB_TIMEOUT)
+                        runTimeout * 2)
 
         self.log.debug('runJob return status %d' % ret)
 
