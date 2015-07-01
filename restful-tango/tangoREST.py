@@ -98,7 +98,7 @@ class TangoREST:
             # creates a local Job Manager if there is no persistent
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
-            JobManager(self.queue, self.vmms, self.preallocator)
+            JobManager(self.queue, self.vmms, self.preallocator).start()
 
         self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
 

@@ -24,14 +24,26 @@ from preallocator import Preallocator
 class JobManager:
 
     def __init__(self, queue, vmms, preallocator):
-        self.daemon = True
         self.jobQueue = queue
         self.vmms = vmms
         self.preallocator = preallocator
         self.log = logging.getLogger("JobManager")
-        threading.Thread(target=self.__manage).start()
+        self.running = False
+
+    def start(self):
+        if self.running:
+            return
+        thread = threading.Thread(target=self.__manage)
+        thread.daemon = True
+        thread.start()
+
+    def run(self):
+        if self.running:
+            return
+        self.__manage()
 
     def __manage(self):
+        self.running = True
         while True:
             if Config.REUSE_VMS:
                 id, vm = self.jobQueue.getNextPendingJobReuse()
@@ -97,6 +109,7 @@ if __name__ == "__main__":
         preallocator = Preallocator(vmms)
         queue = JobQueue(preallocator)
 
-        JobManager(queue, vmms, preallocator)
+        jobs = JobManager(queue, vmms, preallocator)
 
         print("Starting the stand-alone Tango JobManager")
+        jobs.run()
