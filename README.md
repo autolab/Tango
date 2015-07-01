@@ -26,7 +26,7 @@ A brief overview of the Tango respository:
 * vmms - VMM system library implementations
 * restful-tango - HTTP server layer on the main tango
 
-## Testing
+## Testing [![Circle CI](https://circleci.com/gh/autolab/Tango.svg?style=svg)](https://circleci.com/gh/autolab/Tango)
 
 To test whether Tango is running and accepting jobs, a tango command-line client is included in `clients/` along with sample jobs.
 
