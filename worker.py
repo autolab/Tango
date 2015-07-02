@@ -6,7 +6,8 @@ import time
 import logging
 import tempfile
 import requests
-import subprocess
+import os
+import shutil
 
 from datetime import datetime
 from config import Config
@@ -75,7 +76,10 @@ class Worker(threading.Thread):
 
         # Try a few times before giving up
         if self.job.retries < Config.JOB_RETRIES:
-            subprocess.call("rm -f %s" % (hdrfile), shell=True)
+            try:
+                os.remove(hdrfile)
+            except OSError:
+                pass
             self.detachVM(return_vm=False, replace_vm=True)
             self.jobQueue.unassignJob(self.job.id)
 
@@ -111,12 +115,19 @@ class Worker(threading.Thread):
         and f2 is the output from the Autodriver
         """
         self.appendMsg(f1, "Here is the output from the autograder:\n---")
-        tmpname = tempfile.mktemp()
-        # in case no autograder output
-        subprocess.call("touch %s" % f2, shell=True)
-        subprocess.call("cat %s %s > %s" % (f1, f2, tmpname), shell=True)
-        subprocess.call("mv -f %s %s" % (tmpname, f2), shell=True)
-        subprocess.call("rm -f %s %s" % (f1, tmpname), shell=True)
+        (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
+        wf=os.fdopen(wfd, "a")
+        with open(f1, "rb") as f1fd:
+            shutil.copyfileobj(f1fd, wf)
+        # f2 may not exist if autograder failed
+        try:
+            with open(f2, "rb") as f2fd:
+                shutil.copyfileobj(f2fd, wf)
+        except OSError:
+            pass
+        wf.close
+        os.rename(tmpname, f2)
+        os.remove(f1)
 
     def notifyServer(self, job):
         try:
