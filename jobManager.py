@@ -20,7 +20,7 @@ from worker import Worker
 import tangoREST
 from jobQueue import JobQueue
 from preallocator import Preallocator
-
+from tangod import TangoServer
 
 class JobManager:
 
@@ -79,8 +79,6 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
-        tangoREST = tangoREST.TangoREST()
-        tangoREST.resetTango()
 
         vmms = None
 
@@ -100,6 +98,10 @@ if __name__ == "__main__":
         vmms = {Config.VMMS_NAME: vmms}
         preallocator = Preallocator(vmms)
         queue = JobQueue(preallocator)
+        
+        self.log.debug("Resetting Tango VMs")
+        tango = TangoServer(queue, preallocator, vmms)
+        tango.resetTango(vmms)
 
         JobManager(queue, vmms, preallocator)
 
