@@ -10,6 +10,7 @@
 #
 import random
 import subprocess
+import os
 import re
 import time
 import logging
@@ -41,7 +42,10 @@ def timeout(command, time_out=1):
 
     # Determine why the while loop terminated
     if p.poll() is None:
-        subprocess.call(["/bin/kill", "-9", str(p.pid)])
+        try:
+            os.kill(p.pid, 9)
+        except OSError:
+            pass
         returncode = -1
     else:
         returncode = p.poll()
