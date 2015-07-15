@@ -149,14 +149,13 @@ class Worker(threading.Thread):
             ret["runjob"] = None
             ret["copyout"] = None
 
+            self.log.debug("Run worker")
+            vm = None
+
             # Header message for user
             hdrfile = tempfile.mktemp()
             self.appendMsg(hdrfile, "Received job %s:%d" %
                            (self.job.name, self.job.id))
-
-            self.log.debug("Run worker")
-
-            vm = None
 
             # Assigning job to a preallocated VM
             if self.preVM:  # self.preVM:
@@ -323,6 +322,14 @@ class Worker(threading.Thread):
         # Exception: ec2CallError - Raised by ec2Call()
         #
         except Exception as err:
-            self.log.debug("Internal Error: %s" % err)
+            self.log.exception("Internal Error")
             self.appendMsg(self.job.outputFile,
                            "Internal Error: %s" % err)
+            # if vm is set, then the normal job assignment completed,
+            # and detachVM can be run
+            # if vm is not set but self.preVM is set, we still need
+            # to return the VM, but have to initialize self.job.vm first
+            if self.preVM and not vm:
+               vm = self.job.vm = self.preVM
+            if vm:
+               self.detachVM(return_vm=False, replace_vm=True)
