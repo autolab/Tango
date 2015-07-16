@@ -1,10 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/python
+from __future__ import print_function
 import sys
 import os
 import pwd
 import shutil
 import subprocess
-print("Running "+ str(sys.argv))
+#print("Running "+ str(sys.argv))
 
 for f in os.listdir("mount"):
     src=os.path.join("mount", f)
