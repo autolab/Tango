@@ -138,6 +138,7 @@ class DistDocker:
         self.log.info("Assigned host %s to VM %s." % (host, vm.name))
         vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
         vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
+        vm.use_ssh_master = True
         return vm
 
     def waitVM(self, vm, max_secs):
@@ -181,12 +182,13 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                      DistDocker._SSH_MASTER_CHECK_FLAG +
-                      ["%s@%s" % (self.hostUser, vm.domain_name)])
-        if ret != 0:
-            self.log.debug("Lost persistent SSH connection")
-            return ret
+        if vm.use_ssh_master:
+            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                          DistDocker._SSH_MASTER_CHECK_FLAG +
+                          ["%s@%s" % (self.hostUser, vm.domain_name)])
+            if ret != 0:
+                self.log.debug("Lost persistent SSH connection")
+                return ret
 
         # Create a fresh volume
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
@@ -224,12 +226,13 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                      DistDocker._SSH_MASTER_CHECK_FLAG +
-                      ["%s@%s" % (self.hostUser, vm.domain_name)])
-        if ret != 0:
-            self.log.debug("Lost persistent SSH connection")
-            return ret
+        if vm.use_ssh_master:
+            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                          DistDocker._SSH_MASTER_CHECK_FLAG +
+                          ["%s@%s" % (self.hostUser, vm.domain_name)])
+            if ret != 0:
+                self.log.debug("Lost persistent SSH connection")
+                return ret
 
         autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
@@ -264,12 +267,13 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                      DistDocker._SSH_MASTER_CHECK_FLAG +
-                      ["%s@%s" % (self.hostUser, vm.domain_name)])
-        if ret != 0:
-            self.log.debug("Lost persistent SSH connection")
-            return ret
+        if vm.use_ssh_master:
+            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                          DistDocker._SSH_MASTER_CHECK_FLAG +
+                          ["%s@%s" % (self.hostUser, vm.domain_name)])
+            if ret != 0:
+                self.log.debug("Lost persistent SSH connection")
+                return ret
 
         ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                       ["%s@%s:%s" % 
@@ -288,12 +292,15 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                      DistDocker._SSH_MASTER_CHECK_FLAG +
-                      ["%s@%s" % (self.hostUser, vm.domain_name)])
-        if ret != 0:
-            self.log.debug("Lost persistent SSH connection")
-            return ret
+        if vm.use_ssh_master:
+            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                          DistDocker._SSH_MASTER_CHECK_FLAG +
+                          ["%s@%s" % (self.hostUser, vm.domain_name)])
+            if ret != 0:
+                self.log.debug("Lost persistent SSH connection")
+                vm.use_ssh_master = False
+                shutil.rmtree(vm.ssh_control_dir, ignore_errors=True)
+                vm.ssh_flags = DistDocker._SSH_AUTH_FLAGS
 
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
@@ -307,10 +314,11 @@ class DistDocker:
                 "(rm -rf %s)" % (volumePath)],
                 config.Config.DOCKER_RM_TIMEOUT)
         self.log.debug('Deleted volume %s' % instanceName)
-        timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                DistDocker._SSH_MASTER_EXIT_FLAG +
-                ["%s@%s" % (self.hostUser, vm.domain_name)])
-        shutil.rmtree(vm.ssh_control_dir, ignore_errors=True)
+        if vm.use_ssh_master:
+            timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                    DistDocker._SSH_MASTER_EXIT_FLAG +
+                    ["%s@%s" % (self.hostUser, vm.domain_name)])
+            shutil.rmtree(vm.ssh_control_dir, ignore_errors=True)
         return
 
     def safeDestroyVM(self, vm):
@@ -342,6 +350,8 @@ class DistDocker:
                     machine.vmms = 'distDocker'
                     machine.name = volume
                     machine.domain_name = host
+                    machine.ssh_flags = DistDocker._SSH_AUTH_FLAGS
+                    machine.use_ssh_master = False
                     volume_l = volume.split('-')
                     machine.id = volume_l[1]
                     machine.image = volume_l[2]
