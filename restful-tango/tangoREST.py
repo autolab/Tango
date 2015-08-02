@@ -88,6 +88,9 @@ class TangoREST:
         elif Config.VMMS_NAME == "localDocker":
             from vmms.localDocker import LocalDocker
             vmms = LocalDocker()
+        elif Config.VMMS_NAME == "distDocker":
+            from vmms.distDocker import DistDocker
+            vmms = DistDocker()
             
 
         self.vmms = {Config.VMMS_NAME: vmms}

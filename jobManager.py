@@ -9,14 +9,11 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import time
-import threading
-import logging
+import time, threading, logging
 
 from datetime import datetime
 from config import Config
 from worker import Worker
-
 from jobQueue import JobQueue
 from preallocator import Preallocator
 
@@ -92,6 +89,9 @@ if __name__ == "__main__":
         elif Config.VMMS_NAME == "localDocker":
             from vmms.localDocker import LocalDocker
             vmms = LocalDocker()
+        elif Config.VMMS_NAME == "distDocker":
+            from vmms.distDocker import DistDocker
+            vmms = DistDocker()
 
         vmms = {Config.VMMS_NAME: vmms}
         preallocator = Preallocator(vmms)
