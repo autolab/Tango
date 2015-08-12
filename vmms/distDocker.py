@@ -10,6 +10,7 @@
 
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import tempfile
+import socket
 import config
 from tangoObjects import TangoMachine
 
@@ -63,7 +64,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
 class DistDocker:
 
     _SSH_FLAGS = ["-q", "-o", "BatchMode=yes" ]
-    _SSH_AUTH_FLAGS = [ "-i", os.path.dirname(__file__) + "/id_rsa",
+    _SSH_AUTH_FLAGS = [ "-i", os.path.join(os.path.dirname(__file__), "id_rsa"),
               "-o", "StrictHostKeyChecking=no",
               "-o", "GSSAPIAuthentication=no"]
     _SSH_MASTER_FLAGS = ["-o", "ControlMaster=yes",
@@ -78,9 +79,7 @@ class DistDocker:
         """
         try:
             self.log = logging.getLogger("DistDocker")
-            self.hosts = self.readHosts()
-            self.hostIdx = 0
-            self.hostLock = threading.Lock()
+            self.hostDNSPoolname=config.Config.HOST_ALIAS
             self.hostUser = "ubuntu"
 
             if len(config.Config.DOCKER_HOST_USER) > 0:
@@ -93,18 +92,6 @@ class DistDocker:
         except Exception as e:
             self.log.error(str(e))
             exit(1)
-
-    def readHosts(self):
-        f = open(self.HOSTS_FILE, 'r')
-        hosts = []
-        hosts_str = f.read()
-        hosts_l = hosts_str.split('\n')
-        for host in hosts_l:
-            if len(host) > 0:
-                hosts.append(host)
-        self.log.info("Current host machines: %s" % hosts)
-        return hosts
-
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a Docker instance name. Always use
@@ -127,15 +114,6 @@ class DistDocker:
         """ initializeVM -  Assign a host machine for this container to 
         run on.
         """
-        self.hostLock.acquire()
-        host = self.hosts[self.hostIdx]
-        self.hostIdx = self.hostIdx + 1
-        if self.hostIdx >= len(self.hosts):
-            self.hostIdx = 0
-        self.hostLock.release()
-
-        vm.domain_name = host
-        self.log.info("Assigned host %s to VM %s." % (host, vm.name))
         return vm
 
     def waitVM(self, vm, max_secs):
@@ -149,6 +127,15 @@ class DistDocker:
 
         # Wait for SSH to work before declaring that the VM is ready
         while (True):
+            try:
+                addr=socket.gethostbyname(self.hostDNSPoolname)
+                host=socket.gethostbyaddr(addr)[0]
+            except EnvironmentError:
+                self.log.exception("DNS lookup failed while setting up vm %s." % (vm.name))
+                return -1
+
+            vm.domain_name = host
+            self.log.info("(Re)assigned host %s to VM %s." % (host, vm.name))
 
             elapsed_secs = time.time() - start_time
 
@@ -338,8 +325,12 @@ class DistDocker:
         """ getVMs - Get all volumes of docker containers
         """
         machines = []
+        try:
+            hosts=socket.gethostbyname_ex(self.hostDNSPoolname)[2]
+        except EnvironmentError:
+            return machines
         volumePath = self.getVolumePath('')
-        for host in self.hosts:
+        for host in hosts:
             volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                                 DistDocker._SSH_AUTH_FLAGS +
                                                 ["%s@%s" % (self.hostUser, host),
@@ -373,7 +364,11 @@ class DistDocker:
         can break easily.
         """
         result = set()
-        for host in self.hosts:
+        try:
+            hosts=socket.gethostbyname_ex(self.hostDNSPoolname)[2]
+        except EnvironmentError:
+            return result
+        for host in hosts:
             o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                         DistDocker._SSH_AUTH_FLAGS +
                                         ["%s@%s" % (self.hostUser, host),
