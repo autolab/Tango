@@ -63,6 +63,7 @@ class TangoServer:
         )
         self.log = logging.getLogger("Tangod")
         self.log.info("Starting Tango server on port %d" % (Config.PORT))
+        self.start_time = time.time()
 
     def addJob(self, job):
         """ addJob - Add a job to the job queue
@@ -172,7 +173,7 @@ class TangoServer:
         """ getInfo - return various statistics about the Tango daemon
         """
         stats = []
-        stats.append("elapsed_secs=%d" % (time.time() - Config.start_time))
+        stats.append("elapsed_secs=%d" % (time.time() - self.start_time))
         stats.append("job_requests=%d" % Config.job_requests)
         stats.append("job_retries=%d" % Config.job_retries)
         stats.append("waitvm_timeouts=%d" % Config.waitvm_timeouts)
