@@ -148,12 +148,12 @@ class TangoREST:
         """ computeMD5 - Computes the MD5 hash of given files in the
         given directory
         """
-        result = []
+        result = {}
         for elem in os.listdir(directory):
             try:
                 body = open("%s/%s" % (directory, elem)).read()
                 md5hash = hashlib.md5(body).hexdigest()
-                result.append({'md5': md5hash, 'localFile': elem})
+                result[elem] = md5hash
             except IOError:
                 continue
         return result
@@ -266,7 +266,7 @@ class TangoREST:
     ##
 
     def open(self, key, courselab):
-        """ open - Return a list of md5 hashes for each input file in the
+        """ open - Return a dict of md5 hashes for each input file in the
         key-courselab directory and make one if the directory doesn't exist
         """
         self.log.debug("Received open request(%s, %s)" % (key, courselab))
@@ -295,7 +295,8 @@ class TangoREST:
             return self.status.wrong_key
 
     def upload(self, key, courselab, file, body):
-        """ upload - Upload file as an input file in key-courselab
+        """ upload - Upload file as an input file in key-courselab if the
+        same file doesn't exist already
         """
         self.log.debug("Received upload request(%s, %s, %s)" %
                        (key, courselab, file))
@@ -303,12 +304,11 @@ class TangoREST:
             labPath = self.getDirPath(key, courselab)
             try:
                 if os.path.exists(labPath):
+                    fileMD5 = hashlib.md5(body).hexdigest()
+                    filesInDir = self.computeMD5(labPath)
+                    if file in filesInDir and filesInDir[file] == fileMD5:
+                        return self.status.file_exists
                     absPath = "%s/%s" % (labPath, file)
-                    if os.path.exists(absPath):
-                        fileMD5 = hashlib.md5(body).hexdigest()
-                        if fileMD5 in [obj["md5"]
-                                       for obj in self.computeMD5(labPath)]:
-                            return self.status.file_exists
                     fh = open(absPath, "wt")
                     fh.write(body)
                     fh.close()
