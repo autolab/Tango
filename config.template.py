@@ -102,7 +102,7 @@ class Config:
     LOG_TIMING = False
 
     # Largest job ID
-    MAX_JOBID = 500
+    MAX_JOBID = 1000
 
     ######
     # Part 3: Runtime info that you can retrieve using the /info route
