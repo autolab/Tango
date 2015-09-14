@@ -33,7 +33,7 @@ class Config:
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango.  Options are: "localDocker", "distDocker",
-    # "tashiSSH", "localSSH", and "ec2SSH"
+    # "tashiSSH", and "ec2SSH"
     VMMS_NAME = "localDocker"
 
     #####

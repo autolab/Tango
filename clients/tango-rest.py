@@ -53,7 +53,7 @@ parser.add_argument(
     '--numJobs', type=int, default=1, help='Number of jobs to run')
 
 parser.add_argument('--vmms', default='tashiSSH',
-                    help='Choose vmms between localSSH, ec2SSH, tashiSSH')
+                    help='Choose vmms between ec2SSH, tashiSSH, localDocker, and distDocker')
 parser.add_argument('--image', default='rhel',
                     help='VM image name (default "rhel")')
 parser.add_argument(
