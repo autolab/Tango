@@ -77,10 +77,7 @@ if __name__ == "__main__":
     else:
         vmms = None
 
-        if Config.VMMS_NAME == "localSSH":
-            from vmms.localSSH import LocalSSH
-            vmms = LocalSSH()
-        elif Config.VMMS_NAME == "tashiSSH":
+        if Config.VMMS_NAME == "tashiSSH":
             from vmms.tashiSSH import TashiSSH
             vmms = TashiSSH()
         elif Config.VMMS_NAME == "ec2SSH":
