@@ -182,16 +182,6 @@ class TangoServer:
         stats['copyout_errors'] = Config.copyout_errors
         stats['num_threads'] = threading.activeCount()
         
-        #stats = []  
-        #stats.append("elapsed_secs=%d" % (time.time() - Config.start_time))
-        #stats.append("job_requests=%d" % Config.job_requests)
-        #stats.append("job_retries=%d" % Config.job_retries)
-        #stats.append("waitvm_timeouts=%d" % Config.waitvm_timeouts)
-        #stats.append("runjob_timeouts=%d" % Config.runjob_timeouts)
-        #stats.append("copyin_errors=%d" % Config.copyin_errors)
-        #stats.append("runjob_errors=%d" % Config.runjob_errors)
-        #stats.append("copyout_errors=%d" % Config.copyout_errors)
-        #stats.append("num_threads=%d" % threading.activeCount())
         return stats
 
     #
