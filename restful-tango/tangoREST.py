@@ -59,7 +59,7 @@ class Status:
 class TangoREST:
 
     COURSELABS = Config.COURSELABS
-    OUTPUT_FOLDER = "output"
+    OUTPUT_FOLDER = Config.OUTPUT_FOLDER
     LOGFILE = Config.LOGFILE
 
     # Replace with choice of key store and override validateKey.
