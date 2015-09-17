@@ -140,10 +140,6 @@ application = tornado.web.Application([
 if __name__ == "__main__":
 
     port = Config.PORT
-    if len(sys.argv) > 1:
-        port = int(sys.argv[1])
-
-    print("Starting the RESTful Tango server on port %d..." % (port))
-    tangoREST.resetTango()
+    tangoREST.tango.resetTango(tangoREST.tango.vmms)
     application.listen(port)
     tornado.ioloop.IOLoop.instance().start()

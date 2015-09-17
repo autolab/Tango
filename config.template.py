@@ -30,6 +30,10 @@ class Config:
 
     # Courselabs directory. Must be created before starting Tango
     COURSELABS = "courselabs"
+    
+    # Directory within each courselab where Tango will copy the output 
+    # for jobs of that courselab
+    OUTPUT_FOLDER = "output"
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango.  Options are: "localDocker", "distDocker",
