@@ -10,7 +10,6 @@ import inspect
 import hashlib
 import json
 import logging
-import logging.handlers
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -18,9 +17,6 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 from tangod import TangoServer
-from jobQueue import JobQueue
-from jobManager import JobManager
-from preallocator import Preallocator
 from tangoObjects import TangoJob, TangoMachine, InputFile
 
 from config import Config
@@ -59,67 +55,31 @@ class Status:
 class TangoREST:
 
     COURSELABS = Config.COURSELABS
-    OUTPUT_FOLDER = "output"
+    OUTPUT_FOLDER = Config.OUTPUT_FOLDER
     LOGFILE = Config.LOGFILE
 
     # Replace with choice of key store and override validateKey.
     # This key is just for testing.
-    keys = Config.KEYS
+    KEYS = Config.KEYS
 
     def __init__(self):
 
         logging.basicConfig(
-                filename = self.LOGFILE,
-                format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-                level = Config.LOGLEVEL
-                )
-
-        vmms = None
-
-        if Config.VMMS_NAME == "tashiSSH":
-            from vmms.tashiSSH import TashiSSH
-            vmms = TashiSSH()
-        elif Config.VMMS_NAME == "ec2SSH":
-            from vmms.ec2SSH import Ec2SSH
-            vmms = Ec2SSH()
-        elif Config.VMMS_NAME == "localDocker":
-            from vmms.localDocker import LocalDocker
-            vmms = LocalDocker()
-        elif Config.VMMS_NAME == "distDocker":
-            from vmms.distDocker import DistDocker
-            vmms = DistDocker()
-            
-
-        self.vmms = {Config.VMMS_NAME: vmms}
-        self.preallocator = Preallocator(self.vmms)
-        self.queue = JobQueue(self.preallocator)
-        
-        self.tango = TangoServer(self.queue, self.preallocator, self.vmms)
-
-        if not Config.USE_REDIS:
-            # creates a local Job Manager if there is no persistent
-            # memory between processes. Otherwise, JobManager will
-            # be initiated separately
-            self.resetTango()
-            JobManager(self.queue, self.vmms, self.preallocator)
-
-
-        logging.basicConfig(
-            filename=self.LOGFILE,
-            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-            level=Config.LOGLEVEL
+            filename = self.LOGFILE,
+            format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+            level = Config.LOGLEVEL
         )
-
-        logging.getLogger('boto').setLevel(logging.INFO)
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
+        
+        self.tango = TangoServer()
         self.status = Status()
 
     def validateKey(self, key):
         """ validateKey - Validates key provided by client
         """
         result = False
-        for el in self.keys:
+        for el in self.KEYS:
             if el == key:
                 result = True
         return result
@@ -418,9 +378,9 @@ class TangoREST:
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
             if image == "":
-                pools = self.preallocator.getAllPools()
+                pools = self.tango.preallocator.getAllPools()
             else:
-                info = self.preallocator.getPool(image)
+                info = self.tango.preallocator.getPool(image)
                 pools = {}
                 if len(info) > 0:
                     pools[image] = info
@@ -466,10 +426,3 @@ class TangoREST:
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
-
-    def resetTango(self):
-        """ Destroys VMs associated with this namespace. Used for admin
-            purposes only.
-        """
-        self.log.debug("Received resetTango request.")
-        self.tango.resetTango(self.vmms)
