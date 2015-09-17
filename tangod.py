@@ -42,6 +42,9 @@ import os
 import stat
 
 from config import Config
+from jobQueue import JobQueue
+from jobManager import JobManager
+from preallocator import Preallocator
 from tangoObjects import TangoJob
 from datetime import datetime
 
@@ -51,11 +54,34 @@ class TangoServer:
     """ TangoServer - Implements the API functions that the server accepts
     """
 
-    def __init__(self, jobQueue, preallocator, vmms):
+    def __init__(self):
         self.daemon = True
-        self.jobQueue = jobQueue
-        self.preallocator = preallocator
-        self.vmms = vmms
+
+        vmms = None
+        if Config.VMMS_NAME == "tashiSSH":
+            from vmms.tashiSSH import TashiSSH
+            vmms = TashiSSH()
+        elif Config.VMMS_NAME == "ec2SSH":
+            from vmms.ec2SSH import Ec2SSH
+            vmms = Ec2SSH()
+        elif Config.VMMS_NAME == "localDocker":
+            from vmms.localDocker import LocalDocker
+            vmms = LocalDocker()
+        elif Config.VMMS_NAME == "distDocker":
+            from vmms.distDocker import DistDocker
+            vmms = DistDocker()
+
+        self.vmms = {Config.VMMS_NAME: vmms}
+        self.preallocator = Preallocator(self.vmms)
+
+        self.preallocator = Preallocator(self.vmms)
+        self.jobQueue = JobQueue(self.preallocator)
+        if not Config.USE_REDIS:
+            # creates a local Job Manager if there is no persistent
+            # memory between processes. Otherwise, JobManager will
+            # be initiated separately
+            JobManager(self.jobQueue, self.vmms, self.preallocator)
+        
         logging.basicConfig(
             filename=Config.LOGFILE,
             format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
@@ -69,7 +95,7 @@ class TangoServer:
         """
         Config.job_requests += 1
         self.log.debug("Received addJob request")
-        ret = validateJob(job, self.vmms)
+        ret = self.__validateJob(job, self.vmms)
         self.log.info("Done validating job")
         if ret == 0:
             return self.jobQueue.add(job)
@@ -192,7 +218,7 @@ class TangoServer:
         effect is that also checks that each supported VMMS is actually
         running.
         """
-        log = logging.getLogger('Server')
+        self.log.debug("Received resetTango request.")
 
         try:
             # For each supported VMM system, get the instances it knows about,
@@ -200,7 +226,7 @@ class TangoServer:
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
                 vms = vobj.getVMs()
-                log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
+                self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
                 namelist = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
@@ -209,7 +235,7 @@ class TangoServer:
                         # interfaces
                         namelist.append(vm.name)
                 if namelist:
-                    log.warning("Killed these %s VMs on restart: %s" %
+                    self.log.warning("Killed these %s VMs on restart: %s" %
                                 (vmms_name, namelist))
 
             for job in self.jobQueue.liveJobs.values():
@@ -217,111 +243,110 @@ class TangoServer:
                                (str(job.name), str(job.assigned)))
 
         except Exception as err:
-            log.error("resetTango: Call to VMMS %s failed: %s" %
+            self.log.error("resetTango: Call to VMMS %s failed: %s" %
                       (vmms_name, err))
             os._exit(1)
 
 
-def validateJob(job, vmms):
-    """ validateJob - validate the input arguments in an addJob request.
-    """
-    log = logging.getLogger('Server')
-    errors = 0
+    def __validateJob(self, job, vmms):
+        """ validateJob - validate the input arguments in an addJob request.
+        """
+        errors = 0
 
-    # If this isn't a Tango job then bail with an error
-    if (not isinstance(job, TangoJob)):
-        return -1
+        # If this isn't a Tango job then bail with an error
+        if (not isinstance(job, TangoJob)):
+            return -1
 
-    # Every job must have a name
-    if not job.name:
-        log.error("validateJob: Missing job.name")
-        job.appendTrace("%s|validateJob: Missing job.name" %
-                        (datetime.utcnow().ctime()))
-        errors += 1
+        # Every job must have a name
+        if not job.name:
+            self.log.error("validateJob: Missing job.name")
+            job.appendTrace("%s|validateJob: Missing job.name" %
+                            (datetime.utcnow().ctime()))
+            errors += 1
 
-    # Check the virtual machine field
-    if not job.vm:
-        log.error("validateJob: Missing job.vm")
-        job.appendTrace("%s|validateJob: Missing job.vm" %
-                        (datetime.utcnow().ctime()))
-        errors += 1
-    else:
-        if not job.vm.image:
-            log.error("validateJob: Missing job.vm.image")
-            job.appendTrace("%s|validateJob: Missing job.vm.image" %
+        # Check the virtual machine field
+        if not job.vm:
+            self.log.error("validateJob: Missing job.vm")
+            job.appendTrace("%s|validateJob: Missing job.vm" %
                             (datetime.utcnow().ctime()))
             errors += 1
         else:
-            vobj = vmms[Config.VMMS_NAME]
-            imgList = vobj.getImages()
-            if job.vm.image not in imgList:
-                log.error("validateJob: Image not found: %s" %
-                          job.vm.image)
-                job.appendTrace("%s|validateJob: Image not found: %s" %
-                                (datetime.utcnow().ctime(), job.vm.image))
+            if not job.vm.image:
+                self.log.error("validateJob: Missing job.vm.image")
+                job.appendTrace("%s|validateJob: Missing job.vm.image" %
+                                (datetime.utcnow().ctime()))
                 errors += 1
             else:
-                (name, ext) = os.path.splitext(job.vm.image)
-                job.vm.name = name
+                vobj = vmms[Config.VMMS_NAME]
+                imgList = vobj.getImages()
+                if job.vm.image not in imgList:
+                    self.log.error("validateJob: Image not found: %s" %
+                              job.vm.image)
+                    job.appendTrace("%s|validateJob: Image not found: %s" %
+                                    (datetime.utcnow().ctime(), job.vm.image))
+                    errors += 1
+                else:
+                    (name, ext) = os.path.splitext(job.vm.image)
+                    job.vm.name = name
 
-        if not job.vm.vmms:
-            log.error("validateJob: Missing job.vm.vmms")
-            job.appendTrace("%s|validateJob: Missing job.vm.vmms" %
+            if not job.vm.vmms:
+                self.log.error("validateJob: Missing job.vm.vmms")
+                job.appendTrace("%s|validateJob: Missing job.vm.vmms" %
+                                (datetime.utcnow().ctime()))
+                errors += 1
+            else:
+                if job.vm.vmms not in vmms:
+                    self.log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
+                    job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
+                                    (datetime.utcnow().ctime(), job.vm.vmms))
+                    errors += 1
+
+        # Check the output file
+        if not job.outputFile:
+            self.log.error("validateJob: Missing job.outputFile")
+            job.appendTrace("%s|validateJob: Missing job.outputFile" %
                             (datetime.utcnow().ctime()))
             errors += 1
         else:
-            if job.vm.vmms not in vmms:
-                log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
-                job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
-                                (datetime.utcnow().ctime(), job.vm.vmms))
+            if not os.path.exists(os.path.dirname(job.outputFile)):
+                self.log.error("validateJob: Bad output path: %s", job.outputFile)
+                job.appendTrace("%s|validateJob: Bad output path: %s" %
+                                (datetime.utcnow().ctime(), job.outputFile))
                 errors += 1
 
-    # Check the output file
-    if not job.outputFile:
-        log.error("validateJob: Missing job.outputFile")
-        job.appendTrace("%s|validateJob: Missing job.outputFile" %
-                        (datetime.utcnow().ctime()))
-        errors += 1
-    else:
-        if not os.path.exists(os.path.dirname(job.outputFile)):
-            log.error("validateJob: Bad output path: %s", job.outputFile)
-            job.appendTrace("%s|validateJob: Bad output path: %s" %
-                            (datetime.utcnow().ctime(), job.outputFile))
-            errors += 1
+        # Check for max output file size parameter
+        if not job.maxOutputFileSize:
+            self.log.debug("validateJob: Setting job.maxOutputFileSize "
+                      "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
+            job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
-    # Check for max output file size parameter
-    if not job.maxOutputFileSize:
-        log.debug("validateJob: Setting job.maxOutputFileSize "
-                  "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
-        job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
+        # Check the list of input files
+        for inputFile in job.input:
+            if not inputFile.localFile:
+                self.log.error("validateJob: Missing inputFile.localFile")
+                job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
+                                (datetime.utcnow().ctime()))
+                errors += 1
+            else:
+                if not os.path.exists(inputFile.localFile):
+                    self.log.error("validateJob: Input file %s not found" %
+                              (inputFile.localFile))
+                    job.appendTrace(
+                        "%s|validateJob: Input file %s not found" %
+                        (datetime.utcnow().ctime(), inputFile.localFile))
+                    errors += 1
 
-    # Check the list of input files
-    for inputFile in job.input:
-        if not inputFile.localFile:
-            log.error("validateJob: Missing inputFile.localFile")
-            job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
-                            (datetime.utcnow().ctime()))
-            errors += 1
+        # Check if job timeout has been set; If not set timeout to default
+        if not job.timeout or job.timeout <= 0:
+            self.log.debug("validateJob: Setting job.timeout to"
+                      " default config value: %d secs", Config.RUNJOB_TIMEOUT)
+            job.timeout = Config.RUNJOB_TIMEOUT
+
+        # Any problems, return an error status
+        if errors > 0:
+            self.log.error("validateJob: Job rejected: %d errors" % errors)
+            job.appendTrace("%s|validateJob: Job rejected: %d errors" %
+                                (datetime.utcnow().ctime(), errors))
+            return -1
         else:
-            if not os.path.exists(inputFile.localFile):
-                log.error("validateJob: Input file %s not found" %
-                          (inputFile.localFile))
-                job.appendTrace(
-                    "%s|validateJob: Input file %s not found" %
-                    (datetime.utcnow().ctime(), inputFile.localFile))
-                errors += 1
-
-    # Check if job timeout has been set; If not set timeout to default
-    if not job.timeout or job.timeout <= 0:
-        log.debug("validateJob: Setting job.timeout to"
-                  " default config value: %d secs", Config.RUNJOB_TIMEOUT)
-        job.timeout = Config.RUNJOB_TIMEOUT
-
-    # Any problems, return an error status
-    if errors > 0:
-        log.error("validateJob: Job rejected: %d errors" % errors)
-        job.appendTrace("%s|validateJob: Job rejected: %d errors" %
-                            (datetime.utcnow().ctime(), errors))
-        return -1
-    else:
-        return 0
+            return 0
