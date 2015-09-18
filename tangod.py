@@ -228,6 +228,8 @@ def validateJob(job, vmms):
     """
     log = logging.getLogger('Server')
     errors = 0
+    print "JOB OBJECT RIGHT HERE ---------------------"
+    print str(job) 
 
     # If this isn't a Tango job then bail with an error
     if (not isinstance(job, TangoJob)):
@@ -297,6 +299,7 @@ def validateJob(job, vmms):
         job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
     # Check the list of input files
+    hasMakefile = False
     for inputFile in job.input:
         if not inputFile.localFile:
             log.error("validateJob: Missing inputFile.localFile")
@@ -312,6 +315,13 @@ def validateJob(job, vmms):
                     (datetime.utcnow().ctime(), inputFile.localFile))
                 errors += 1
 
+        if inputFile.destFile == 'Makefile':
+                hasMakefile = True 
+    # Check if input files include a Makefile
+    if not hasMakefile:
+        log.error("validateJob: Missing Makefile in input files.")
+        job.appendTrace("%s|validateJob: Missing Makefile in input files." % (datetime.utcnow().ctime()))
+        errors+=1       
     # Check if job timeout has been set; If not set timeout to default
     if not job.timeout or job.timeout <= 0:
         log.debug("validateJob: Setting job.timeout to"
