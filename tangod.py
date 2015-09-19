@@ -305,8 +305,7 @@ class TangoServer:
         # Check the output file
         if not job.outputFile:
             self.log.error("validateJob: Missing job.outputFile")
-            job.appendTrace("%s|validateJob: Missing job.outputFile" %
-                            (datetime.utcnow().ctime()))
+            job.appendTrace("%s|validateJob: Missing job.outputFile" % (datetime.utcnow().ctime()))           
             errors += 1
         else:
             if not os.path.exists(os.path.dirname(job.outputFile)):
@@ -322,20 +321,28 @@ class TangoServer:
             job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
         # Check the list of input files
+        hasMakefile = False
         for inputFile in job.input:
             if not inputFile.localFile:
                 self.log.error("validateJob: Missing inputFile.localFile")
                 job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
-                                (datetime.utcnow().ctime()))
+                            (datetime.utcnow().ctime()))
                 errors += 1
             else:
-                if not os.path.exists(inputFile.localFile):
-                    self.log.error("validateJob: Input file %s not found" %
-                              (inputFile.localFile))
-                    job.appendTrace(
-                        "%s|validateJob: Input file %s not found" %
-                        (datetime.utcnow().ctime(), inputFile.localFile))
+                if not os.path.exists(os.path.dirname(job.outputFile)):
+                    self.log.error("validateJob: Bad output path: %s", job.outputFile)
+                    job.appendTrace("%s|validateJob: Bad output path: %s" %
+                                    (datetime.utcnow().ctime(), job.outputFile))
                     errors += 1
+
+            if inputFile.destFile == 'Makefile':
+                hasMakefile = True
+
+        # Check if input files include a Makefile
+        if not hasMakefile:
+            self.log.error("validateJob: Missing Makefile in input files.")
+            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (datetime.utcnow().ctime()))
+            errors+=1    
 
         # Check if job timeout has been set; If not set timeout to default
         if not job.timeout or job.timeout <= 0:
