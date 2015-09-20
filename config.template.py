@@ -3,6 +3,7 @@
 #
 
 import logging
+import time
 
 # Config - defines
 
@@ -111,7 +112,7 @@ class Config:
     ######
     # Part 3: Runtime info that you can retrieve using the /info route
     #
-    start_time = 0
+    start_time = time.time()
     job_requests = 0
     job_retries = 0
     waitvm_timeouts = 0
