@@ -30,6 +30,10 @@ class InputFile():
         self.localFile = localFile
         self.destFile = destFile
 
+    def __repr__(self):
+        return "InputFile(localFile: %s, destFile: %s)" % (self.localFile, 
+                self.destFile)
+
 
 class TangoMachine():
 
@@ -53,6 +57,9 @@ class TangoMachine():
         self.resume = resume
         self.id = id
         self.instance_id = id
+
+    def __repr__(self):
+        return "TangoMachine(image: %s, vmms: %s)" % (self.image, self.vmms)
 
 
 class TangoJob():
