@@ -16,7 +16,7 @@ from config import Config
 from worker import Worker
 from jobQueue import JobQueue
 from preallocator import Preallocator
-from tangod import TangoServer
+from tangod import *
 
 class JobManager:
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         preallocator = Preallocator(vmms)
         queue = JobQueue(preallocator)
         
-        tango = TangoServer(queue, preallocator, vmms)
+        tango = TangoServer()
 
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(vmms)
