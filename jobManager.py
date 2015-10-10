@@ -60,7 +60,8 @@ class JobManager:
                         vmms,
                         self.jobQueue,
                         self.preallocator,
-                        preVM).start()
+                        preVM
+                    ).start()
 
                 except Exception as err:
                     self.jobQueue.makeDead(job.id, str(err))
@@ -75,31 +76,9 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
-
-        vmms = None
-
-        if Config.VMMS_NAME == "tashiSSH":
-            from vmms.tashiSSH import TashiSSH
-            vmms = TashiSSH()
-        elif Config.VMMS_NAME == "ec2SSH":
-            from vmms.ec2SSH import Ec2SSH
-            vmms = Ec2SSH()
-        elif Config.VMMS_NAME == "localDocker":
-            from vmms.localDocker import LocalDocker
-            vmms = LocalDocker()
-        elif Config.VMMS_NAME == "distDocker":
-            from vmms.distDocker import DistDocker
-            vmms = DistDocker()
-
-        vmms = {Config.VMMS_NAME: vmms}
-        preallocator = Preallocator(vmms)
-        queue = JobQueue(preallocator)
-        
         tango = TangoServer()
-
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(vmms)
-
-        JobManager(queue, vmms, preallocator)
+        JobManager(tango.jobQueue, tango.vmms, tango.preallocator)
 
         print("Starting the stand-alone Tango JobManager")

@@ -73,8 +73,6 @@ class TangoServer:
 
         self.vmms = {Config.VMMS_NAME: vmms}
         self.preallocator = Preallocator(self.vmms)
-
-        self.preallocator = Preallocator(self.vmms)
         self.jobQueue = JobQueue(self.preallocator)
         if not Config.USE_REDIS:
             # creates a local Job Manager if there is no persistent
