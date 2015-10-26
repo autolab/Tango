@@ -78,7 +78,7 @@ if __name__ == "__main__":
     else:
         tango = TangoServer()
         tango.log.debug("Resetting Tango VMs")
-        tango.resetTango(vmms)
+        tango.resetTango(tango.vmms)
         JobManager(tango.jobQueue, tango.vmms, tango.preallocator)
 
         print("Starting the stand-alone Tango JobManager")
