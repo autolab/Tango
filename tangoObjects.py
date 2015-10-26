@@ -276,9 +276,12 @@ class TangoRemoteDictionary():
         return str(id)
 
     def get(self, id):
-        unpickled_obj = self.r.hget(self.hash_name, str(id))
-        obj = pickle.loads(unpickled_obj)
-        return obj
+	if str(id) in self.r.hkeys(self.hash_name):
+        	unpickled_obj = self.r.hget(self.hash_name, str(id))
+        	obj = pickle.loads(unpickled_obj)
+        	return obj
+	else:
+		return None
 
     def keys(self):
         return self.r.hkeys(self.hash_name)
@@ -299,14 +302,8 @@ class TangoRemoteDictionary():
         self.r.delete(self.hash_name)
 
     def iteritems(self):
-        keys = self.r.hkeys(self.hash_name)
-        keyvals = []
-        for key in keys:
-            tup = (key, pickle.loads(self.r.hget(self.hash_name, key)))
-            keyvals.append(tup)
-
-        return iter(keyvals)
-
+	return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                if self.get(i) != None])
 
 class TangoNativeDictionary():
 
