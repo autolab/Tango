@@ -205,11 +205,10 @@ class JobQueue:
         """
         self.queueLock.acquire()
         for id, job in self.liveJobs.iteritems():
-
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
                 self.preallocator.update(job.vm, Config.POOL_SIZE)
-
+            
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
