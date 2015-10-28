@@ -52,7 +52,7 @@ parser.add_argument(
 parser.add_argument('--vmms', default='localDocker',
                     help='Choose vmms between ec2SSH, tashiSSH, localDocker, and distDocker')
 parser.add_argument('--image', default='autograding_image',
-                    help='VM image name (default "rhel")')
+                    help='VM image name (default "autograding_image")')
 parser.add_argument(
     '--infiles',
     nargs='+',
