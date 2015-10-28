@@ -16,6 +16,7 @@ from config import Config
 from worker import Worker
 from jobQueue import JobQueue
 from preallocator import Preallocator
+from tangoObjects import TangoQueue
 from tangod import *
 
 class JobManager:
@@ -79,6 +80,8 @@ if __name__ == "__main__":
         tango = TangoServer()
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(tango.vmms)
+        for key in tango.preallocator.machines.keys():
+            tango.preallocator.machines.set(key, [[], TangoQueue(key)])
         JobManager(tango.jobQueue, tango.vmms, tango.preallocator)
 
         print("Starting the stand-alone Tango JobManager")
