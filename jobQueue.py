@@ -262,11 +262,11 @@ class JobQueue:
         if str(id) in self.liveJobs.keys():
             self.log.info("makeDead| Job is in the queue")
             status = 0
-            job = self.liveJobs.get(id)
-            self.liveJobs.delete(id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)
+            job = self.liveJobs.get(id)
+            self.liveJobs.delete(id)
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
