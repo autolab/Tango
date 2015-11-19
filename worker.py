@@ -279,7 +279,7 @@ class Worker(threading.Thread):
             # Move the job from the live queue to the dead queue
             # with an explanatory message
             msg = "Success: Autodriver returned normally"
-            replaceVM = False
+            (returnVM, replaceVM) = (True, False)
             if ret["copyin"] != 0:
                 msg = "Error: Copy in to VM failed (status=%d)" % (
                     ret["copyin"])
@@ -296,7 +296,7 @@ class Worker(threading.Thread):
                     # and do not retry the job since the job may have damaged
                     # the VM.
                     msg = "Error: OS error while running job on VM"
-                    replaceVM = True
+                    (returnVM, replaceVM) = (False, True)
                 else:  # This should never happen
                     msg = "Error: Unknown autodriver error (status=%d)" % (
                         ret["runjob"])
@@ -312,7 +312,7 @@ class Worker(threading.Thread):
             self.catFiles(hdrfile, self.job.outputFile)
 
             # Thread exit after termination
-            self.detachVM(return_vm=True, replace_vm=replaceVM)
+            self.detachVM(return_vm=returnVM, replace_vm=replaceVM)
             self.notifyServer(self.job)
             return
 
