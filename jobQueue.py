@@ -241,14 +241,14 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
         job = self.liveJobs.get(jobId)
-        self.log.info("unassignJob|Unassigning job %s" % str(job.id))
-        job.makeUnassigned()
         if job.retries is None:
             job.retries = 0
         else:
             job.retries += 1
             Config.job_retries += 1
 
+        self.log.info("unassignJob|Unassigning job %s" % str(job.id))
+        job.makeUnassigned()
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 
