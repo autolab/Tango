@@ -270,54 +270,51 @@ class Worker(threading.Thread):
                                      self.job.name,
                                      self.job.id, ret["copyout"]))
 
-            # Abnormal job termination (Autodriver encountered an OS
-            # error).  Assume that the VM is damaged. Destroy this VM
-            # and retry the job on another VM.
-            if (ret["runjob"] == 3):  # EXIT_OSERROR in Autodriver
-                self.rescheduleJob(
-                    hdrfile, ret, "OS error while running job on VM")
-
-                # Thread exit after abnormal termination
-                return
-
-            # Normal job termination. Notice that Tango considers
+            # Job termination. Notice that Tango considers
             # things like runjob timeouts and makefile errors to be
             # normal termination and doesn't reschedule the job.
-            else:
-                self.log.info("Success: job %s:%d finished" %
-                              (self.job.name, self.job.id))
+            self.log.info("Success: job %s:%d finished" %
+                          (self.job.name, self.job.id))
 
-                # Move the job from the live queue to the dead queue
-                # with an explanatory message
-                msg = "Success: Autodriver returned normally"
-                if ret["copyin"] != 0:
-                    msg = "Error: Copy in to VM failed (status=%d)" % (
-                        ret["copyin"])
-                elif ret["runjob"] != 0:
-                    if ret["runjob"] == 1:  # This should never happen
-                        msg = "Error: Autodriver usage error (status=%d)" % (
-                            ret["runjob"])
-                    elif ret["runjob"] == 2:
-                        msg = "Error: Job timed out after %d seconds" % (
-                            self.job.timeout)
-                    else:  # This should never happen
-                        msg = "Error: Unknown autodriver error (status=%d)" % (
-                            ret["runjob"])
+            # Move the job from the live queue to the dead queue
+            # with an explanatory message
+            msg = "Success: Autodriver returned normally"
+            replaceVM = False
+            if ret["copyin"] != 0:
+                msg = "Error: Copy in to VM failed (status=%d)" % (
+                    ret["copyin"])
+            elif ret["runjob"] != 0:
+                if ret["runjob"] == 1:  # This should never happen
+                    msg = "Error: Autodriver usage error (status=%d)" % (
+                        ret["runjob"])
+                elif ret["runjob"] == 2:
+                    msg = "Error: Job timed out after %d seconds" % (
+                        self.job.timeout)
+                elif (ret["runjob"] == 3):  # EXIT_OSERROR in Autodriver
+                    # Abnormal job termination (Autodriver encountered an OS
+                    # error).  Assume that the VM is damaged. Destroy this VM
+                    # and do not retry the job since the job may have damaged
+                    # the VM.
+                    msg = "Error: OS error while running job on VM"
+                    replaceVM = True
+                else:  # This should never happen
+                    msg = "Error: Unknown autodriver error (status=%d)" % (
+                        ret["runjob"])
 
-                elif ret["copyout"] != 0:
-                    msg += "Error: Copy out from VM failed (status=%d)" % (
-                        ret["copyout"])
+            elif ret["copyout"] != 0:
+                msg += "Error: Copy out from VM failed (status=%d)" % (
+                    ret["copyout"])
 
-                self.jobQueue.makeDead(self.job.id, msg)
+            self.jobQueue.makeDead(self.job.id, msg)
 
-                # Update the text that users see in the autograder output file
-                self.appendMsg(hdrfile, msg)
-                self.catFiles(hdrfile, self.job.outputFile)
+            # Update the text that users see in the autograder output file
+            self.appendMsg(hdrfile, msg)
+            self.catFiles(hdrfile, self.job.outputFile)
 
-                # Thread exit after normal termination
-                self.detachVM(return_vm=True, replace_vm=False)
-                self.notifyServer(self.job)
-                return
+            # Thread exit after termination
+            self.detachVM(return_vm=True, replace_vm=replaceVM)
+            self.notifyServer(self.job)
+            return
 
         #
         # Exception: ec2CallError - Raised by ec2Call()
