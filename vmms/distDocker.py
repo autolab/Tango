@@ -378,6 +378,6 @@ class DistDocker:
             o_l.pop()
             for row in o_l:
                 row_l = row.split(' ')
-                result.add(re.sub(".*/([^/]*)", "\1", row_l[0]))
+                result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
 
         return list(result)
