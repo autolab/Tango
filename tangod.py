@@ -78,7 +78,7 @@ class TangoServer:
             # creates a local Job Manager if there is no persistent
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
-            JobManager(self.jobQueue, self.vmms, self.preallocator)
+            JobManager(self.jobQueue, self.vmms, self.preallocator).start()
         
         logging.basicConfig(
             filename=Config.LOGFILE,
