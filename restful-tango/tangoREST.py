@@ -242,7 +242,7 @@ class TangoREST:
                     self.log.info(
                         "Created directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.made_dir
-                    statusObj["files"] = []
+                    statusObj["files"] = {}
                     return statusObj
             except Exception as e:
                 self.log.error("open request failed: %s" % str(e))
