@@ -78,6 +78,9 @@ class Config:
     # Default value of '*'' points this path to /path/to/Tango/volumes/
     DOCKER_VOLUME_PATH = '*'
 
+    # Maximum size for input files in bytes
+    MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024 # 250MB
+
     # Maximum size for output file in bytes
     MAX_OUTPUT_FILE_SIZE = 1000 * 1024
 
