@@ -14,7 +14,7 @@ Upon receiving a job, Tango will copy all of the job's input files into a VM, ru
 
 A brief overview of the Tango respository:
 
-* `tangod.py` - Main tango server
+* `tango.py` - Main tango server
 * `jobQueue.py` - Manages the job queue
 * `jobManager.py` - Assigns jobs to free VMs
 * `worker.py` - Shepherds a job through its execution

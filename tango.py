@@ -10,7 +10,7 @@
 # 2. The TangoServer Class: This is a class that accepts addJob requests
 #    from the restful server. Job requests are validated and placed in
 #    a job queue. This class also implements various administrative
-#    functions to manage instances of tangoServer. (tangod.py)
+#    functions to manage instances of tangoServer. (tango.py)
 #
 # 3. The Job Manager: This thread runs continuously. It watches the job
 #    queue for new job requests. When it finds one it creates a new
@@ -85,9 +85,9 @@ class TangoServer:
             format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
             level=Config.LOGLEVEL,
         )
-        self.log = logging.getLogger("Tangod")
-        self.log.info("Starting Tango server on port %d" % (Config.PORT))
         self.start_time = time.time()
+        self.log = logging.getLogger("TangoServer")
+        self.log.info("Starting Tango server")
 
     def addJob(self, job):
         """ addJob - Add a job to the job queue

@@ -17,7 +17,7 @@ from worker import Worker
 from jobQueue import JobQueue
 from preallocator import Preallocator
 from tangoObjects import TangoQueue
-from tangod import *
+from tango import *
 
 class JobManager:
 
