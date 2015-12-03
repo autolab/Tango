@@ -9,22 +9,24 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import time, threading, logging
+import threading, logging, time
 
 from datetime import datetime
-from config import Config
-from worker import Worker
+from tango import *
 from jobQueue import JobQueue
 from preallocator import Preallocator
+from worker import Worker
+
 from tangoObjects import TangoQueue
-from tango import *
+from config import Config
 
 class JobManager:
 
-    def __init__(self, queue, vmms, preallocator):
+    def __init__(self, queue):
+        self.daemon = True
         self.jobQueue = queue
-        self.vmms = vmms
-        self.preallocator = preallocator
+        self.preallocator = self.jobQueue.preallocator
+        self.vmms = self.preallocator.vmms
         self.log = logging.getLogger("JobManager")
         self.running = False
 
@@ -91,10 +93,10 @@ if __name__ == "__main__":
     else:
         tango = TangoServer()
         tango.log.debug("Resetting Tango VMs")
-        tango.resetTango(tango.vmms)
+        tango.resetTango(tango.preallocator.vmms)
         for key in tango.preallocator.machines.keys():
             tango.preallocator.machines.set(key, [[], TangoQueue(key)])
-        jobs = JobManager(tango.jobQueue, tango.vmms, tango.preallocator)
+        jobs = JobManager(tango.jobQueue)
 
         print("Starting the stand-alone Tango JobManager")
         jobs.run()

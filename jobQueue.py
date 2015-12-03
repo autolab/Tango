@@ -7,11 +7,11 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
-import time, threading, logging
+import threading, logging, time
 
 from datetime import datetime
-from config import Config
 from tangoObjects import TangoDictionary, TangoJob
+from config import Config
 
 #
 # JobQueue - This class defines the job queue and the functions for
@@ -79,7 +79,7 @@ class JobQueue:
             self.log.info("add|JobQueue is full")
             return -1
         self.log.debug("add|Gotten next ID: " + str(job.id))
-        self.log.info("add|Unassigning job %s" % str(job.id))
+        self.log.info("add|Unassigning job ID: %d" % (job.id))
         job.makeUnassigned()
         job.retries = 0
 
@@ -100,9 +100,8 @@ class JobQueue:
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%d to queue" % (job.name, job.id))
-        self.log.info("Job id: " + str(job.id))
-        self.log.info("Job details: " + str(job.__dict__))
+        self.log.info("Added job %s:%d to queue, details = %s" % 
+            (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
 
@@ -228,7 +227,7 @@ class JobQueue:
         self.log.debug("assignJob| Acquired lock to job queue.")
         job = self.liveJobs.get(jobId)
         self.log.debug("assignJob| Retrieved job.")
-        self.log.info("assignJob|Assigning job %s" % str(job.id))
+        self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
         job.makeAssigned()
 
         self.log.debug("assignJob| Releasing lock to job queue.")
@@ -255,12 +254,12 @@ class JobQueue:
     def makeDead(self, id, reason):
         """ makeDead - move a job from live queue to dead queue
         """
-        self.log.info("makeDead| Making dead: " + str(id))
+        self.log.info("makeDead| Making dead job ID: " + str(id))
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.liveJobs.keys():
-            self.log.info("makeDead| Job is in the queue")
+            self.log.info("makeDead| Found job ID: %d in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
             self.log.info("Terminated job %s:%d: %s" %

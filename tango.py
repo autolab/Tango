@@ -34,19 +34,15 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
-import threading
-import time
-import logging
-import re
-import os
-import stat
+import threading, logging, time, stat, re, os
 
-from config import Config
+from datetime import datetime
+from preallocator import Preallocator
 from jobQueue import JobQueue
 from jobManager import JobManager
-from preallocator import Preallocator
+
 from tangoObjects import TangoJob
-from datetime import datetime
+from config import Config
 
 
 class TangoServer:
@@ -56,7 +52,7 @@ class TangoServer:
 
     def __init__(self):
         self.daemon = True
-
+        
         vmms = None
         if Config.VMMS_NAME == "tashiSSH":
             from vmms.tashiSSH import TashiSSH
@@ -71,14 +67,13 @@ class TangoServer:
             from vmms.distDocker import DistDocker
             vmms = DistDocker()
 
-        self.vmms = {Config.VMMS_NAME: vmms}
-        self.preallocator = Preallocator(self.vmms)
+        self.preallocator = Preallocator({Config.VMMS_NAME: vmms})
         self.jobQueue = JobQueue(self.preallocator)
         if not Config.USE_REDIS:
             # creates a local Job Manager if there is no persistent
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
-            JobManager(self.jobQueue, self.vmms, self.preallocator).start()
+            JobManager(self.jobQueue).start()
         
         logging.basicConfig(
             filename=Config.LOGFILE,
@@ -94,8 +89,8 @@ class TangoServer:
         """
         Config.job_requests += 1
         self.log.debug("Received addJob request")
-        ret = self.__validateJob(job, self.vmms)
-        self.log.info("Done validating job")
+        ret = self.__validateJob(job, self.preallocator.vmms)
+        self.log.info("Done validating job %s" % (job.name))
         if ret == 0:
             return self.jobQueue.add(job)
         else:
@@ -136,7 +131,7 @@ class TangoServer:
         self.log.debug("Received preallocVM(%s,%d)request"
                        % (vm.name, num))
         try:
-            vmms = self.vmms[vm.vmms]
+            vmms = self.preallocator.vmms[vm.vmms]
             if not vm or num < 0:
                 return -2
             if vm.image not in vmms.getImages():
@@ -155,8 +150,8 @@ class TangoServer:
         """
         self.log.debug("Received getVMs request(%s)" % vmms_name)
         try:
-            if vmms_name in self.vmms:
-                vmms_inst = self.vmms[vmms_name]
+            if vmms_name in self.preallocator.vmms:
+                vmms_inst = self.preallocator.vmms[vmms_name]
                 return vmms_inst.getVMs()
             else:
                 return []

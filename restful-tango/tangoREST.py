@@ -294,7 +294,7 @@ class TangoREST:
                 if (jobId == -1):
                     self.log.info("Failed to add job to tango")
                     return self.status.create(-1, job.trace)
-                self.log.info("Successfully added job to tango")
+                self.log.info("Successfully added job ID: %s to tango" % str(jobId))
                 result = self.status.job_added
                 result['jobId'] = jobId
                 return result

@@ -2,8 +2,7 @@
 # config.py - Global configuration constants and runtime info
 #
 
-import logging
-import time
+import logging, time
 
 # Config - defines
 
