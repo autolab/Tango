@@ -96,19 +96,18 @@ class TangoREST:
         labPath = self.getDirPath(key, courselab)
         return "%s/%s" % (labPath, self.OUTPUT_FOLDER)
 
-    def computeMD5(self, directory):
-        """ computeMD5 - Computes the MD5 hash of given files in the
-        given directory
+    def checkFileExists(self, directory, filename, fileMD5):
+        """ checkFileExists - Checks if a file exists in a
+            directory
         """
-        result = {}
         for elem in os.listdir(directory):
-            try:
-                body = open("%s/%s" % (directory, elem)).read()
-                md5hash = hashlib.md5(body).hexdigest()
-                result[elem] = md5hash
-            except IOError:
-                continue
-        return result
+            if elem == filename:
+                try:
+                    body = open("%s/%s" % (directory, elem)).read()
+                    md5hash = hashlib.md5(body).hexdigest()
+                    return md5hash == fileMD5
+                except IOError:
+                    continue
 
     def createTangoMachine(self, image, vmms=Config.VMMS_NAME,
                            vmObj={'cores': 1, 'memory': 512}):
@@ -229,7 +228,7 @@ class TangoREST:
                     self.log.info(
                         "Found directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.found_dir
-                    statusObj['files'] = self.computeMD5(labPath)
+                    statusObj['files'] = {}
                     return statusObj
                 else:
                     outputPath = self.getOutPath(key, courselab)
@@ -257,8 +256,7 @@ class TangoREST:
             try:
                 if os.path.exists(labPath):
                     fileMD5 = hashlib.md5(body).hexdigest()
-                    filesInDir = self.computeMD5(labPath)
-                    if file in filesInDir and filesInDir[file] == fileMD5:
+                    if self.checkFileExists(labPath, file, fileMD5):
                         return self.status.file_exists
                     absPath = "%s/%s" % (labPath, file)
                     fh = open(absPath, "wt")
