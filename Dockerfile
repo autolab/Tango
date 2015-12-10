@@ -11,6 +11,7 @@ WORKDIR /opt
 
 # Move all code into Tango directory
 ADD . TangoService/Tango/
+RUN mkdir /volumes
 
 # Install dependancies
 # supervisor installed and works
@@ -19,7 +20,9 @@ ADD . TangoService/Tango/
 RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
+	git \
     supervisor \
+    python-pip \
     build-essential \
     tcl8.5 \
     wget \
@@ -30,19 +33,27 @@ RUN apt-get update && apt-get install -y \
 
 ENV PATH /usr/local/nginx/sbin/ngnix:$PATH
 
-# DONE
-
 RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
 WORKDIR /opt/redis-stable
 RUN make && make install 
-WORKDIR /
+WORKDIR /opt/TangoService/Tango/
+
+# Create virtualenv to link dependancies 
+RUN pip install virtualenv && virtualenv .
 
 # Move custom config file to proper location
-RUN cp /opt/TangoService/Tango/docker/config/nginx.conf /etc/nginx/nginx.conf
-RUN cp /opt/TangoService/Tango/docker/config/supervisord.conf /etc/supervisor/supervisord.conf
+RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.conf
+RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
+RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
+
 
 # Reload new config scripts
-RUN service nginx restart
-RUN service supervisor stop && service supervisor start
+RUN service nginx start
+RUN service supervisor start
 
 
+# TODO: 
+# volumes dir in root dir, supervisor only starts after calling start once , nginx also needs to be started
+# Different log numbers for two different tangos
+# what from nginx forwards requests to tango
+# why does it still start on 3000
