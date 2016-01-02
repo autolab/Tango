@@ -1,3 +1,0 @@
-Enter HOSTNAME in ngnix port
-Port for supervisord (localhost:9001)
-Port for ngnix (current 8600)

@@ -1,5 +1,0 @@
-Port and path configurations
-Supervisor setup
-Ngnix setup
-Redis setup
-
