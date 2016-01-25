@@ -21,8 +21,10 @@ RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
 	git \
+    vim \
     supervisor \
     python-pip \
+    python-dev \
     build-essential \
     tcl8.5 \
     wget \
@@ -40,6 +42,8 @@ WORKDIR /opt/TangoService/Tango/
 
 # Create virtualenv to link dependancies 
 RUN pip install virtualenv && virtualenv .
+# Install python dependancies 
+RUN pip install -r requirements.txt
 
 # Move custom config file to proper location
 RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.conf
