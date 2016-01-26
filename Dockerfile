@@ -40,6 +40,9 @@ WORKDIR /opt/redis-stable
 RUN make && make install 
 WORKDIR /opt/TangoService/Tango/
 
+# Install Docker in container
+RUN wget -qO- https://get.docker.com/ | sh
+
 # Create virtualenv to link dependancies 
 RUN pip install virtualenv && virtualenv .
 # Install python dependancies 
