@@ -1,5 +1,5 @@
 # Start with empty ubuntu machine
-FROM ubuntu:14.04
+FROM ubuntu:15.04
 
 MAINTAINER Autolab Development Team "autolab-dev@andrew.cmu.edu"
 
@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y \
     wget \
     libgcrypt11-dev \ 
     zlib1g-dev \
+	apt-transport-https \
+    ca-certificates \
+    lxc \
+    iptables \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -40,8 +44,16 @@ WORKDIR /opt/redis-stable
 RUN make && make install 
 WORKDIR /opt/TangoService/Tango/
 
-# Install Docker in container
-RUN wget -qO- https://get.docker.com/ | sh
+# Install Docker from Docker Inc. repositories.
+RUN curl -sSL https://get.docker.com/ | sh
+
+# Install the magic wrapper.
+ADD ./wrapdocker /usr/local/bin/wrapdocker
+RUN chmod +x /usr/local/bin/wrapdocker
+
+# Define additional metadata for our image.
+VOLUME /var/lib/docker
+CMD ["wrapdocker"]
 
 # Create virtualenv to link dependancies 
 RUN pip install virtualenv && virtualenv .
