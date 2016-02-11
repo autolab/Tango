@@ -8,7 +8,8 @@ import threading
 #print("Running "+ str(sys.argv))
 
 # Wait for all processes, since we are pid 1 in the container,
-# terminate once the interesting process exits
+# exit thread (which is blocking the main thread) once the
+# interesting process exits
 class WaitLoop(object):
     def __init__(self, pid=None):
         self.waitfor=pid
@@ -16,7 +17,7 @@ class WaitLoop(object):
     def __call__(self):
         try:
             (np, self.status)=os.wait()
-            while pid is None or np != self.waitfor:
+            while np is None or np != self.waitfor:
                 (np, self.status)=os.wait()
         except OSError:
             if pid:
