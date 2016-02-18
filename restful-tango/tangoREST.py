@@ -34,6 +34,7 @@ class Status:
         self.obtained_jobs = self.create(0, "Found list of jobs")
         self.preallocated = self.create(0, "VMs preallocated")
         self.obtained_pool = self.create(0, "Found pool")
+        self.obtained_all_pools = self.create(0, "Found all pools")
 
         self.wrong_key = self.create(-1, "Key not recognized")
         self.wrong_courselab = self.create(-1, "Courselab not found")
@@ -373,24 +374,22 @@ class TangoREST:
             return self.status.wrong_key
 
     def pool(self, key, image):
-        """ pool - Get information about a pool of VMs spawned from image
+        """ pool - Get information about pool(s) of VMs
         """
         self.log.debug("Received pool request(%s, %s)" % (key, image))
         if self.validateKey(key):
+            pools = self.tango.preallocator.getAllPools()
+            self.log.info("All pools found")
             if image == "":
-                pools = self.tango.preallocator.getAllPools()
+                result = self.status.obtained_all_pools
             else:
-                info = self.tango.preallocator.getPool(image)
-                pools = {}
-                if len(info) > 0:
-                    pools[image] = info
-                    
-            if len(pools) > 0:
-                self.log.info("Pool image found: %s" % image)
-                result = self.status.obtained_pool
-            else:
-                self.log.info("Invalid image name: %s" % image)
-                result = self.status.pool_not_found
+                if image in pools:
+                    pools = {image: pools[image]}
+                    self.log.info("Pool image found: %s" % image)
+                    result = self.status.obtained_pool
+                else:
+                    self.log.info("Invalid image name: %s" % image)
+                    result = self.status.pool_not_found
             
             result["pools"] = pools
             return result
