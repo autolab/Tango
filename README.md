@@ -10,7 +10,7 @@ Tango is a standalone RESTful Web service that runs and manages jobs. A job is a
 
 Example jobs are provided for the user to peruse in `clients/`. Tango has a [REST API](https://github.com/autolab/Tango/wiki/Tango-REST-API) which is used for job submission.
 
-Upon receiving a job, Tango will copy all of the job's input files into a VM, run `make`, and copy the resulting output back to the host machine. Tango jobs are run in pre-configured VMs. Support for various Virtual Machine Management Systems (VMMSs) like KVM, Docker, or Amazon EC2 can be added by implementing a high level VMMS API that Tango provides.
+Upon receiving a job, Tango will copy all of the job's input files into a VM, run `make`, and copy the resulting output back to the host machine. Tango jobs are run in pre-configured VMs. Support for various Virtual Machine Management Systems (VMMSs) like KVM, Docker, or Amazon EC2 can be added by implementing a high level [VMMS API](https://github.com/autolab/Tango/wiki/Tango-VMMS-API) that Tango provides.
 
 A brief overview of the Tango respository:
 
@@ -30,7 +30,7 @@ Please feel free to use Tango at your school/organization. If you run into any p
 
 1. [Follow the steps to set up Tango](https://github.com/autolab/Tango/wiki/Set-up-Tango).
 2. [Read the documentation for the REST API](https://github.com/autolab/Tango/wiki/Tango-REST-API).
-3. Read the documentation for the VMMS API - coming soon.
+3. [Read the documentation for the VMMS API](https://github.com/autolab/Tango/wiki/Tango-VMMS-API).
 4. [Test whether Tango is set up properly and can process jobs](https://github.com/autolab/Tango/wiki/Testing-Tango).
 
 ## Contributing to Tango
