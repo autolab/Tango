@@ -11,12 +11,12 @@ WORKDIR /opt
 
 # Move all code into Tango directory
 ADD . TangoService/Tango/
-RUN mkdir /volumes
+WORKDIR /opt/TangoService/Tango
+RUN mkdir volumes
+
+WORKDIR /opt
 
 # Install dependancies
-# supervisor installed and works
-
-
 RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
@@ -37,8 +37,7 @@ RUN apt-get update && apt-get install -y \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-ENV PATH /usr/local/nginx/sbin/ngnix:$PATH
-
+# Install Redis
 RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
 WORKDIR /opt/redis-stable
 RUN make && make install 
@@ -53,22 +52,22 @@ RUN chmod +x /usr/local/bin/wrapdocker
 
 # Define additional metadata for our image.
 VOLUME /var/lib/docker
-CMD ["wrapdocker"]
 
 # Create virtualenv to link dependancies 
 RUN pip install virtualenv && virtualenv .
 # Install python dependancies 
 RUN pip install -r requirements.txt
 
+RUN mkdir -p /var/log/docker /var/log/supervisor
+
 # Move custom config file to proper location
 RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.conf
 RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
 RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 
-
+EXPOSE 8600
 # Reload new config scripts
-RUN service nginx start
-RUN service supervisor start
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 
 # TODO: 
