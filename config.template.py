@@ -135,6 +135,7 @@ class Config:
     # Part 5: EC2 Constants
     #
     EC2_REGION = ''
+    EC2_USER_NAME = ''
     DEFAULT_AMI = ''
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
