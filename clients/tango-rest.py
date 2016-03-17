@@ -128,7 +128,7 @@ def tango_open():
             raise Exception("Invalid usage: [open] " + open_help)
 
         response = requests.get(
-            '%s:%d/open/%s/%s/' %
+            'http://%s:%d/open/%s/%s/' %
             (args.server, args.port, args.key, args.courselab))
         print "Sent request to %s:%d/open/%s/%s/" % (args.server, args.port, args.key, args.courselab)
         print response.content
@@ -153,7 +153,7 @@ def tango_upload():
         header = {'Filename': filename}
 
         response = requests.post(
-            '%s:%d/upload/%s/%s/' %
+            'http://%s:%d/upload/%s/%s/' %
             (args.server,
              args.port,
              args.key,
@@ -189,7 +189,7 @@ def tango_addJob():
             requestObj['notifyURL'] = args.notifyURL
 
         response = requests.post(
-            '%s:%d/addJob/%s/%s/' %
+            'http://%s:%d/addJob/%s/%s/' %
             (args.server,
              args.port,
              args.key,
@@ -213,7 +213,7 @@ def tango_poll():
             raise Exception("Invalid usage: [poll] " + poll_help)
 
         response = requests.get(
-            '%s:%d/poll/%s/%s/%s/' %
+            'http://%s:%d/poll/%s/%s/%s/' %
             (args.server,
              args.port,
              args.key,
@@ -238,7 +238,7 @@ def tango_info():
             raise Exception("Invalid usage: [info] " + info_help)
 
         response = requests.get(
-            '%s:%d/info/%s/' % (args.server, args.port, args.key))
+            'http://%s:%d/info/%s/' % (args.server, args.port, args.key))
         print "Sent request to %s:%d/info/%s/" % (args.server, args.port, args.key)
         print response.content
 
@@ -257,7 +257,7 @@ def tango_jobs():
             raise Exception("Invalid usage: [jobs] " + jobs_help)
 
         response = requests.get(
-            '%s:%d/jobs/%s/%d/' %
+            'http://%s:%d/jobs/%s/%d/' %
             (args.server, args.port, args.key, args.deadJobs))
         print "Sent request to %s:%d/jobs/%s/%d/" % (args.server, args.port, args.key, args.deadJobs)
         print response.content
@@ -276,7 +276,7 @@ def tango_pool():
         if res != 0:
             raise Exception("Invalid usage: [pool] " + pool_help)
 
-        response = requests.get('%s:%d/pool/%s/%s/' %
+        response = requests.get('http://%s:%d/pool/%s/%s/' %
                                 (args.server, args.port, args.key, args.image))
         print "Sent request to %s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image)
         print response.content
@@ -301,7 +301,7 @@ def tango_prealloc():
         vmObj['memory'] = args.memory
 
         response = requests.post(
-            '%s:%d/prealloc/%s/%s/%s/' %
+            'http://%s:%d/prealloc/%s/%s/%s/' %
             (args.server,
              args.port,
              args.key,
@@ -388,7 +388,7 @@ if (not args.open and not args.upload and not args.addJob
     sys.exit(0)
 
 try:
-    response = requests.get('%s:%d/' % (args.server, args.port))
+    response = requests.get('http://%s:%d/' % (args.server, args.port))
 except:
     print 'Tango not reachable on %s:%d!\n' % (args.server, args.port)
     sys.exit(0)
