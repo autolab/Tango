@@ -95,11 +95,20 @@ class Ec2SSH:
         if accessKeyId:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
                     aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
+            self.useDefaultKeyPair = False
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
+            self.useDefaultKeyPair = True
         self.log = logging.getLogger("Ec2SSH")
 
     def instanceName(self, id, name):
+        """ instanceName - Constructs a VM instance name. Always use
+        this function when you need a VM instance name. Never generate
+        instance names manually.
+        """
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+
+    def keyPairName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
         this function when you need a VM instance name. Never generate
         instance names manually.
@@ -144,6 +153,22 @@ class Ec2SSH:
 
         return ec2instance
 
+    def createKeyPair(self):
+        # try to delete the key to avoid collision
+        self.key_pair_path = "%s/%s.pem" % \
+            (config.Config.DYNAMIC_SECURITY_KEY_PATH, self.key_pair_name)
+        self.deleteKeyPair()
+        key = self.connection.create_key_pair(self.key_pair_name)
+        key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
+
+    def deleteKeyPair(self):
+        self.connection.delete_key_pair(self.key_pair_name)
+        # try to delete may not exist key file
+        try:
+            os.remove(self.key_pair_path)
+        except OSError:
+            pass
+
     #
     # VMMS API functions
     #
@@ -156,9 +181,18 @@ class Ec2SSH:
         try:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
+
+            if self.useDefaultKeyPair:
+                self.key_pair_name = config.Config.SECURITY_KEY_NAME
+                self.key_pair_path = config.Config.SECURITY_KEY_PATH
+            else:
+                self.key_pair_name = self.keyPairName(vm.id, vm.name)
+                self.createKeyPair()
+
+
             reservation = self.connection.run_instances(
                 ec2instance['ami'],
-                key_name=config.Config.SECURITY_KEY_NAME,
+                key_name=self.key_pair_name,
                 security_groups=[
                     config.Config.DEFAULT_SECURITY_GROUP],
                 instance_type=ec2instance['instance_type'])
@@ -347,6 +381,9 @@ class Ec2SSH:
         """ destroyVM - Removes a VM from the system
         """
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
+        # delete dynamically created key
+        if not self.useDefaultKeyPair:
+            self.deleteKeyPair()
         return ret
 
     def safeDestroyVM(self, vm):
