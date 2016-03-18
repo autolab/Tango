@@ -441,4 +441,4 @@ class Ec2SSH:
         """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
         .img extension
         """
-        return ["test.img"]
+        return ["default.img"]
