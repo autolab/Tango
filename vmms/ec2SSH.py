@@ -180,15 +180,15 @@ class Ec2SSH:
                         (instanceName, config.Config.TIMER_POLL_INTERVAL))
 
             self.log.info(
-                "VM %s | State %s | Reservation %s | Private DNS Name %s | Private IP Address %s" %
+                "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
                 (instanceName,
                  newInstance.state,
                  reservation.id,
-                 newInstance.private_dns_name,
-                 newInstance.private_ip_address))
+                 newInstance.public_dns_name,
+                 newInstance.ip_address))
 
             # Save domain and id ssigned by EC2 in vm object
-            vm.domain_name = newInstance.private_ip_address
+            vm.domain_name = newInstance.ip_address
             vm.ec2_id = newInstance.id
             # Assign name to EC2 instance
             self.connection.create_tags(
@@ -227,35 +227,35 @@ class Ec2SSH:
                 if (elapsed_secs > max_secs):
                     return -1
 
-            # The ping worked, so now wait for SSH to work before
-            # declaring that the VM is ready
-            self.log.debug("VM %s: ping completed" % (vm.name))
-            while(True):
+        # The ping worked, so now wait for SSH to work before
+        # declaring that the VM is ready
+        self.log.debug("VM %s: ping completed" % (vm.name))
+        while(True):
 
-                elapsed_secs = time.time() - start_time
+            elapsed_secs = time.time() - start_time
 
-                # Give up if the elapsed time exceeds the allowable time
-                if elapsed_secs > max_secs:
-                    self.log.info(
-                        "VM %s: SSH timeout after %d secs" %
-                        (instanceName, elapsed_secs))
-                    return -1
+            # Give up if the elapsed time exceeds the allowable time
+            if elapsed_secs > max_secs:
+                self.log.info(
+                    "VM %s: SSH timeout after %d secs" %
+                    (instanceName, elapsed_secs))
+                return -1
 
-                # If the call to ssh returns timeout (-1) or ssh error
-                # (255), then success. Otherwise, keep trying until we run
-                # out of time.
-                ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
-                              ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
-                               "(:)"], max_secs - elapsed_secs)
+            # If the call to ssh returns timeout (-1) or ssh error
+            # (255), then success. Otherwise, keep trying until we run
+            # out of time.
+            ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+                          ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
+                           "(:)"], max_secs - elapsed_secs)
 
-                self.log.debug("VM %s: ssh returned with %d" %
-                               (instanceName, ret))
+            self.log.debug("VM %s: ssh returned with %d" %
+                           (instanceName, ret))
 
-                if (ret != -1) and (ret != 255):
-                    return 0
+            if (ret != -1) and (ret != 255):
+                return 0
 
-                # Sleep a bit before trying again
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            # Sleep a bit before trying again
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles):
         """ copyIn - Copy input files to VM
