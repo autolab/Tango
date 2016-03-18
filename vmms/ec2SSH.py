@@ -292,8 +292,9 @@ class Ec2SSH:
                                                config.Config.VM_ULIMIT_FILE_SIZE,
                                                runTimeout,
                                                maxOutputFileSize)
-        return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+        ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+        return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
@@ -335,7 +336,7 @@ class Ec2SSH:
                 pass
 
         return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
-                       ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), destFile],
+                       ["%s@%s:output" % (config.Config.EC2_USER_NAME, domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
