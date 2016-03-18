@@ -108,7 +108,7 @@ class Worker(threading.Thread):
         """
         f = open(filename, "a")
         f.write("Autograder [%s]: %s\n" % (datetime.now().ctime(), msg))
-        f.close
+        f.close()
 
     def catFiles(self, f1, f2):
         """ catFiles - cat f1 f2 > f2, where f1 is the Tango header
@@ -125,7 +125,7 @@ class Worker(threading.Thread):
                 shutil.copyfileobj(f2fd, wf)
         except OSError:
             pass
-        wf.close
+        wf.close()
         os.rename(tmpname, f2)
         os.remove(f1)
 
