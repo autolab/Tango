@@ -40,14 +40,17 @@ class Worker(threading.Thread):
     #
     # Worker helper functions
     #
-    def detachVM(self, return_vm=False, replace_vm=False):
+    def detachVM(self, return_vm=False, replace_vm=False, destory_vm=False):
         """ detachVM - Detach the VM from this worker. The options are
         to return it to the pool's free list (return_vm), destroy it
         (not return_vm), and if destroying it, whether to replace it
         or not in the pool (replace_vm). The worker must always call
         this function before returning.
         """
-        if return_vm:
+        # job-owned instance, simply destroy after job is completed
+        if self.job.accessKeyId:
+            self.vmms.safeDestroyVM(self.job.vm)
+        elif return_vm:
             self.preallocator.freeVM(self.job.vm)
         else:
             self.vmms.safeDestroyVM(self.job.vm)

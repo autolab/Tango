@@ -85,14 +85,18 @@ class Ec2SSH:
                   "-o", "StrictHostKeyChecking no",
                   "-o", "GSSAPIAuthentication no"]
 
-    def __init__(self):
+    def __init__(self, accessKeyId=None, accessKey=None):
         """ log - logger for the instance
         connection - EC2Connection object that stores the connection
         info to the EC2 network
         instance - Instance object that stores information about the
         VM created
         """
-        self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
+        if accessKeyId:
+            self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
+                    aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
+        else:
+            self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
         self.log = logging.getLogger("Ec2SSH")
 
     def instanceName(self, id, name):

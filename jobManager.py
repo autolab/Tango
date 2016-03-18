@@ -9,7 +9,7 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import threading, logging, time
+import threading, logging, time, copy
 
 from datetime import datetime
 from tango import *
@@ -45,23 +45,32 @@ class JobManager:
     def __manage(self):
         self.running = True
         while True:
-            if Config.REUSE_VMS:
-                id, vm = self.jobQueue.getNextPendingJobReuse()
-            else:
-                id = self.jobQueue.getNextPendingJob()
+            id = self.jobQueue.getNextPendingJob()
 
             if id:
                 job = self.jobQueue.get(id)
+                if not job.accessKey or Config.REUSE_VMS:
+                    id, vm = self.jobQueue.getNextPendingJobReuse(id)
+                    job = self.jobQueue.get(id)
+
                 try:
                     # Mark the job assigned
                     self.jobQueue.assignJob(job.id)
 
                     # Try to find a vm on the free list and allocate it to
                     # the worker if successful.
-                    if Config.REUSE_VMS:
-                        preVM = vm
+                    if job.accessKeyId:
+                        from vmms.ec2SSH import Ec2SSH
+                        vmms = Ec2SSH(job.accessKeyId, job.accessKey)
+                        newVM = copy.deepcopy(job.vm)
+                        newVM.id = 2000
+                        preVM = vmms.initializeVM(newVM)
                     else:
-                        preVM = self.preallocator.allocVM(job.vm.name)
+                        if Config.REUSE_VMS:
+                            preVM = vm
+                        else:
+                            preVM = self.preallocator.allocVM(job.vm.name)
+                        vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
                     # Now dispatch the job to a worker
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
@@ -69,7 +78,7 @@ class JobManager:
                     job.appendTrace(
                         "%s|Dispatched job %s:%d [try %d]" %
                         (datetime.utcnow().ctime(), job.name, job.id, job.retries))
-                    vmms = self.vmms[job.vm.vmms]  # Create new vmms object
+
                     Worker(
                         job,
                         vmms,

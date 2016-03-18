@@ -83,6 +83,15 @@ parser.add_argument(
     '--notifyURL',
     help='Complete URL for Tango to give callback to once job is complete.')
 
+# add for aws student accounts
+parser.add_argument(
+    '--accessKeyId', default='',
+    help='AWS account access key ID')
+
+parser.add_argument(
+    '--accessKey', default='',
+    help='AWS account access key content')
+
 
 def checkKey():
     if (args.key is None):
@@ -185,9 +194,14 @@ def tango_addJob():
         requestObj['max_kb'] = args.maxsize
         requestObj['output_file'] = args.outputFile
         requestObj['jobName'] = args.jobname
+        
         if (args.notifyURL):
             requestObj['notifyURL'] = args.notifyURL
+        
+        requestObj['accessKeyId'] = args.accessKeyId
+        requestObj['accessKey'] = args.accessKey
 
+        print "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
         response = requests.post(
             '%s:%d/addJob/%s/%s/' %
             (args.server,
@@ -195,7 +209,6 @@ def tango_addJob():
              args.key,
              args.courselab),
             data=json.dumps(requestObj))
-        print "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
         print response.content
 
     except Exception as err:

@@ -198,13 +198,15 @@ class JobQueue:
         self.queueLock.release()
         return None
 
-    def getNextPendingJobReuse(self):
+    def getNextPendingJobReuse(self, target_id=None):
         """getNextPendingJobReuse - Returns ID of next pending job and its VM.
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
         for id, job in self.liveJobs.iteritems():
-
+            # if target_id is set, only interested in this id
+            if target_id and target_id != id:
+                continue
             # Create a pool if necessary
             if self.preallocator.poolSize(job.vm.name) == 0:
                 self.preallocator.update(job.vm, Config.POOL_SIZE)
