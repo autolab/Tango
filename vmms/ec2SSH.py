@@ -16,6 +16,7 @@ import logging
 
 import config
 
+import boto
 from boto import ec2
 from tangoObjects import TangoMachine
 
@@ -169,6 +170,18 @@ class Ec2SSH:
         except OSError:
             pass
 
+    def createSecurityGroup(self):
+        # Create may-exist security group
+        try:
+            security_group = self.connection.create_security_group(
+                config.Config.DEFAULT_SECURITY_GROUP,
+                "Autolab security group - allowing all traffic")
+            # All ports, all traffics, all ips
+            security_group.authorize(from_port=None,
+                to_port=None, ip_protocol='-1', cidr_ip='0.0.0.0/0')
+        except boto.exception.EC2ResponseError:
+            pass
+
     #
     # VMMS API functions
     #
@@ -181,7 +194,8 @@ class Ec2SSH:
         try:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
-
+            # ensure that security group exists
+            self.createSecurityGroup()
             if self.useDefaultKeyPair:
                 self.key_pair_name = config.Config.SECURITY_KEY_NAME
                 self.key_pair_path = config.Config.SECURITY_KEY_PATH
