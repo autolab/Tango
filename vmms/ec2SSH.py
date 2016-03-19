@@ -93,6 +93,7 @@ class Ec2SSH:
         instance - Instance object that stores information about the
         VM created
         """
+        self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
                     aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
@@ -161,6 +162,8 @@ class Ec2SSH:
         self.deleteKeyPair()
         key = self.connection.create_key_pair(self.key_pair_name)
         key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
+        # change the SSH_FLAG accordingly
+        self.ssh_flags[1] = self.key_pair_path
 
     def deleteKeyPair(self):
         self.connection.delete_key_pair(self.key_pair_name)
@@ -296,7 +299,7 @@ class Ec2SSH:
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
-            ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+            ret = timeout(["ssh"] + self.ssh_flags +
                           ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                            "(:)"], max_secs - elapsed_secs)
 
@@ -315,14 +318,14 @@ class Ec2SSH:
         domain_name = self.domainName(vm)
 
         # Create a fresh input directory
-        ret = subprocess.call(["ssh"] + Ec2SSH._SSH_FLAGS +
+        ret = subprocess.call(["ssh"] + self.ssh_flags +
                               ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                                "(rm -rf autolab; mkdir autolab)"])
 
         # Copy the input files to the input directory
         for file in inputFiles:
             ret = timeout(["scp"] +
-                          Ec2SSH._SSH_FLAGS +
+                          self.ssh_flags +
                           [file.localFile, "%s@%s:autolab/%s" %
                            (config.Config.EC2_USER_NAME, domain_name, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
@@ -344,7 +347,7 @@ class Ec2SSH:
                                                config.Config.VM_ULIMIT_FILE_SIZE,
                                                runTimeout,
                                                maxOutputFileSize)
-        ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+        ret = timeout(["ssh"] + self.ssh_flags +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
         return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
@@ -364,7 +367,7 @@ class Ec2SSH:
 
                 time_info = subprocess.check_output(
                     ['ssh'] +
-                    Ec2SSH._SSH_FLAGS +
+                    self.ssh_flags +
                     [
                         "%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                         'cat time.out']).rstrip('\n')
@@ -387,7 +390,7 @@ class Ec2SSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
 
-        return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
+        return timeout(["scp"] + self.ssh_flags +
                        ["%s@%s:output" % (config.Config.EC2_USER_NAME, domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 
