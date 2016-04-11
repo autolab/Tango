@@ -299,7 +299,11 @@ class Ec2SSH:
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
+<<<<<<< HEAD
             ret = timeout(["ssh"] + self.ssh_flags +
+=======
+            ret = timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+>>>>>>> d82f287da1fc2d54d82f7bc620bab042add5a161
                           ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                            "(:)"], max_secs - elapsed_secs)
 
@@ -318,14 +322,22 @@ class Ec2SSH:
         domain_name = self.domainName(vm)
 
         # Create a fresh input directory
+<<<<<<< HEAD
         ret = subprocess.call(["ssh"] + self.ssh_flags +
+=======
+        ret = subprocess.call(["ssh"] + Ec2SSH._SSH_FLAGS +
+>>>>>>> d82f287da1fc2d54d82f7bc620bab042add5a161
                               ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                                "(rm -rf autolab; mkdir autolab)"])
 
         # Copy the input files to the input directory
         for file in inputFiles:
             ret = timeout(["scp"] +
+<<<<<<< HEAD
                           self.ssh_flags +
+=======
+                          Ec2SSH._SSH_FLAGS +
+>>>>>>> d82f287da1fc2d54d82f7bc620bab042add5a161
                           [file.localFile, "%s@%s:autolab/%s" %
                            (config.Config.EC2_USER_NAME, domain_name, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
@@ -347,9 +359,14 @@ class Ec2SSH:
                                                config.Config.VM_ULIMIT_FILE_SIZE,
                                                runTimeout,
                                                maxOutputFileSize)
+<<<<<<< HEAD
         ret = timeout(["ssh"] + self.ssh_flags +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
         return ret
+=======
+        return timeout(["ssh"] + Ec2SSH._SSH_FLAGS +
+                       ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+>>>>>>> d82f287da1fc2d54d82f7bc620bab042add5a161
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
@@ -390,7 +407,11 @@ class Ec2SSH:
                 # Error copying out the timing data (probably runJob failed)
                 pass
 
+<<<<<<< HEAD
         return timeout(["scp"] + self.ssh_flags +
+=======
+        return timeout(["scp"] + Ec2SSH._SSH_FLAGS +
+>>>>>>> d82f287da1fc2d54d82f7bc620bab042add5a161
                        ["%s@%s:output" % (config.Config.EC2_USER_NAME, domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 
@@ -441,7 +462,6 @@ class Ec2SSH:
         return False
 
     def getImages(self):
-        """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
-        .img extension
+        """ getImages - return a constant; actually use the ami specified in config 
         """
         return ["default.img"]
