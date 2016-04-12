@@ -111,9 +111,7 @@ class Ec2SSH:
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
     def keyPairName(self, id, name):
-        """ instanceName - Constructs a VM instance name. Always use
-        this function when you need a VM instance name. Never generate
-        instance names manually.
+        """ keyPairName - Constructs a unique key pair name.
         """
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
