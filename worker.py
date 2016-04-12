@@ -40,7 +40,7 @@ class Worker(threading.Thread):
     #
     # Worker helper functions
     #
-    def detachVM(self, return_vm=False, replace_vm=False, destory_vm=False):
+    def detachVM(self, return_vm=False, replace_vm=False):
         """ detachVM - Detach the VM from this worker. The options are
         to return it to the pool's free list (return_vm), destroy it
         (not return_vm), and if destroying it, whether to replace it

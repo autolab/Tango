@@ -58,7 +58,7 @@ class JobManager:
                 try:
                     # Mark the job assigned
                     self.jobQueue.assignJob(job.id)
-                    # if the has specified an account
+                    # if the job has specified an account
                     # create an VM on the account and run on that instance
                     if job.accessKeyId:
                         from vmms.ec2SSH import Ec2SSH
