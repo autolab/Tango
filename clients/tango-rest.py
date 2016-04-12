@@ -201,7 +201,6 @@ def tango_addJob():
         requestObj['accessKeyId'] = args.accessKeyId
         requestObj['accessKey'] = args.accessKey
 
-        print "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
         response = requests.post(
             'http://%s:%d/addJob/%s/%s/' %
             (args.server,
@@ -209,6 +208,7 @@ def tango_addJob():
              args.key,
              args.courselab),
             data=json.dumps(requestObj))
+        print "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
         print response.content
 
     except Exception as err:
