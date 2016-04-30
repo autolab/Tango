@@ -28,6 +28,8 @@ class JobManager:
         self.preallocator = self.jobQueue.preallocator
         self.vmms = self.preallocator.vmms
         self.log = logging.getLogger("JobManager")
+        # job-associated instance id
+        self.nextId = 10000
         self.running = False
 
     def start(self):
@@ -42,10 +44,19 @@ class JobManager:
             return
         self.__manage()
 
+    def _getNextID(self):
+        """ _getNextID - returns next ID to be used for a job-associated
+        VM.  Job-associated VM's have 5-digit ID numbers between 10000
+        and 99999.
+        """
+        id = self.nextId
+        self.nextId += 1
+        if self.nextId > 99999:
+            self.nextId = 10000
+        return id
+
     def __manage(self):
         self.running = True
-        # job-associated instance id
-        nextId = 10000
         while True:
             id = self.jobQueue.getNextPendingJob()
 
@@ -64,12 +75,8 @@ class JobManager:
                         from vmms.ec2SSH import Ec2SSH
                         vmms = Ec2SSH(job.accessKeyId, job.accessKey)
                         newVM = copy.deepcopy(job.vm)
-                        newVM.id = nextId
+                        newVM.id = self._getNextID()
                         preVM = vmms.initializeVM(newVM)
-                        if nextId > 99999:
-                            nextId = 1000
-                        else:
-                            nextId += 1
                     else:
                         # Try to find a vm on the free list and allocate it to
                         # the worker if successful.
