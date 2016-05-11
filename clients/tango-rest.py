@@ -83,6 +83,15 @@ parser.add_argument(
     '--notifyURL',
     help='Complete URL for Tango to give callback to once job is complete.')
 
+# add for aws student accounts
+parser.add_argument(
+    '--accessKeyId', default='',
+    help='AWS account access key ID')
+
+parser.add_argument(
+    '--accessKey', default='',
+    help='AWS account access key content')
+
 
 def checkKey():
     if (args.key is None):
@@ -185,8 +194,12 @@ def tango_addJob():
         requestObj['max_kb'] = args.maxsize
         requestObj['output_file'] = args.outputFile
         requestObj['jobName'] = args.jobname
+        
         if (args.notifyURL):
             requestObj['notifyURL'] = args.notifyURL
+        
+        requestObj['accessKeyId'] = args.accessKeyId
+        requestObj['accessKey'] = args.accessKey
 
         response = requests.post(
             'http://%s:%d/addJob/%s/%s/' %

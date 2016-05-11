@@ -71,7 +71,8 @@ class TangoJob():
     def __init__(self, vm=None,
                  outputFile=None, name=None, input=None,
                  notifyURL=None, timeout=0,
-                 maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE):
+                 maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE,
+                 accessKeyId=None, accessKey=None):
         self.assigned = False
         self.retries = 0
 
@@ -88,6 +89,8 @@ class TangoJob():
         self.trace = []
         self.maxOutputFileSize = maxOutputFileSize
         self._remoteLocation = None
+        self.accessKeyId = accessKeyId
+        self.accessKey = accessKey
 
     def makeAssigned(self):
         self.syncRemote()

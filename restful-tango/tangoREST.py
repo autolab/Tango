@@ -156,6 +156,13 @@ class TangoREST:
         # VM object
         vm = self.createTangoMachine(jobObj["image"])
 
+        # for backward compatibility
+        accessKeyId = None
+        accessKey = None
+        if "accessKey" in jobObj and len(jobObj["accessKey"]) > 0:
+            accessKeyId = jobObj["accessKeyId"]
+            accessKey = jobObj["accessKey"]
+
         job = TangoJob(
             name=name,
             vm=vm,
@@ -163,7 +170,10 @@ class TangoREST:
             input=input,
             timeout=timeout,
             notifyURL=notifyURL,
-            maxOutputFileSize=maxOutputFileSize)
+            maxOutputFileSize=maxOutputFileSize,
+            accessKey=accessKey,
+            accessKeyId=accessKeyId
+        )
 
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
         self.log.debug("outputFile: %s" % outputFile)

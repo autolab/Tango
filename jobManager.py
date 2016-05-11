@@ -9,7 +9,7 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import threading, logging, time
+import threading, logging, time, copy
 
 from datetime import datetime
 from tango import *
@@ -28,6 +28,8 @@ class JobManager:
         self.preallocator = self.jobQueue.preallocator
         self.vmms = self.preallocator.vmms
         self.log = logging.getLogger("JobManager")
+        # job-associated instance id
+        self.nextId = 10000
         self.running = False
 
     def start(self):
@@ -42,26 +44,47 @@ class JobManager:
             return
         self.__manage()
 
+    def _getNextID(self):
+        """ _getNextID - returns next ID to be used for a job-associated
+        VM.  Job-associated VM's have 5-digit ID numbers between 10000
+        and 99999.
+        """
+        id = self.nextId
+        self.nextId += 1
+        if self.nextId > 99999:
+            self.nextId = 10000
+        return id
+
     def __manage(self):
         self.running = True
         while True:
-            if Config.REUSE_VMS:
-                id, vm = self.jobQueue.getNextPendingJobReuse()
-            else:
-                id = self.jobQueue.getNextPendingJob()
+            id = self.jobQueue.getNextPendingJob()
 
             if id:
                 job = self.jobQueue.get(id)
+                if not job.accessKey and Config.REUSE_VMS:
+                    id, vm = self.jobQueue.getNextPendingJobReuse(id)
+                    job = self.jobQueue.get(id)
+
                 try:
                     # Mark the job assigned
                     self.jobQueue.assignJob(job.id)
-
-                    # Try to find a vm on the free list and allocate it to
-                    # the worker if successful.
-                    if Config.REUSE_VMS:
-                        preVM = vm
+                    # if the job has specified an account
+                    # create an VM on the account and run on that instance
+                    if job.accessKeyId:
+                        from vmms.ec2SSH import Ec2SSH
+                        vmms = Ec2SSH(job.accessKeyId, job.accessKey)
+                        newVM = copy.deepcopy(job.vm)
+                        newVM.id = self._getNextID()
+                        preVM = vmms.initializeVM(newVM)
                     else:
-                        preVM = self.preallocator.allocVM(job.vm.name)
+                        # Try to find a vm on the free list and allocate it to
+                        # the worker if successful.
+                        if Config.REUSE_VMS:
+                            preVM = vm
+                        else:
+                            preVM = self.preallocator.allocVM(job.vm.name)
+                        vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
                     # Now dispatch the job to a worker
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
@@ -69,7 +92,7 @@ class JobManager:
                     job.appendTrace(
                         "%s|Dispatched job %s:%d [try %d]" %
                         (datetime.utcnow().ctime(), job.name, job.id, job.retries))
-                    vmms = self.vmms[job.vm.vmms]  # Create new vmms object
+
                     Worker(
                         job,
                         vmms,
