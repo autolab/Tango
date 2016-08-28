@@ -19,7 +19,7 @@ import urllib
 # Set up the command line parser
 #
 parser = argparse.ArgumentParser(description='')
-parser.add_argument('-s', '--server', default='http://localhost',
+parser.add_argument('-s', '--server', default='localhost',
                     help='Tango server endpoint (default = http://localhost)')
 parser.add_argument('-P', '--port', default=3000, type=int,
                     help='Tango server port number (default = 3000)')
