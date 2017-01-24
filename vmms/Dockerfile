@@ -7,6 +7,10 @@ RUN apt-get update
 RUN apt-get install -y gcc
 RUN apt-get install -y make
 RUN apt-get install -y build-essential
+RUN apt-get install -y python
+RUN apt-get install -y python3
+RUN apt-get update --fix-missing
+RUN apt-get install -y default-jdk
 
 # Install autodriver
 WORKDIR /home
@@ -32,3 +36,5 @@ RUN rm -rf Tango/
 # Check installation
 RUN ls -l /home
 RUN which autodriver
+RUN which javac
+run javac --help
