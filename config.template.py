@@ -86,6 +86,8 @@ class Config:
 
     # VM ulimit values
     VM_ULIMIT_FILE_SIZE = 100 * 1024 * 1024
+    #(Ram specified in MB)
+    VM_ULIMIT_USER_RAM = 512
     VM_ULIMIT_USER_PROC = 100
 
     # How many times to reschedule a failed job
