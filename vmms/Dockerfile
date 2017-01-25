@@ -21,7 +21,7 @@ RUN chown autolab:autolab autolab
 RUN chown autolab:autolab output
 RUN chown autograde:autograde autograde
 RUN apt-get install -y git
-RUN git clone https://github.com/MikeDrewitt/Tango.git
+RUN git clone https://github.com/autolab/Tango.git
 WORKDIR Tango/autodriver
 RUN make clean && make
 RUN cp autodriver /usr/bin/autodriver
@@ -29,7 +29,6 @@ RUN chmod +s /usr/bin/autodriver
 
 # Clean up
 WORKDIR /home
-RUN apt-get remove -y git
 RUN apt-get -y autoremove
 RUN rm -rf Tango/
 
