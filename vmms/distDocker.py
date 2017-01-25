@@ -213,9 +213,8 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        autodriverCmd = 'autodriver -u %d -r %d -f %d -t %d -o %d autolab &> output/feedback' % \
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC,
-                        config.Config.VM_ULIMIT_USER_RAM,
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
@@ -225,8 +224,8 @@ class DistDocker:
         setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
                 cp output/feedback mount/feedback' % autodriverCmd
 
-        args = "(docker run --name %s -v %s:/home/mount %s sh -c '%s')" % \
-                (instanceName, volumePath, vm.image, setupCmd)
+        args = "(docker run --name %s -v %s:/home/mount -m %dM %s sh -c '%s')" % \
+                (instanceName, volumePath, config.Config.VM_ULIMIT_USER_RAM, vm.image, setupCmd)
 
         self.log.debug('Running job: %s' % args)
 

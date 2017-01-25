@@ -76,7 +76,6 @@ error_t argp_err_exit_status = EXIT_USAGE;
  */
 struct arguments {
     unsigned nproc;
-    unsigned nram;
     unsigned fsize;
     unsigned timeout;
     unsigned osize;
@@ -214,12 +213,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         if (parse_uint(arg, &arguments->nproc) < 0) {
             argp_failure(state, EXIT_USAGE, 0, 
                 "The argument to nproc must be a nonnegative integer");
-        }
-        break;
-    case 'r':
-        if (parse_uint(arg, &arguments->nram) < 0) {
-            argp_failure(state, EXIT_USAGE, 0, 
-                "The argument to nram must be a nonnegative integer");
         }
         break;
     case 'f':
@@ -480,17 +473,6 @@ static void run_job(void) {
         }
     }
 
-    if (args.nram != 0) {
-        struct rlimit rlimit = {args.nram, args.nram};
-        printf("Allocating %d bytes of ram", &args.nram);
-        if (setrlimit(RLIMIT_AS, &rlimit) < 0) {
-            perror("Error setting ram limit");
-            exit(EXIT_OSERROR);
-        }
-    }else{
-        perror("Error setting ram limit (ignored)");
-    }
-    
     if (args.fsize != 0) {
         struct rlimit rlimit = {args.fsize, args.fsize};
         if (setrlimit(RLIMIT_FSIZE, &rlimit) < 0) {
@@ -555,7 +537,6 @@ static void run_job(void) {
 int main(int argc, char **argv) {
     // Argument defaults
     args.nproc = 0;
-    args.nram = 0;
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
@@ -579,8 +560,6 @@ int main(int argc, char **argv) {
     struct argp_option options[] = {
         {"nproc", 'u', "number", 0, 
             "Limit the number of processes the user is allowed", 0},
-        {"nram", 'r', "size", 0, 
-            "Limit the amount of ram the user can create (bytes)", 0},
         {"fsize", 'f', "size", 0,
             "Limit the maximum file size a user can create (bytes)", 0},
         {"timeout", 't', "time", 0,

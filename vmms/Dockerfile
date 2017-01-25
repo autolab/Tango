@@ -21,7 +21,7 @@ RUN chown autolab:autolab autolab
 RUN chown autolab:autolab output
 RUN chown autograde:autograde autograde
 RUN apt-get install -y git
-RUN ls 
+RUN ls -l 
 RUN git clone https://github.com/MikeDrewitt/Tango.git
 WORKDIR Tango/autodriver
 RUN make clean && make
