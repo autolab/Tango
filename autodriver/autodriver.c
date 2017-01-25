@@ -482,7 +482,7 @@ static void run_job(void) {
 
     if (args.nram != 0) {
         struct rlimit rlimit = {args.nram, args.nram};
-        printf("Allocating %s bytes of ram", &rlimit);
+        printf("Allocating %d bytes of ram", &args.nram);
         if (setrlimit(RLIMIT_AS, &rlimit) < 0) {
             perror("Error setting ram limit");
             exit(EXIT_OSERROR);
