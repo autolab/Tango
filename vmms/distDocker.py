@@ -213,8 +213,9 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
-                        (config.Config.VM_ULIMIT_USER_PROC, 
+        autodriverCmd = 'autodriver -u %d -r %d -f %d -t %d -o %d autolab &> output/feedback' % \
+                        (config.Config.VM_ULIMIT_USER_PROC,
+                        config.Config.VM_ULIMIT_USER_RAM,
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 

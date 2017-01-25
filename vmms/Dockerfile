@@ -21,7 +21,8 @@ RUN chown autolab:autolab autolab
 RUN chown autolab:autolab output
 RUN chown autograde:autograde autograde
 RUN apt-get install -y git
-RUN git clone https://github.com/autolab/Tango.git
+RUN PWD
+RUN git clone https://github.com/MikeDrewitt/Tango.git
 WORKDIR Tango/autodriver
 RUN make clean && make
 RUN cp autodriver /usr/bin/autodriver
@@ -37,4 +38,3 @@ RUN rm -rf Tango/
 RUN ls -l /home
 RUN which autodriver
 RUN which javac
-run javac --help
