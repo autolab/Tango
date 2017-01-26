@@ -77,7 +77,8 @@ class Config:
     # Default value of '*'' points this path to /path/to/Tango/volumes/
     DOCKER_VOLUME_PATH = '*'
     DOCKER_HOST_USER = ''
-
+    DOCKER_DISTRIBUTED_HOSTS = ['host.example.domain','host2.example.domain','host3.example.domain']
+    
     # Maximum size for input files in bytes
     MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024 # 250MB
 
