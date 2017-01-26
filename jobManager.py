@@ -65,7 +65,7 @@ class JobManager:
                 if not job.accessKey and Config.REUSE_VMS:
                     id, vm = self.jobQueue.getNextPendingJobReuse(id)
                     job = self.jobQueue.get(id)
-                if id:
+                if job:
                     try:
                         # Mark the job assigned
                         self.jobQueue.assignJob(job.id)
