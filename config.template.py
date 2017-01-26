@@ -78,6 +78,7 @@ class Config:
     DOCKER_VOLUME_PATH = '*'
     DOCKER_HOST_USER = ''
     DOCKER_DISTRIBUTED_HOSTS = ['host.example.domain','host2.example.domain','host3.example.domain']
+    USE_SSH_MASTER = True
     
     # Maximum size for input files in bytes
     MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024 # 250MB

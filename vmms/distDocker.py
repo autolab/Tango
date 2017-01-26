@@ -136,7 +136,7 @@ class DistDocker:
         start_time = time.time()
         vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
         vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
-        vm.use_ssh_master = False
+        vm.use_ssh_master = config.Config.USE_SSH_MASTER
  
         # Wait for SSH to work before declaring that the VM is ready
         while (True):
