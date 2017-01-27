@@ -8,9 +8,7 @@
 # `domain_name` attribtue of TangoMachine.
 #
 
-import random, subprocess, re, time, logging, threading, os, sys, shutil
-import tempfile
-import socket
+import random, subprocess, re, time, logging, threading, os, sys, shutil, socket, tempfile
 import config
 from tangoObjects import TangoMachine
 
@@ -33,6 +31,7 @@ def timeout(command, time_out=1):
 
     # Determine why the while loop terminated
     if p.poll() is None:
+
         try:
             os.kill(p.pid, 9)
         except OSError:
@@ -68,10 +67,10 @@ class DistDocker:
 
     _SSH_FLAGS = ["-q", "-o", "BatchMode=yes" ]
     _SSH_AUTH_FLAGS = [ "-i", os.path.join(os.path.dirname(__file__), "id_rsa"),
-              "-o", "StrictHostKeyChecking=no",
-              "-o", "GSSAPIAuthentication=no"]
+                  "-o", "StrictHostKeyChecking=no",
+                  "-o", "GSSAPIAuthentication=no"]
     _SSH_MASTER_FLAGS = ["-o", "ControlMaster=yes",
-                         "-o", "ControlPersist=600"]
+                        "-o", "ControlPersist=600"]
     _SSH_MASTER_CHECK_FLAG = ["-O", "check"]
     _SSH_MASTER_EXIT_FLAG = ["-O", "exit"]
     HOSTS_FILE = 'hosts'
@@ -82,12 +81,14 @@ class DistDocker:
         """
         try:
             self.log = logging.getLogger("DistDocker")
-            self.hostDNSPoolname=config.Config.HOST_ALIAS
-            self.hostUser = "ubuntu"
-
+            self.hosts = config.Config.DOCKER_DISTRIBUTED_HOSTS
+            self.log.info("Current host machines: %s" % self.hosts)
+            self.hostIdx = 0
+            self.hostLock = threading.Lock()
+            self.hostUser = "developer"
             if len(config.Config.DOCKER_HOST_USER) > 0:
                 self.hostUser = config.Config.DOCKER_HOST_USER
-
+                
             # Check import docker constants are defined in config
             if len(config.Config.DOCKER_VOLUME_PATH) == 0:
                 raise Exception('DOCKER_VOLUME_PATH not defined in config.')
@@ -117,6 +118,15 @@ class DistDocker:
         """ initializeVM -  Assign a host machine for this container to 
         run on.
         """
+        self.hostLock.acquire()
+        host = self.hosts[self.hostIdx]
+        self.hostIdx = self.hostIdx + 1
+        if self.hostIdx >= len(self.hosts):
+            self.hostIdx = 0
+        self.hostLock.release()
+
+        vm.domain_name = host
+        self.log.info("Assigned host %s to VM %s." % (host, vm.name))
         return vm
 
     def waitVM(self, vm, max_secs):
@@ -126,20 +136,10 @@ class DistDocker:
         start_time = time.time()
         vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
         vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
-        vm.use_ssh_master = True
-
+        vm.use_ssh_master = False
+ 
         # Wait for SSH to work before declaring that the VM is ready
         while (True):
-            try:
-                addr=socket.gethostbyname(self.hostDNSPoolname)
-                host=socket.gethostbyaddr(addr)[0]
-            except EnvironmentError:
-                self.log.exception("DNS lookup failed while setting up vm %s." % (vm.name))
-                return -1
-
-            vm.domain_name = host
-            self.log.info("(Re)assigned host %s to VM %s." % (host, vm.name))
-
             elapsed_secs = time.time() - start_time
 
             # Give up if the elapsed time exceeds the allowable time
@@ -151,11 +151,18 @@ class DistDocker:
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
-            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                          DistDocker._SSH_AUTH_FLAGS +
-                          DistDocker._SSH_MASTER_FLAGS +
-                          ["%s@%s" % (self.hostUser, vm.domain_name),
-                           "(:)"], max_secs - elapsed_secs)
+            if vm.use_ssh_master:
+                ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                        DistDocker._SSH_AUTH_FLAGS +
+                        DistDocker._SSH_MASTER_FLAGS +
+                        ["%s@%s" % (self.hostUser, vm.domain_name),
+                        "(:)"], max_secs - elapsed_secs)
+            else:            
+                ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                            DistDocker._SSH_AUTH_FLAGS +
+                            ["%s@%s" % (self.hostUser, vm.domain_name),
+                            "(:)"], max_secs - elapsed_secs)
+                        
             self.log.debug("VM %s: ssh returned with %d" %
                            (vm.domain_name, ret))
             if (ret != -1) and (ret != 255):
@@ -173,15 +180,16 @@ class DistDocker:
         volumePath = self.getVolumePath(instanceName)
 
         if vm.use_ssh_master:
-            ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                          DistDocker._SSH_MASTER_CHECK_FLAG +
-                          ["%s@%s" % (self.hostUser, vm.domain_name)])
-            if ret != 0:
-                self.log.debug("Lost persistent SSH connection")
-                return ret
-
+             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                           DistDocker._SSH_MASTER_CHECK_FLAG +
+                           ["%s@%s" % (self.hostUser, vm.domain_name)])
+             if ret != 0:
+                 self.log.debug("Lost persistent SSH connection")
+                 return ret
+ 
         # Create a fresh volume
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                        DistDocker._SSH_AUTH_FLAGS +
                         ["%s@%s" % (self.hostUser, vm.domain_name),
                         "(rm -rf %s; mkdir %s)" % (volumePath, volumePath)],
                         config.Config.COPYIN_TIMEOUT)
@@ -191,8 +199,9 @@ class DistDocker:
             return ret
         
         for file in inputFiles:
-            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
-                            [file.localFile] + ["%s@%s:%s/%s" % \
+            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags + 
+                            DistDocker._SSH_AUTH_FLAGS + [file.localFile] +
+                            ["%s@%s:%s/%s" % \
                             (self.hostUser, vm.domain_name, volumePath, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
             if ret == 0:
@@ -223,9 +232,9 @@ class DistDocker:
             if ret != 0:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
-
+ 
         autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
-                        (config.Config.VM_ULIMIT_USER_PROC, 
+                        (config.Config.VM_ULIMIT_USER_PROC,
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
@@ -235,12 +244,13 @@ class DistDocker:
         setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
                 cp output/feedback mount/feedback' % autodriverCmd
 
-        args = "(docker run --name %s -v %s:/home/mount %s sh -c '%s')" % \
-                (instanceName, volumePath, vm.image, setupCmd)
+        args = "(docker run --name %s -v %s:/home/mount -m %dM %s sh -c '%s')" % \
+                (instanceName, volumePath, config.Config.VM_ULIMIT_USER_RAM, vm.image, setupCmd)
 
         self.log.debug('Running job: %s' % args)
 
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                        DistDocker._SSH_AUTH_FLAGS +
                         ["%s@%s" % (self.hostUser, vm.domain_name), args],
                         runTimeout * 2)
 
@@ -264,8 +274,10 @@ class DistDocker:
             if ret != 0:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
-
+ 
+ 
         ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                      DistDocker._SSH_AUTH_FLAGS +
                       ["%s@%s:%s" % 
                       (self.hostUser, vm.domain_name, volumePath + 'feedback'), 
                       destFile],
@@ -295,10 +307,12 @@ class DistDocker:
         # Return status does not matter.
         args = '(docker rm -f %s)' % (instanceName)
         timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                DistDocker._SSH_AUTH_FLAGS +
                 ["%s@%s" % (self.hostUser, vm.domain_name), args],
                 config.Config.DOCKER_RM_TIMEOUT)
         # Destroy corresponding volume if it exists.
         timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+                DistDocker._SSH_AUTH_FLAGS +
                 ["%s@%s" % (self.hostUser, vm.domain_name),
                 "(rm -rf %s)" % (volumePath)],
                 config.Config.DOCKER_RM_TIMEOUT)
@@ -327,12 +341,9 @@ class DistDocker:
         """ getVMs - Get all volumes of docker containers
         """
         machines = []
-        try:
-            hosts=socket.gethostbyname_ex(self.hostDNSPoolname)[2]
-        except EnvironmentError:
-            return machines
         volumePath = self.getVolumePath('')
-        for host in hosts:
+        
+        for host in self.hosts:
             volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                                 DistDocker._SSH_AUTH_FLAGS +
                                                 ["%s@%s" % (self.hostUser, host),
@@ -343,8 +354,6 @@ class DistDocker:
                     machine.vmms = 'distDocker'
                     machine.name = volume
                     machine.domain_name = host
-                    machine.ssh_flags = DistDocker._SSH_AUTH_FLAGS
-                    machine.use_ssh_master = False
                     volume_l = volume.split('-')
                     machine.id = volume_l[1]
                     machine.image = volume_l[2]
@@ -366,11 +375,7 @@ class DistDocker:
         can break easily.
         """
         result = set()
-        try:
-            hosts=socket.gethostbyname_ex(self.hostDNSPoolname)[2]
-        except EnvironmentError:
-            return result
-        for host in hosts:
+        for host in self.hosts:
             o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                         DistDocker._SSH_AUTH_FLAGS +
                                         ["%s@%s" % (self.hostUser, host),
@@ -381,6 +386,6 @@ class DistDocker:
             o_l.pop()
             for row in o_l:
                 row_l = row.split(' ')
-                result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
+                result.add(row_l[0])
 
         return list(result)

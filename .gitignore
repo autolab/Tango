@@ -9,6 +9,9 @@ vmms/id_rsa*
 # config
 config.py
 
+local
+courselabs/*
+
 # Virtualenv
 .Python
 bin
