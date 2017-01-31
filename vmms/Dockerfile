@@ -3,14 +3,35 @@
 FROM ubuntu:14.04
 MAINTAINER Mihir Pandya <mihir.m.pandya@gmail.com>
 
+#C++ Setup
 RUN apt-get update
 RUN apt-get install -y gcc
 RUN apt-get install -y make
 RUN apt-get install -y build-essential
+
+#Python Setup
 RUN apt-get install -y python
 RUN apt-get install -y python3
+
+#Java Setup
 RUN apt-get update --fix-missing
 RUN apt-get install -y default-jdk
+
+#Valgrind Setup
+RUN apt-get update
+RUN apt-get install -y valgrind
+
+#SML Setup
+RUN mkdir -p /usr/local/bin/sml
+WORKDIR /usr/local/bin/sml
+RUN apt-get install -y gcc-multilib g++-multilib lib32z1 lib32ncurses5 wget
+RUN wget http://www.smlnj.org/dist/working/110.78/config.tgz
+RUN tar -xzvf config.tgz
+RUN config/install.sh
+RUN ln -s /usr/local/bin/sml/bin/sml /usr/local/sbin/sml
+
+#Utility setup
+RUN apt-get install -y unzip
 
 # Install autodriver
 WORKDIR /home
@@ -36,3 +57,4 @@ RUN rm -rf Tango/
 RUN ls -l /home
 RUN which autodriver
 RUN which javac
+RUN which sml
