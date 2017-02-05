@@ -1,7 +1,7 @@
 # Autolab - autograding docker image
 
-FROM ubuntu:14.04
-MAINTAINER Mihir Pandya <mihir.m.pandya@gmail.com>
+FROM ubuntu:16.04
+MAINTAINER David Dobmeier <daviddob@buffalo.edu>
 
 #C++ Setup
 RUN apt-get update
@@ -41,6 +41,7 @@ RUN mkdir autolab autograde output
 RUN chown autolab:autolab autolab
 RUN chown autolab:autolab output
 RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo 
 RUN apt-get install -y git
 RUN git clone https://github.com/autolab/Tango.git
 WORKDIR Tango/autodriver
@@ -58,3 +59,4 @@ RUN ls -l /home
 RUN which autodriver
 RUN which javac
 RUN which sml
+RUN g++ --version
