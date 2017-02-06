@@ -60,3 +60,4 @@ RUN which autodriver
 RUN which javac
 RUN which sml
 RUN g++ --version
+RUN echo 'export _JAVA_OPTIONS="-Xmx1024m -XX:ParallelGCThreads=1"' >> ~/.bashrc
