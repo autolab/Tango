@@ -127,7 +127,7 @@ class Config:
     ######
     # Part 4: Settings for shared memory
     #
-    USE_REDIS = False
+    USE_REDIS = True
     REDIS_HOSTNAME = "127.0.0.1"
     REDIS_PORT = 6379
 
