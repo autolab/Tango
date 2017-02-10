@@ -224,19 +224,13 @@ class DistDocker:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
+        autodriverArgs = '-u %d -f %d -t %d -o %d' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
-        # IMPORTANT: The single and double quotes are important, since we
-        #            are switching to the autolab user and then running
-        #            bash commands.
-        setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
-                cp output/feedback mount/feedback' % autodriverCmd
-
-        args = "(docker run --name %s -v %s:/home/mount %s sh -c '%s')" % \
-                (instanceName, volumePath, vm.image, setupCmd)
+        args = "(docker run --name %s -v %s:/home/mount %s %s)" % \
+                (instanceName, volumePath, vm.image, autodriverArgs)
 
         self.log.debug('Running job: %s' % args)
 
