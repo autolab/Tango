@@ -3,7 +3,7 @@
 FROM ubuntu:14.04
 MAINTAINER Mihir Pandya <mihir.m.pandya@gmail.com>
 
-RUN apt-get update
+RUN apt-get update --fix-missing
 RUN apt-get install -y gcc
 RUN apt-get install -y make
 RUN apt-get install -y build-essential
