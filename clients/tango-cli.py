@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 #
 #
-# tango-rest.py - Command line client for the RESTful Tango.
+# tango-cli.py - Command line client for the RESTful Tango.
 #
 
 import os
