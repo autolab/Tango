@@ -8,11 +8,12 @@ RUN apt-get update
 RUN apt-get install -y gcc
 RUN apt-get install -y make
 RUN apt-get install -y build-essential
+RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
 
 #Python Setup
 RUN apt-get install -y python
 RUN apt-get install -y python3
-
+	
 #Java Setup
 RUN apt-get update --fix-missing
 RUN apt-get install -y default-jdk
@@ -29,6 +30,14 @@ RUN wget http://www.smlnj.org/dist/working/110.78/config.tgz
 RUN tar -xzvf config.tgz
 RUN config/install.sh
 RUN ln -s /usr/local/bin/sml/bin/sml /usr/local/sbin/sml
+RUN ln -s /usr/local/bin/sml/bin/ml-lex /usr/local/sbin/ml-lex
+RUN ln -s /usr/local/bin/sml/bin/ml-yacc /usr/local/sbin/ml-yacc
+
+#Flex setup
+RUN apt-get install -y flex
+
+#Bison Setup
+RUN apt-get install -y bison
 
 #Utility setup
 RUN apt-get install -y unzip
