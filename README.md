@@ -1,4 +1,6 @@
-![Welcome to Autolab](https://github.com/autolab/Autolab/blob/master/public/images/autolab_logo.png)
+<a href="http://autolabproject.com">
+  <img src="http://svgshare.com/i/2Mf.svg" width="380px" height="100px">
+</a>
 
 Tango [![Circle CI](https://circleci.com/gh/autolab/Tango.svg?style=svg)](https://circleci.com/gh/autolab/Tango)
 ======
