@@ -1,7 +1,7 @@
 #
 # distDocker.py
 #
-# Implements the Tango VMMS interface to run Tango jobs in 
+# Implements the Tango VMMS interface to run Tango jobs in
 # docker containers on a list of host machines. This list of
 # host machines must be able to run docker and be accessible
 # by SSH. The IP address of the host machine is stored in the
@@ -16,7 +16,7 @@ def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
-    """ 
+    """
 
     # Launch the command
     p = subprocess.Popen(command,
@@ -46,8 +46,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
     until the expected value is returned by the command; On timeout,
     return last error code obtained from the command.
     """
-    p = subprocess.Popen(command, 
-                        stdout=open("/dev/null", 'w'), 
+    p = subprocess.Popen(command,
+                        stdout=open("/dev/null", 'w'),
                         stderr=subprocess.STDOUT)
     t = 0.0
     while (t < time_out):
@@ -88,7 +88,7 @@ class DistDocker:
             self.hostUser = "developer"
             if len(config.Config.DOCKER_HOST_USER) > 0:
                 self.hostUser = config.Config.DOCKER_HOST_USER
-                
+
             # Check import docker constants are defined in config
             if len(config.Config.DOCKER_VOLUME_PATH) == 0:
                 raise Exception('DOCKER_VOLUME_PATH not defined in config.')
@@ -115,7 +115,7 @@ class DistDocker:
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM -  Assign a host machine for this container to 
+        """ initializeVM -  Assign a host machine for this container to
         run on.
         """
         self.hostLock.acquire()
@@ -137,7 +137,7 @@ class DistDocker:
         vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
         vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
         vm.use_ssh_master = config.Config.USE_SSH_MASTER
- 
+
         # Wait for SSH to work before declaring that the VM is ready
         while (True):
             elapsed_secs = time.time() - start_time
@@ -157,12 +157,12 @@ class DistDocker:
                         DistDocker._SSH_MASTER_FLAGS +
                         ["%s@%s" % (self.hostUser, vm.domain_name),
                         "(:)"], max_secs - elapsed_secs)
-            else:            
+            else:
                 ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                             DistDocker._SSH_AUTH_FLAGS +
                             ["%s@%s" % (self.hostUser, vm.domain_name),
                             "(:)"], max_secs - elapsed_secs)
-                        
+
             self.log.debug("VM %s: ssh returned with %d" %
                            (vm.domain_name, ret))
             if (ret != -1) and (ret != 255):
@@ -186,7 +186,7 @@ class DistDocker:
              if ret != 0:
                  self.log.debug("Lost persistent SSH connection")
                  return ret
- 
+
         # Create a fresh volume
         ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                         DistDocker._SSH_AUTH_FLAGS +
@@ -197,15 +197,15 @@ class DistDocker:
             self.log.debug("Volume directory created on VM.")
         else:
             return ret
-        
+
         for file in inputFiles:
-            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags + 
+            ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                             DistDocker._SSH_AUTH_FLAGS + [file.localFile] +
                             ["%s@%s:%s/%s" % \
                             (self.hostUser, vm.domain_name, volumePath, file.destFile)],
                             config.Config.COPYIN_TIMEOUT)
             if ret == 0:
-                self.log.debug('Copied in file %s to %s' % 
+                self.log.debug('Copied in file %s to %s' %
                     (file.localFile, volumePath + file.destFile))
             else:
                 self.log.error(
@@ -232,7 +232,7 @@ class DistDocker:
             if ret != 0:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
- 
+
         autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC,
                         config.Config.VM_ULIMIT_FILE_SIZE,
@@ -274,15 +274,15 @@ class DistDocker:
             if ret != 0:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
- 
- 
+
+
         ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                       DistDocker._SSH_AUTH_FLAGS +
-                      ["%s@%s:%s" % 
-                      (self.hostUser, vm.domain_name, volumePath + 'feedback'), 
+                      ["%s@%s:%s" %
+                      (self.hostUser, vm.domain_name, volumePath + 'feedback'),
                       destFile],
                       config.Config.COPYOUT_TIMEOUT)
-        
+
         self.log.debug('Copied feedback file to %s' % destFile)
         self.destroyVM(vm)
 
@@ -342,7 +342,7 @@ class DistDocker:
         """
         machines = []
         volumePath = self.getVolumePath('')
-        
+
         for host in self.hosts:
             volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                                 DistDocker._SSH_AUTH_FLAGS +
@@ -357,6 +357,9 @@ class DistDocker:
                     volume_l = volume.split('-')
                     machine.id = volume_l[1]
                     machine.image = volume_l[2]
+                    machine.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
+                    machine.ssh_flags = ['-o', 'ControlPath=' + os.path.join(machine.ssh_control_dir, "control")]
+                    machine.use_ssh_master = config.Config.USE_SSH_MASTER
                     machines.append(machine)
         return machines
 
@@ -369,9 +372,9 @@ class DistDocker:
         return (vm.name in vmnames)
 
     def getImages(self):
-        """ getImages - Executes `docker images` on every host and 
-        returns a list of images that can be used to boot a docker 
-        container with. This function is a lot of parsing and so 
+        """ getImages - Executes `docker images` on every host and
+        returns a list of images that can be used to boot a docker
+        container with. This function is a lot of parsing and so
         can break easily.
         """
         result = set()
