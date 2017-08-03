@@ -293,7 +293,7 @@ class DistDocker:
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
-        if vm.use_ssh_master:
+        if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                           DistDocker._SSH_MASTER_CHECK_FLAG +
                           ["%s@%s" % (self.hostUser, vm.domain_name)])
