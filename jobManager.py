@@ -9,7 +9,7 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-import threading, logging, time, copy
+import threading, logging, time, copy, os
 
 from datetime import datetime
 from tango import *
@@ -27,10 +27,11 @@ class JobManager:
         self.jobQueue = queue
         self.preallocator = self.jobQueue.preallocator
         self.vmms = self.preallocator.vmms
-        self.log = logging.getLogger("JobManager")
+        self.log = logging.getLogger("JobManager-" + str(os.getpid()))
         # job-associated instance id
         self.nextId = 10000
         self.running = False
+        self.log.info("START jobManager")
 
     def start(self):
         if self.running:
@@ -61,14 +62,24 @@ class JobManager:
             id = self.jobQueue.getNextPendingJob()
 
             if id:
+                self.log.info("_manage job after getNextPendingJob() %s" % id)
+
                 job = self.jobQueue.get(id)
+                if job is not None:
+                    jobStr = ', '.join("%s: %s" % item for item in job.__dict__.items())
+                    self.log.info("_manage job %s" % jobStr)
                 if not job.accessKey and Config.REUSE_VMS:
                     id, vm = self.jobQueue.getNextPendingJobReuse(id)
                     job = self.jobQueue.get(id)
-
+                    if job is not None:
+                        jobStr = ', '.join("%s: %s" % item for item in job.__dict__.items())
+                        self.log.info("_manage after getNextPendingJobReuse %s" % jobStr)
+                    else:
+                        self.log.info("_manage after getNextPendingJobReuse %s %s" % (id, vm))
                 try:
                     # Mark the job assigned
                     self.jobQueue.assignJob(job.id)
+                    self.log.info("_manage after assignJob %s" % id)
                     # if the job has specified an account
                     # create an VM on the account and run on that instance
                     if job.accessKeyId:
@@ -77,13 +88,16 @@ class JobManager:
                         newVM = copy.deepcopy(job.vm)
                         newVM.id = self._getNextID()
                         preVM = vmms.initializeVM(newVM)
+                        self.log.info("_manage init new vm %s" % preVM.id)
                     else:
                         # Try to find a vm on the free list and allocate it to
                         # the worker if successful.
                         if Config.REUSE_VMS:
                             preVM = vm
+                            self.log.info("_manage reuse vm %s" % preVM.id)
                         else:
                             preVM = self.preallocator.allocVM(job.vm.name)
+                            self.log.info("_manage allocate vm %s" % preVM.id)
                         vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
                     # Now dispatch the job to a worker
@@ -102,7 +116,11 @@ class JobManager:
                     ).start()
 
                 except Exception as err:
-                    self.jobQueue.makeDead(job.id, str(err))
+                    if job is not None:
+                    # if True:
+                        self.jobQueue.makeDead(job.id, str(err))
+                    else:
+                        self.log.info("_manage: job is None")
 
             # Sleep for a bit and then check again
             time.sleep(Config.DISPATCH_PERIOD)
