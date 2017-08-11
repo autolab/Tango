@@ -18,6 +18,8 @@ import config
 
 import boto
 from boto import ec2
+import boto3
+
 from tangoObjects import TangoMachine
 
 ### added to suppress boto XML output -- Jason Boles
@@ -105,6 +107,37 @@ class Ec2SSH:
             self.useDefaultKeyPair = True
         self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
 
+        # Use boto3 to read images.  Find the "Name" tag and use it as key to
+        # build a map from "Name tag" to boto3's image structure.
+        # The code is currently using boto 2 for most of the work and we don't
+        # have the energy to upgrade it yet.  So boto and boto3 are used together.
+
+        client = boto3.client("ec2", config.Config.EC2_REGION)
+        images = client.describe_images(Owners=["self"])["Images"]
+        self.img2ami = {}
+        for image in images:
+            if "Tags" not in image:
+                continue
+            tags = image["Tags"]
+            for tag in tags:
+                if "Key" in tag and tag["Key"] == "Name":
+                    if not (tag["Value"] and tag["Value"].endswith(".img")):
+                        self.log.info("Ignore %s for ill-formed name tag %s" %
+                                      (image["ImageId"], tag["Value"]))
+                        continue
+                    if tag["Value"] in self.img2ami:
+                        self.log.info("Ignore %s for duplicate name tag %s" %
+                                      (image["ImageId"], tag["Value"]))
+                        continue
+
+                    self.img2ami[tag["Value"]] = image
+                    self.log.info("Found image: %s %s %s" % (tag["Value"], image["ImageId"], image["Name"]))
+
+        imageAmis = [item["ImageId"] for item in images]
+        taggedAmis = [self.img2ami[key]["ImageId"] for key in self.img2ami]
+        ignoredAmis = list(set(imageAmis) - set(taggedAmis))
+        self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
+
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
         this function when you need a VM instance name. Never generate
@@ -151,7 +184,8 @@ class Ec2SSH:
         else:
             ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
 
-        ec2instance['ami'] = config.Config.DEFAULT_AMI
+        ec2instance['ami'] = self.img2ami[vm.name + ".img"]["ImageId"]
+        self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
 
         return ec2instance
 
@@ -452,4 +486,4 @@ class Ec2SSH:
     def getImages(self):
         """ getImages - return a constant; actually use the ami specified in config 
         """
-        return ["default.img"]
+        return list(self.img2ami.keys())
