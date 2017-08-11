@@ -134,9 +134,20 @@ class Config:
     ######
     # Part 5: EC2 Constants
     #
+
+    # Special instructions to admin: Tango finds usable images from aws
+    # in the following fashion:
+    # It examines every ami (Amazon Image) owned by the EC2_USER_NAME,
+    # looks for a tag with the key "Name" (case sensitive), and use the value
+    # of the tag as the image name for the ami, for example, ubuntu.img or
+    # myImage.img.  If an ami doesn't have such tag, it is ignored (watch
+    # for a log message).
+    #
+    # The lab author, when specifying an image to use, should specify one
+    # of those image names available.
+
     EC2_REGION = ''
     EC2_USER_NAME = ''
-    DEFAULT_AMI = ''
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''
