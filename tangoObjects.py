@@ -59,7 +59,7 @@ class TangoMachine():
         self.instance_id = id
 
     def __repr__(self):
-        return "TangoMachine(image: %s, vmms: %s)" % (self.image, self.vmms)
+        return "TangoMachine(image: %s, vmms: %s, id: %s)" % (self.image, self.vmms, self.id)
 
 
 class TangoJob():
@@ -210,6 +210,14 @@ class TangoRemoteQueue():
         self.__db = getRedisConnection()
         self.key = '%s:%s' % (namespace, name)
 
+    # for debugging.  return a readable string representation
+    def dump(self):
+        unpickled_obj = self.__db.lrange(self.key, 0, -1)
+        objs = []
+        for obj in unpickled_obj:
+            objs.append(pickle.loads(obj))
+        return objs
+
     def qsize(self):
         """Return the approximate size of the queue."""
         return self.__db.llen(self.key)
@@ -238,6 +246,12 @@ class TangoRemoteQueue():
 
         item = pickle.loads(item)
         return item
+
+    def make_empty(self):
+        while True:
+            item = self.__db.lpop(self.key)
+            if item is None:
+                break
 
     def get_nowait(self):
         """Equivalent to get(False)."""

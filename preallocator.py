@@ -46,6 +46,8 @@ class Preallocator:
         self.lock.acquire()
         if vm.name not in self.machines.keys():
             self.machines.set(vm.name, [[], TangoQueue(vm.name)])
+            # see comments in jobManager.py for the same call
+            self.machines.get(vm.name)[1].make_empty()
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
 
@@ -112,6 +114,7 @@ class Preallocator:
         self.lock.acquire()
         machine = self.machines.get(vm.name)
         machine[0].append(vm.id)
+        self.log.info("addVM: add %s" % vm.id)
         self.machines.set(vm.name, machine)
         self.lock.release()
 
@@ -147,8 +150,6 @@ class Preallocator:
         This function should always be called in a thread since it
         might take a long time to complete.
         """
-
-        result = self.getPool("default")
 
         vmms = self.vmms[vm.vmms]
         self.log.debug("__create: Using VMMS %s " % (Config.VMMS_NAME))
