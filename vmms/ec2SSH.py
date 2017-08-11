@@ -20,6 +20,8 @@ import boto
 from boto import ec2
 from tangoObjects import TangoMachine
 
+### added to suppress boto XML output -- Jason Boles
+logging.getLogger('boto').setLevel(logging.CRITICAL)
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -261,6 +263,13 @@ class Ec2SSH:
         VM is a boto.ec2.instance.Instance object.
         """
 
+        self.log.info("WaitVM: %s, ec2_id: %s" % (vm.name, vm.ec2_id))
+
+        # test if the vm is still an instance
+        if not self.existsVM(vm):
+          self.log.info("VM %s: no longer an instance" % (vm.name))
+          return -1
+
         # First, wait for ping to the vm instance to work
         instance_down = 1
         instanceName = self.instanceName(vm.id, vm.name)
@@ -434,7 +443,7 @@ class Ec2SSH:
         instances = self.connection.get_all_instances()
 
         for inst in instances:
-            if inst.instances[0].id is vm.ec2_id:
+            if inst.instances[0].id == vm.ec2_id and inst.instances[0].state == "running":
                 return True
         return False
 
