@@ -1,7 +1,7 @@
 #
 # preallocator.py - maintains a pool of active virtual machines
 #
-import threading, logging, time, copy
+import threading, logging, time, copy, os
 
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config
@@ -24,7 +24,7 @@ class Preallocator:
         self.lock = threading.Lock()
         self.nextID = TangoIntValue("nextID", 1000)
         self.vmms = vmms
-        self.log = logging.getLogger("Preallocator")
+        self.log = logging.getLogger("Preallocator-" + str(os.getpid()))
 
     def poolSize(self, vmName):
         """ poolSize - returns the size of the vmName pool, for external callers
@@ -93,6 +93,7 @@ class Preallocator:
         self.lock.acquire()
         if vm and vm.id in self.machines.get(vm.name)[0]:
             machine = self.machines.get(vm.name)
+            self.log.info("freeVM: return %s to free pool" % vm.id)
             machine[1].put(vm)
             self.machines.set(vm.name, machine)
         else:
@@ -101,6 +102,7 @@ class Preallocator:
 
         # The VM is no longer in the pool.
         if not_found:
+            self.log.info("freeVM: will destroy %s" % vm.id)
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(vm)
 
@@ -118,6 +120,7 @@ class Preallocator:
         """
         self.lock.acquire()
         machine = self.machines.get(vm.name)
+        self.log.info("removeVM: %s" % vm.id)
         machine[0].remove(vm.id)
         self.machines.set(vm.name, machine)
         self.lock.release()
@@ -144,6 +147,9 @@ class Preallocator:
         This function should always be called in a thread since it
         might take a long time to complete.
         """
+
+        result = self.getPool("default")
+
         vmms = self.vmms[vm.vmms]
         self.log.debug("__create: Using VMMS %s " % (Config.VMMS_NAME))
         for i in range(cnt):
@@ -173,6 +179,7 @@ class Preallocator:
         self.lock.release()
 
         if dieVM:
+            self.log.info("__destroy: %s" % vm.id)
             self.removeVM(dieVM)
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(dieVM)
@@ -188,7 +195,7 @@ class Preallocator:
 
         self.log.info("createVM|calling initializeVM")
         vmms.initializeVM(newVM)
-        self.log.info("createVM|done with initializeVM")
+        self.log.info("createVM|done with initializeVM %s" % newVM.id)
 
         self.addVM(newVM)
         self.freeVM(newVM)
@@ -207,12 +214,15 @@ class Preallocator:
         dieVM = None
         self.lock.acquire()
         size = self.machines.get(vmName)[1].qsize()
+        self.log.info("destroyVM: free:total pool %d:%d" % (size, len(self.machines.get(vmName)[0])))
         if (size == len(self.machines.get(vmName)[0])):
             for i in range(size):
                 vm = self.machines.get(vmName)[1].get_nowait()
                 if vm.id != id:
+                    self.log.info("destroyVM: put to free pool id:vm.id %s:%s" % (id, vm.id))
                     self.machines.get(vmName)[1].put(vm)
                 else:
+                    self.log.info("destroyVM: will call removeVM %s" % id)
                     dieVM = vm
         self.lock.release()
 
@@ -252,4 +262,7 @@ class Preallocator:
 
         result["total"] = self.machines.get(vmName)[0]
         result["free"] = free_list
+        self.log.info("getPool: free pool %s" % ', '.join(str(x) for x in result["free"]))
+        self.log.info("getPool: total pool %s" % ', '.join(str(x) for x in result["total"]))
+
         return result

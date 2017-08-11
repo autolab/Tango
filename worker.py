@@ -35,7 +35,7 @@ class Worker(threading.Thread):
         self.preallocator = preallocator
         self.preVM = preVM
         threading.Thread.__init__(self)
-        self.log = logging.getLogger("Worker")
+        self.log = logging.getLogger("Worker-" + str(os.getpid()))
 
     #
     # Worker helper functions
@@ -61,6 +61,7 @@ class Worker(threading.Thread):
             # replacement has been created. Otherwise there is a
             # potential race where the job manager thinks that the
             # pool is empty and creates a spurious vm.
+            self.log.info("removeVM %s" % self.job.vm.id);
             self.preallocator.removeVM(self.job.vm)
 
     def rescheduleJob(self, hdrfile, ret, err):

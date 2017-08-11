@@ -103,7 +103,7 @@ class Ec2SSH:
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
             self.useDefaultKeyPair = True
-        self.log = logging.getLogger("Ec2SSH")
+        self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -263,18 +263,19 @@ class Ec2SSH:
         VM is a boto.ec2.instance.Instance object.
         """
 
-        self.log.info("WaitVM: %s, ec2_id: %s" % (vm.name, vm.ec2_id))
+        self.log.info("WaitVM: %s, ec2_id: %s" % (vm.id, vm.ec2_id))
 
         # test if the vm is still an instance
         if not self.existsVM(vm):
-          self.log.info("VM %s: no longer an instance" % (vm.name))
-          return -1
+            self.log.info("VM %s: no longer an instance" % vm.id)
+            return -1
 
         # First, wait for ping to the vm instance to work
         instance_down = 1
         instanceName = self.instanceName(vm.id, vm.name)
         start_time = time.time()
         domain_name = self.domainName(vm)
+        self.log.info("WaitVM: pinging %s" % domain_name)
         while instance_down:
             instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
                                             shell=True,
@@ -287,11 +288,12 @@ class Ec2SSH:
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
                 elapsed_secs = time.time() - start_time
                 if (elapsed_secs > max_secs):
+                    self.log.debug("WAITVM_TIMEOUT: %s" % vm.id)
                     return -1
 
         # The ping worked, so now wait for SSH to work before
         # declaring that the VM is ready
-        self.log.debug("VM %s: ping completed" % (vm.name))
+        self.log.debug("VM %s: ping completed" % (vm.id))
         while(True):
 
             elapsed_secs = time.time() - start_time
@@ -432,7 +434,7 @@ class Ec2SSH:
             vm.ec2_id = inst.id
             vm.name = str(inst.tags.get('Name'))
             self.log.debug('getVMs: Instance - %s, EC2 Id - %s' %
-                           (vm.name, vm.ec2_id))
+                           (vm.id, vm.ec2_id))
             vms.append(vm)
 
         return vms

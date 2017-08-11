@@ -215,6 +215,7 @@ class JobQueue:
             # is a free VM
             if (job.isNotAssigned()):
                 vm = self.preallocator.allocVM(job.vm.name)
+                self.log.info("getNextPendingJobReuse alloc vm %s for %s" % (id, vm))
                 if vm:
                     self.queueLock.release()
                     return (id, vm)
