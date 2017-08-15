@@ -13,5 +13,3 @@ for poolName in machines.keys():
   print "pool:", poolName
   print "total:", machines.get(poolName)[0]
   print "free:", machines.get(poolName)[1].qsize(), machines.get(poolName)[1].dump()
-
-      

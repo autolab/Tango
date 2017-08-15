@@ -9,6 +9,3 @@ vmms = Ec2SSH()
 for key in vmms.img2ami:
   image = vmms.img2ami[key]
   print image["Name"], image["ImageId"], key
-
-     
-      
