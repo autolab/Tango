@@ -19,7 +19,7 @@ outputFiles = []
 
 # if either is None, then all student works are submitted.
 firstStudentNum = 1
-totalStudents = 2
+totalStudents = 7
 
 for labIndex in cmdLine.args.indecies:
   if labIndex >= len(cfg.labs):
@@ -83,7 +83,7 @@ while True:
 
   finishedFiles = []
   for file in remainingFiles:
-    if os.path.getmtime(file) > startTime:
+    if os.path.exists(file) and os.path.getmtime(file) > startTime:
       print("Output %s is ready" % file)
       finishedFiles.append(file)
 
