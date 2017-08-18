@@ -62,12 +62,12 @@ class JobManager:
             id = self.jobQueue.getNextPendingJob()
 
             if id:
-                self.log.info("_manage job after getNextPendingJob() %s" % id)
+                self.log.info("_manage: next job id %s" % id)
 
                 job = self.jobQueue.get(id)
                 if job is not None:
                     jobStr = ', '.join("%s: %s" % item for item in job.__dict__.items())
-                    self.log.info("_manage job %s" % jobStr)
+                    # self.log.info("_manage job %s" % jobStr)
                 if not job.accessKey and Config.REUSE_VMS:
                     id, vm = self.jobQueue.getNextPendingJobReuse(id)
                     job = self.jobQueue.get(id)

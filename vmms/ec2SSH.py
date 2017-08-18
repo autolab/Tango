@@ -24,6 +24,8 @@ from tangoObjects import TangoMachine
 
 ### added to suppress boto XML output -- Jason Boles
 logging.getLogger('boto').setLevel(logging.CRITICAL)
+logging.getLogger('boto3').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
@@ -136,7 +138,8 @@ class Ec2SSH:
         imageAmis = [item["ImageId"] for item in images]
         taggedAmis = [self.img2ami[key]["ImageId"] for key in self.img2ami]
         ignoredAmis = list(set(imageAmis) - set(taggedAmis))
-        self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
+        if (len(ignoredAmis) > 0):
+            self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -231,6 +234,7 @@ class Ec2SSH:
         try:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
+            self.log.info("initiliazeVM: %s %s" % (instanceName, str(ec2instance)))
             # ensure that security group exists
             self.createSecurityGroup()
             if self.useDefaultKeyPair:
@@ -468,7 +472,7 @@ class Ec2SSH:
             vm.ec2_id = inst.id
             vm.name = str(inst.tags.get('Name'))
             self.log.debug('getVMs: Instance - %s, EC2 Id - %s' %
-                           (vm.id, vm.ec2_id))
+                           (vm.name, vm.ec2_id))
             vms.append(vm)
 
         return vms
@@ -486,4 +490,5 @@ class Ec2SSH:
     def getImages(self):
         """ getImages - return a constant; actually use the ami specified in config 
         """
+        self.log.info("getImages: %s" % str(list(self.img2ami.keys())))
         return list(self.img2ami.keys())

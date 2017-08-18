@@ -257,7 +257,7 @@ class JobQueue:
     def makeDead(self, id, reason):
         """ makeDead - move a job from live queue to dead queue
         """
-        self.log.info("makeDead| Making dead job ID: " + str(id))
+        self.log.info("makeDead| Making dead job ID: " + str(id) + " " + reason)
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
