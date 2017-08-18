@@ -143,6 +143,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
-    tangoREST.tango.resetTango(tangoREST.tango.preallocator.vmms)
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
     tornado.ioloop.IOLoop.instance().start()

@@ -207,6 +207,9 @@ class TangoServer:
     #
     # Helper functions
     #
+
+    # NOTE: This function should be called by ONLY jobManager.  The rest servers
+    # shouldn't call this function.
     def resetTango(self, vmms):
         """ resetTango - resets Tango to a clean predictable state and
         ensures that it has a working virtualization environment. A side
