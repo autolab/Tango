@@ -18,8 +18,8 @@ startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
 # if either is None, then all student works are submitted.
-firstStudentNum = 1
-totalStudents = 7
+firstStudentNum = 0
+totalStudents = 1
 
 for labIndex in cmdLine.args.indecies:
   if labIndex >= len(cfg.labs):
@@ -53,8 +53,16 @@ for labIndex in cmdLine.args.indecies:
                    "stripped": matchObj.group(2), "output": outputFile}
     student2file[email] = studentFile
 
+  # print the students and the indices
+  if False:
+    i = 0
+    for student in students:
+      print i, student
+      i += 1
+    exit()
+
   # submit all student works or a given range
-  if not (firstStudentNum and totalStudents):
+  if firstStudentNum is None or totalStudents is None:
     firstStudentNum = 0
     totalStudents = len(students)
 
@@ -90,6 +98,7 @@ while True:
   remainingFiles = set(remainingFiles) - set(finishedFiles)
   nFinished = numberRemaining - len(remainingFiles)
   print("%d jobs finished in the last %d seconds" % (nFinished, loopDelay))
+  print("%d unfinished out of %d" % (len(remainingFiles), len(outputFiles)))
   now = time.mktime(datetime.datetime.now().timetuple())
   print("%s has passed\n" % (str(datetime.timedelta(seconds = now - startTime))))
 
