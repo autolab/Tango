@@ -22,8 +22,10 @@
 #define _GNU_SOURCE
 #include <argp.h>
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <glob.h>
 #include <grp.h>
 #include <limits.h>
 #include <pwd.h>
@@ -34,6 +36,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -211,25 +214,25 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     switch (key) {
     case 'u':
         if (parse_uint(arg, &arguments->nproc) < 0) {
-            argp_failure(state, EXIT_USAGE, 0, 
+            argp_failure(state, EXIT_USAGE, 0,
                 "The argument to nproc must be a nonnegative integer");
         }
         break;
     case 'f':
         if (parse_uint(arg, &arguments->fsize) < 0) {
-            argp_failure(state, EXIT_USAGE, 0, 
+            argp_failure(state, EXIT_USAGE, 0,
                 "The argument to fsize must be a nonnegative integer");
         }
         break;
     case 't':
         if (parse_uint(arg, &arguments->timeout) < 0) {
-            argp_failure(state, EXIT_USAGE, 0, 
+            argp_failure(state, EXIT_USAGE, 0,
                 "The argument to timeout must be a nonnegative integer");
         }
         break;
     case 'o':
         if (parse_uint(arg, &arguments->osize) < 0) {
-            argp_failure(state, EXIT_USAGE, 0, 
+            argp_failure(state, EXIT_USAGE, 0,
                 "The argument to osize must be a nonnegative integer");
         }
         break;
@@ -266,7 +269,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static int call_program(char *path, char *argv[]) {
     pid_t pid;
     int status;
-    
+
     if ((pid = fork()) < 0) {
         ERROR_ERRNO("Unable to fork");
         exit(EXIT_OSERROR);
@@ -285,29 +288,68 @@ static int call_program(char *path, char *argv[]) {
  * @brief Sets up the directory the job will be graded in and sets it as the
  *  current directory
  */
+
 static void setup_dir(void) {
-    // Move the directory over to the user we're running as's home directory
-    char *mv_args[] = {"/bin/mv", "-f", args.directory, 
-        args.user_info.pw_dir, NULL};
-    if (call_program("/bin/mv", mv_args) != 0) {
-        ERROR("Error moving directory");
-        exit(EXIT_OSERROR);
-    }
+	char dir_buffer[BUFSIZE],
+	     file_buffer[BUFSIZE],
+	     owner_buffer[BUFSIZE];
 
-    // And switch over to that directory
-    if (chdir(args.user_info.pw_dir) < 0) {
-        ERROR_ERRNO("Error changing directories");
-        exit(EXIT_OSERROR);
-    }
+	// Get the name of the temporary directory.
+	strncpy(dir_buffer, args.user_info.pw_dir, BUFSIZE);
+	strncat(dir_buffer, "/", BUFSIZE - strlen(dir_buffer));
+	strncat(dir_buffer, args.directory, BUFSIZE - strlen(dir_buffer));
 
-    // And change the ownership of the directory we copied
-    char owner[100];
-    sprintf(owner, "%d:%d", args.user_info.pw_uid, args.user_info.pw_gid);
-    char *chown_args[] = {"/bin/chown", "-R", owner, args.directory, NULL};
+	// Make the new directory
+	if (mkdir(dir_buffer, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0) {
+		ERROR("Error creating new directory");
+		exit(EXIT_OSERROR);
+	}
+
+	// Copy the input files into the new directory
+	DIR* src_dir = opendir(args.directory);
+
+	if (src_dir == NULL) {
+		ERROR("Error reading input directory");
+		exit(EXIT_OSERROR);
+	}
+
+	struct dirent* entry;
+
+	while ((entry = readdir(src_dir)) != NULL) {
+
+		// Skip these special files.
+		if (strcmp(entry->d_name, ".")  == 0 ||
+		    strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
+
+		// Get the relative path to the file.
+		strncpy(file_buffer, args.directory, BUFSIZE);
+		strncat(file_buffer, "/", BUFSIZE - strlen(file_buffer));
+		strncat(file_buffer, entry->d_name, BUFSIZE - strlen(file_buffer));
+
+		char* mv_args[] = {"/bin/mv", "-f", file_buffer, dir_buffer, NULL};
+		if (call_program("/bin/mv", mv_args) != 0) {
+			ERROR("Error moving files");
+			exit(EXIT_OSERROR);
+		}
+	}
+
+	closedir(src_dir);
+
+	// Change the ownership of the moved files
+    sprintf(owner_buffer, "%d:%d", args.user_info.pw_uid, args.user_info.pw_gid);
+    char *chown_args[] = {"/bin/chown", "-R", owner_buffer, dir_buffer, NULL};
     if (call_program("/bin/chown", chown_args) != 0) {
         ERROR("Error chowining directory");
         exit(EXIT_OSERROR);
     }
+
+	// Switch to our user's directory.
+	if (chdir(args.user_info.pw_dir) < 0) {
+		ERROR_ERRNO("Error changing directories");
+		exit(EXIT_OSERROR);
+	}
 }
 
 /**
@@ -391,7 +433,7 @@ static void cleanup(void) {
     // We are currently in ~user.
     // (Note by @mpandya: the find binary is in /bin in RHEL but in /usr/bin
     // in Ubuntu)
-    char *find_args[] = {"find", "/usr/bin/find", ".", "/tmp", "/var/tmp", "-user", 
+    char *find_args[] = {"find", "/usr/bin/find", ".", "/tmp", "/var/tmp", "-user",
         args.user_info.pw_name, "-delete", NULL};
     if (call_program("/usr/bin/env", find_args) != 0) {
         ERROR("Error deleting user's files");
@@ -439,7 +481,7 @@ static int monitor_child(pid_t child) {
     if (killed) {
         printf(OUTPUT_HEADER "Job timed out after %d seconds\n", args.timeout);
     } else {
-        printf(OUTPUT_HEADER "Job exited with status %d\n", 
+        printf(OUTPUT_HEADER "Job exited with status %d\n",
             WEXITSTATUS(status));
     }
 
@@ -558,7 +600,7 @@ int main(int argc, char **argv) {
     }
 
     struct argp_option options[] = {
-        {"nproc", 'u', "number", 0, 
+        {"nproc", 'u', "number", 0,
             "Limit the number of processes the user is allowed", 0},
         {"fsize", 'f', "size", 0,
             "Limit the maximum file size a user can create (bytes)", 0},
@@ -569,7 +611,7 @@ int main(int argc, char **argv) {
         {0, 0, 0, 0, 0, 0}
     };
 
-    struct argp parser = {options, parse_opt, "DIRECTORY", 
+    struct argp parser = {options, parse_opt, "DIRECTORY",
         "Manages autograding jobs", NULL, NULL, NULL};
 
     argp_parse(&parser, argc, argv, 0, NULL, &args);
@@ -594,4 +636,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
