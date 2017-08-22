@@ -216,6 +216,9 @@ class Preallocator:
         self.lock.acquire()
         size = self.machines.get(vmName)[1].qsize()
         self.log.info("destroyVM: free:total pool %d:%d" % (size, len(self.machines.get(vmName)[0])))
+        # xxxXXX??? the following code is questionable: It requires that
+        # all vms are free.  Otherwise it doesn't do anything.  Is this desired
+        # behavior?
         if (size == len(self.machines.get(vmName)[0])):
             for i in range(size):
                 vm = self.machines.get(vmName)[1].get_nowait()

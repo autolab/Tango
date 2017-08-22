@@ -444,6 +444,8 @@ class Ec2SSH:
     def destroyVM(self, vm):
         """ destroyVM - Removes a VM from the system
         """
+
+        self.log.info("destroyVM: %s %s %s" % (vm.ec2_id, vm.name, vm.id))
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:
