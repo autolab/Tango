@@ -3,7 +3,7 @@ import subprocess, os, argparse
 class Config:
   tangoDir = "/root/autolab-oneclick/server/Tango"
   cliCmd = "python " + tangoDir + "/clients/tango-cli.py"
-  tangoPort = "8600"
+  tangoHostPort = "host-port 8600"
   tangoIP = ""
   # output dir used by Tango for submissions
   tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
@@ -58,7 +58,7 @@ class Cmd:
     self.cfg = cfg
     outBytes = subprocess.check_output(["ps", "-auxw"])
     for line in outBytes.decode("utf-8").split("\n"):
-      if cfg.tangoPort in line:
+      if cfg.tangoHostPort in line:
         argList = line.split()
         for index, token in enumerate(argList):
           if token == "-container-ip":
@@ -68,7 +68,7 @@ class Cmd:
       exit(-1)
 
     self.basic = cfg.cliCmd
-    self.basic += " -s " + cfg.tangoIP + " -P " + cfg.tangoPort + " -k test"
+    self.basic += " -s " + cfg.tangoIP + " -P 8600" + " -k test"
 
     print "CMD BASE:", self.basic
   #end of __init__
