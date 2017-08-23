@@ -57,6 +57,8 @@ class Config:
     NUM_THREADS = 20
 
     # We have the option to reuse VMs or discard them after each use
+    # xxxXXX??? strongly suspect the code path for the False case
+    # not working, after a failed experiment.
     REUSE_VMS = True
 
     # Worker waits this many seconds for functions waitvm, copyin (per
@@ -105,6 +107,9 @@ class Config:
 
     # Default vm pool size
     POOL_SIZE = 2
+
+    # Default increment step when enlarging vm pool
+    POOL_ALLOC_INCREMENT = 2
 
     # Optionally log finer-grained timing information
     LOG_TIMING = False

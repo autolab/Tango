@@ -34,6 +34,30 @@ class Preallocator:
         else:
             return len(self.machines.get(vmName)[0])
 
+    def freePoolSize(self, vmName):
+        """ freePoolSize - returns the size of the vmName free pool, for external callers
+        """
+        if vmName in self.machines.keys():
+            return self.machines.get(vmName)[1].qsize()
+        else:
+            return 0
+
+    def incrementPoolSize(self, vm, delta):
+        """
+        Called by jobQueue to create the pool and allcoate given number of vms
+        """
+
+        self.lock.acquire()
+        if vm.name not in self.machines.keys():
+            self.machines.set(vm.name, [[], TangoQueue(vm.name)])
+            # see comments in jobManager.py for the same call
+            self.machines.get(vm.name)[1].make_empty()
+            self.log.debug("Creating empty pool of %s instances" % (vm.name))
+        self.lock.release()
+
+        self.log.debug("incrementPoolSize: add %d new %s instances" % (delta, vm.name))
+        threading.Thread(target=self.__create(vm, delta)).start()
+
     def update(self, vm, num):
         """ update - Updates the number of machines of a certain type
         to be preallocated.

@@ -207,16 +207,19 @@ class JobQueue:
             # if target_id is set, only interested in this id
             if target_id and target_id != id:
                 continue
-            # Create a pool if necessary
-            if self.preallocator.poolSize(job.vm.name) == 0:
-                self.preallocator.update(job.vm, Config.POOL_SIZE)
+
+            # Create or enlarge a pool if there is no free vm to use and
+            # the limit for pool is not reached yet
+            if self.preallocator.freePoolSize(job.vm.name) == 0 and \
+                self.preallocator.poolSize(job.vm.name) < Config.POOL_SIZE:
+                self.preallocator.incrementPoolSize(job.vm, Config.POOL_ALLOC_INCREMENT)
 
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
                 vm = self.preallocator.allocVM(job.vm.name)
-                self.log.info("getNextPendingJobReuse alloc vm %s for %s" % (id, vm))
                 if vm:
+                    self.log.info("getNextPendingJobReuse alloc vm %s to job %s" % (vm, id))
                     self.queueLock.release()
                     return (id, vm)
 

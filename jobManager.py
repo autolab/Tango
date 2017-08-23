@@ -94,8 +94,10 @@ class JobManager:
                         # the worker if successful.
                         if Config.REUSE_VMS:
                             preVM = vm
-                            self.log.info("_manage reuse vm %s" % preVM.id)
+                            self.log.info("_manage use vm %s" % preVM.id)
                         else:
+                            # xxxXXX??? strongly suspect this code path not work.
+                            # After setting REUSE_VMS to False, job submissions don't run.
                             preVM = self.preallocator.allocVM(job.vm.name)
                             self.log.info("_manage allocate vm %s" % preVM.id)
                         vmms = self.vmms[job.vm.vmms]  # Create new vmms object
