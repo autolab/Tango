@@ -18,8 +18,8 @@ startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
 # if either is None, then all student works are submitted.
-firstStudentNum = 0
-totalStudents = 1
+firstStudentNum = None
+totalStudents = 6
 
 for labIndex in cmdLine.args.indecies:
   if labIndex >= len(cfg.labs):
@@ -28,8 +28,6 @@ for labIndex in cmdLine.args.indecies:
 
 for labIndex in cmdLine.args.indecies:
   lab = Lab(cfg, labIndex)
-  cmd.info()
-  cmd.open(lab)
 
   students = []
   student2fileFullPath = {}
@@ -61,13 +59,41 @@ for labIndex in cmdLine.args.indecies:
       i += 1
     exit()
 
-  # submit all student works or a given range
-  if firstStudentNum is None or totalStudents is None:
-    firstStudentNum = 0
-    totalStudents = len(students)
+  # submit all student works or a given range, or given student list
+  studentIndexList = []
+  studentsToRun = []
+  if cmdLine.args.students:
+    for studentToRun in cmdLine.args.students:
+      studentIndex = None
+      nMatches = 0
+      index = 0
+      for student in students:
+        if student.startswith(studentToRun):
+          studentIndex = index
+          nMatches += 1
+        index += 1
+      if nMatches != 1:
+        print "ERROR: no match or multiple matchs found for", studentToRun
+        exit()
+      studentIndexList.append(studentIndex)
+      studentsToRun.append(studentToRun)
+
+  else:
+    if firstStudentNum is None or totalStudents is None:
+      firstStudentNum = 0
+      totalStudents = len(students)
+    studentIndexList = list(index for index in range (firstStudentNum, firstStudentNum + totalStudents))
+
 
   print ("# Found %d students for lab %s" % (len(students), lab.name))
-  print ("# Students index range %d..%d" % (firstStudentNum, totalStudents))
+  if studentsToRun:
+    print ("# Students submissions %s %s" % studentsToRun)
+  else:
+    print ("# Students index starts at %d and total %d" % (firstStudentNum, totalStudents))
+  exit()
+
+  cmd.info()
+  cmd.open(lab)
 
   # load lab files
   cmd.upload(lab, lab.makefile)

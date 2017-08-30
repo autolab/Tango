@@ -1,19 +1,29 @@
 import subprocess, os, argparse
 
 class Config:
-  tangoDir = "/root/autolab-oneclick/server/Tango"
+  # tangoDir = "/root/autolab-oneclick/server/Tango"
+  tangoDir = "/mnt/charlene/Tango"
   cliCmd = "python " + tangoDir + "/clients/tango-cli.py"
-  tangoHostPort = "host-port 8600"
+  tangoHostPort = "host-port 8660"
   tangoIP = ""
   # output dir used by Tango for submissions
-  tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
+  # tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
+  tangoFileRoot = "/mnt/charlene/tango_courselabs"
   
   # course definition and handin files location  
   course = "czang-exp"
   courseRoot = "/n/scratch/czang/f16/"
   labs = [
+    # same test with different images, to test multiple pool (per image) handling
     {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
+    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "newPool.img"},
+    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
     {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
+
+  # when "list failures" is requested, the failed tests are listed from the output dir
+  # for the course/lab, unless the following is true.  The the lab's handin from courseRoot
+  # is used.
+  examFailuresFromCourseRoot = False
 
 class CommandLine():
   def printLabs(self, name=None):
@@ -31,6 +41,12 @@ class CommandLine():
                                      usage=self.printLabs())
     parser.add_argument('indecies', metavar='index', type=int, nargs='+',
                         help="index of a test")
+    parser.add_argument('-s', '--students', metavar='student', nargs='+',
+                        help="student email")
+    parser.add_argument('-f', '--failures', action='store_true',
+                        help="list failures")
+    parser.add_argument('-r', '--re_run', action='store_true',
+                        help="re-run failed jobs")
     self.args = parser.parse_args()
 
 # represent attributes associated to a given lab
