@@ -18,8 +18,8 @@ startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
 # if either is None, then all student works are submitted.
-firstStudentNum = None
-totalStudents = 6
+firstStudentNum = 5
+totalStudents = 1
 
 for labIndex in cmdLine.args.indecies:
   if labIndex >= len(cfg.labs):
@@ -87,10 +87,9 @@ for labIndex in cmdLine.args.indecies:
 
   print ("# Found %d students for lab %s" % (len(students), lab.name))
   if studentsToRun:
-    print ("# Students submissions %s %s" % studentsToRun)
+    print ("# Students submissions %s" % studentsToRun)
   else:
     print ("# Students index starts at %d and total %d" % (firstStudentNum, totalStudents))
-  exit()
 
   cmd.info()
   cmd.open(lab)
@@ -100,7 +99,7 @@ for labIndex in cmdLine.args.indecies:
   cmd.upload(lab, lab.autogradeTar)
 
   # load and run student submission
-  for i in range (firstStudentNum, firstStudentNum + totalStudents):
+  for i in studentIndexList:
     print ("\n# Submit for %s @ %s" % (students[i], lab.name))
     cmd.upload(lab, student2file[students[i]]["full"])
     cmd.addJob(lab, student2file[students[i]])

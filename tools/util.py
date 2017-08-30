@@ -2,17 +2,18 @@ import subprocess, os, argparse
 
 class Config:
   # tangoDir = "/root/autolab-oneclick/server/Tango"
-  tangoDir = "/mnt/charlene/Tango"
+  tangoDir = "/nfs/autolab/pdl.cmu.edu/Tango"
   cliCmd = "python " + tangoDir + "/clients/tango-cli.py"
-  tangoHostPort = "host-port 8660"
+  tangoHostPort = "host-port 8600"
   tangoIP = ""
   # output dir used by Tango for submissions
   # tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
-  tangoFileRoot = "/mnt/charlene/tango_courselabs"
+  tangoFileRoot = "/nfs/autolab/pdl.cmu.edu/tango_courselabs"
   
   # course definition and handin files location  
   course = "czang-exp"
-  courseRoot = "/n/scratch/czang/f16/"
+  # courseRoot = "/n/scratch/czang/f16/"
+  courseRoot = "/mnt/autolab/"
   labs = [
     # same test with different images, to test multiple pool (per image) handling
     {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
