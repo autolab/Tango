@@ -222,6 +222,12 @@ class Ec2SSH:
         except boto.exception.EC2ResponseError:
             pass
 
+    def getInstanceByReservationId(self, reservationId):
+        for inst in self.connection.get_all_instances():
+            if inst.id == reservationId:
+                return inst.instances.pop()
+        return None
+
     #
     # VMMS API functions
     #
@@ -252,14 +258,25 @@ class Ec2SSH:
                     config.Config.DEFAULT_SECURITY_GROUP],
                 instance_type=ec2instance['instance_type'])
 
+            newInstance = self.getInstanceByReservationId(reservation.id)
+            if newInstance:
+                # Assign name to EC2 instance
+                self.connection.create_tags([newInstance.id], {"Name": instanceName})
+                self.log.info("new instance created %s" % newInstance)
+            else:
+                self.log.info("failed to find new instance for %s" % instanceName)
+                # Todo: should throw exception, etc.  But without full understanding
+                # of the overall code structure, don't do anything for now. XXXxxx???
+                return vm
+
             # Wait for instance to reach 'running' state
             state = -1
             start_time = time.time()
             while state is not config.Config.INSTANCE_RUNNING:
-
-                for inst in self.connection.get_all_instances():
-                    if inst.id == reservation.id:
-                        newInstance = inst.instances.pop()
+                newInstance = self.getInstanceByReservationId(reservation.id)
+                if not newInstance:  # XXXxxx??? again, need error handling
+                    self.log.info("failed to obtain status for %s" % instanceName)
+                    return vm
 
                 state = newInstance.state_code
                 self.log.debug(
@@ -283,9 +300,6 @@ class Ec2SSH:
             # Save domain and id ssigned by EC2 in vm object
             vm.domain_name = newInstance.ip_address
             vm.ec2_id = newInstance.id
-            # Assign name to EC2 instance
-            self.connection.create_tags(
-                [newInstance.id], {"Name": instanceName})
             self.log.debug("VM %s: %s" % (instanceName, newInstance))
             return vm
 
@@ -445,7 +459,7 @@ class Ec2SSH:
         """ destroyVM - Removes a VM from the system
         """
 
-        self.log.info("destroyVM: %s %s %s" % (vm.ec2_id, vm.name, vm.id))
+        self.log.info("destroyVM: %s %s" % (vm.ec2_id, vm.name))
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:

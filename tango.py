@@ -216,25 +216,61 @@ class TangoServer:
         effect is that also checks that each supported VMMS is actually
         running.
         """
+
+        # There are two cases this function is called: 1. Tango has a fresh start.
+        # Then we want to destroy all instances in Tango's name space.  2. Job
+        # Manager is restarted after a previous crash.  Then we want to destroy
+        # the "busy" instances prior to the crash and leave the "free" onces intact.
+
         self.log.debug("Received resetTango request.")
 
         try:
-            # For each supported VMM system, get the instances it knows about,
-            # and kill those in the current Tango name space.
+            # For each supported VMM system, get the instances it knows about
+            # in the current Tango name space and kill those not in free pools.
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
+
+                # Round up all instances in the free pools.
+                allFreeVMs = []
+                for key in self.preallocator.machines.keys():
+                    freePool = self.preallocator.getPool(key)["free"]
+                    for vmId in freePool:
+                        vmName = vobj.instanceName(vmId, key)
+                        allFreeVMs.append(vmName)
+                self.log.info("vms in all free pools: %s" % allFreeVMs)
+
+                # For each in Tango's name space, destroy the onces in free pool.
+                # AND remove it from Tango's internal bookkeeping.
                 vms = vobj.getVMs()
                 self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
-                namelist = []
+                destroyedList = []
+                removedList = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
-                        vobj.destroyVM(vm)
-                        # Need a consistent abstraction for a vm between
-                        # interfaces
-                        namelist.append(vm.name)
-                if namelist:
+
+                        # Todo: should have an one-call interface to destroy the
+                        # machine AND to keep the interval data consistent.
+                        if vm.name not in allFreeVMs:
+                            destroyedList.append(vm.name)
+                            vobj.destroyVM(vm)
+
+                            # also remove it from "total" set of the pool
+                            (prefix, vmId, poolName) = vm.name.split("-")
+                            machine = self.preallocator.machines.get(poolName)
+                            if not machine:  # the pool may not exist
+                                continue
+
+                            if int(vmId) in machine[0]:
+                                removedList.append(vm.name)
+                                machine[0].remove(int(vmId))
+                            self.preallocator.machines.set(poolName, machine)
+
+                if destroyedList:
                     self.log.warning("Killed these %s VMs on restart: %s" %
-                                (vmms_name, namelist))
+                                     (vmms_name, destroyedList))
+                if removedList:
+                    self.log.warning("Removed these %s VMs from their pools" %
+                                     (removedList))
 
             for _, job in self.jobQueue.liveJobs.iteritems():
                 if not job.isNotAssigned():
