@@ -459,6 +459,12 @@ class Ec2SSH:
         """ destroyVM - Removes a VM from the system
         """
 
+        # test if the instance still exists
+        reservations = self.connection.list_all_instances(instance_ids=[vm.ec2_id])
+        if not reservatons:
+          self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
+          return []
+
         self.log.info("destroyVM: %s %s" % (vm.ec2_id, vm.name))
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key
