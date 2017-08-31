@@ -18,7 +18,7 @@ startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
 # if either is None, then all student works are submitted.
-firstStudentNum = 5
+firstStudentNum = None
 totalStudents = 1
 
 for labIndex in cmdLine.args.indecies:
@@ -110,6 +110,7 @@ print "\nNow waiting for output files..."
 remainingFiles = list(outputFiles)
 numberRemaining = len(remainingFiles)
 loopDelay = 5
+badOutputFiles = []
 
 while True:
   time.sleep(loopDelay)
@@ -117,8 +118,13 @@ while True:
   finishedFiles = []
   for file in remainingFiles:
     if os.path.exists(file) and os.path.getmtime(file) > startTime:
-      print("Output %s is ready" % file)
       finishedFiles.append(file)
+      if "\"scores\":" not in open(file).read():
+        badOutputFiles.append(file)
+        print("BAD output %s" % file)
+        os.system("tail -5 %s" % file)
+      else:
+        print("Output %s is ready" % file)
 
   remainingFiles = set(remainingFiles) - set(finishedFiles)
   nFinished = numberRemaining - len(remainingFiles)
@@ -131,3 +137,8 @@ while True:
   if numberRemaining == 0:
     print "All output files are counted for :))"
     break
+
+if badOutputFiles:
+  print("Found %d bad output files" % len(badOutputFiles))
+  for f in badOutputFiles:
+    print("bad output: %s" % f)
