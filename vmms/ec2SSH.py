@@ -460,8 +460,8 @@ class Ec2SSH:
         """
 
         # test if the instance still exists
-        reservations = self.connection.list_all_instances(instance_ids=[vm.ec2_id])
-        if not reservatons:
+        reservations = self.connection.get_all_instances(instance_ids=[vm.ec2_id])
+        if not reservations:
           self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
           return []
 
