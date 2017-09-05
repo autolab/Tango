@@ -1,6 +1,6 @@
 import os, re, glob, datetime, time
 
-from util import Config
+from config_for_run_jobs import Config
 from util import Cmd
 from util import CommandLine
 from util import Lab

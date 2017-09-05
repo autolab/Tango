@@ -1,27 +1,5 @@
 import subprocess, os, argparse, glob, re
 
-class Config:
-  # tangoDir = "/root/autolab-oneclick/server/Tango"
-  tangoDir = "/mnt/charlene/Tango"
-  cliCmd = "python " + tangoDir + "/clients/tango-cli.py"
-  tangoHostPort = "host-port 8660"
-  tangoIP = ""
-  # output dir used by Tango for submissions
-  # tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
-  tangoFileRoot = "/mnt/charlene/tango_courselabs"
-  
-  # course definition and handin files location  
-  course = "czang-exp"
-  # courseRoot = "/n/scratch/czang/f16/"
-  courseRoot = "/n/scratch/czang/f16/"
-  labs = [
-    # same test with different images, to test multiple pool (per image) handling
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "newPool.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
-    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
-# end of class Config
-
 class CommandLine():
   def printLabs(self, name=None):
     print ("available tests:")
@@ -94,7 +72,7 @@ class Cmd:
       print "ERROR: Cannot find tango server IP"
       exit(-1)
 
-    self.basic = cfg.cliCmd
+    self.basic = "python " + cfg.tangoDir + "/clients/tango-cli.py"
     self.basic += " -s " + cfg.tangoIP + " -P 8600" + " -k test"
 
     print "CMD BASE:", self.basic
