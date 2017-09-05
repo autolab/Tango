@@ -4,6 +4,7 @@ from util import Config
 from util import Cmd
 from util import CommandLine
 from util import Lab
+import util
 
 # drive student submissions to Tango.  See ./util.py for preset configuratons.
 # the script finds course and labs at a specified location and submits work
@@ -12,7 +13,7 @@ from util import Lab
 
 cfg = Config()
 cmdLine = CommandLine(cfg)
-cmd = Cmd(cfg)
+cmd = Cmd(cfg, cmdLine)
 
 startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
@@ -26,11 +27,11 @@ for labIndex in cmdLine.args.indecies:
     print("lab index %d is out of range" % labIndex)
     exit(-1)
 
+# run list of labs in sequence given on command line
 for labIndex in cmdLine.args.indecies:
-  lab = Lab(cfg, labIndex)
+  lab = Lab(cfg, cmdLine, labIndex)
 
   students = []
-  student2fileFullPath = {}
   student2file = {}
 
   # get student handin files, the last submission for each student,
@@ -52,18 +53,25 @@ for labIndex in cmdLine.args.indecies:
     student2file[email] = studentFile
 
   # print the students and the indices
-  if False:
+  if cmdLine.args.list_students:
     i = 0
     for student in students:
-      print i, student
+      print i, student, student2file[student]
       i += 1
     exit()
 
-  # submit all student works or a given range, or given student list
+  # submit all student works or a given range, or given student list,
+  # or all failed students
   studentIndexList = []
   studentsToRun = []
-  if cmdLine.args.students:
-    for studentToRun in cmdLine.args.students:
+  studentList = cmdLine.args.students
+
+  # look for failures from output or from lab's handin (with "-H" option)
+  if cmdLine.args.re_run or cmdLine.args.failures:
+    studentList = util.getRerunList(cfg, lab)
+
+  if studentList:  # for -s, -r or -f option
+    for studentToRun in studentList:
       studentIndex = None
       nMatches = 0
       index = 0
@@ -84,12 +92,23 @@ for labIndex in cmdLine.args.indecies:
       totalStudents = len(students)
     studentIndexList = list(index for index in range (firstStudentNum, firstStudentNum + totalStudents))
 
+  # run students in a given order
+  studentIndexList.sort()
+  studentsToRun.sort()
 
-  print ("# Found %d students for lab %s" % (len(students), lab.name))
-  if studentsToRun:
-    print ("# Students submissions %s" % studentsToRun)
+  print ("# Found total %d student submissions for lab %s" % (len(students), lab.name))
+  if cmdLine.args.failures:
+    print ("# %d failed submissions from %s" % (len(studentIndexList), lab.outputFileQuery))
+    for index in studentIndexList:
+      print ("%3d: %s" % (index, students[index]))
+    exit()
+
+  if cmdLine.args.verbose:
+    print ("# Students submissions: %d" % len(studentIndexList))
+    for index in studentIndexList:
+      print ("%3d: %s" % (index, students[index]))
   else:
-    print ("# Students index starts at %d and total %d" % (firstStudentNum, totalStudents))
+    print ("# Students to run: %d" % (len(studentIndexList)))
 
   cmd.info()
   cmd.open(lab)
@@ -105,6 +124,10 @@ for labIndex in cmdLine.args.indecies:
     cmd.addJob(lab, student2file[students[i]])
     outputFiles.append(lab.outputDir + "/" + student2file[students[i]]["output"])
 # end of main loop "cmdLine.args.indecies"
+
+if cmdLine.args.dry_run:
+  print "\nDry run done"
+  exit()
 
 print "\nNow waiting for output files..."
 remainingFiles = list(outputFiles)
@@ -131,7 +154,7 @@ while True:
   print("%d jobs finished in the last %d seconds" % (nFinished, loopDelay))
   print("%d unfinished out of %d" % (len(remainingFiles), len(outputFiles)))
   now = time.mktime(datetime.datetime.now().timetuple())
-  print("%s has passed\n" % (str(datetime.timedelta(seconds = now - startTime))))
+  print("elapsed time: %s\n" % (str(datetime.timedelta(seconds = now - startTime))))
 
   numberRemaining = len(remainingFiles)
   if numberRemaining == 0:

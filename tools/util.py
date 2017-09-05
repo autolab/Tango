@@ -1,30 +1,26 @@
-import subprocess, os, argparse
+import subprocess, os, argparse, glob, re
 
 class Config:
   # tangoDir = "/root/autolab-oneclick/server/Tango"
-  tangoDir = "/nfs/autolab/pdl.cmu.edu/Tango"
+  tangoDir = "/mnt/charlene/Tango"
   cliCmd = "python " + tangoDir + "/clients/tango-cli.py"
-  tangoHostPort = "host-port 8600"
+  tangoHostPort = "host-port 8660"
   tangoIP = ""
   # output dir used by Tango for submissions
   # tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
-  tangoFileRoot = "/nfs/autolab/pdl.cmu.edu/tango_courselabs"
+  tangoFileRoot = "/mnt/charlene/tango_courselabs"
   
   # course definition and handin files location  
   course = "czang-exp"
   # courseRoot = "/n/scratch/czang/f16/"
-  courseRoot = "/mnt/autolab/"
+  courseRoot = "/n/scratch/czang/f16/"
   labs = [
     # same test with different images, to test multiple pool (per image) handling
     {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
     {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "newPool.img"},
     {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
     {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
-
-  # when "list failures" is requested, the failed tests are listed from the output dir
-  # for the course/lab, unless the following is true.  The the lab's handin from courseRoot
-  # is used.
-  examFailuresFromCourseRoot = False
+# end of class Config
 
 class CommandLine():
   def printLabs(self, name=None):
@@ -43,16 +39,25 @@ class CommandLine():
     parser.add_argument('indecies', metavar='index', type=int, nargs='+',
                         help="index of a test")
     parser.add_argument('-s', '--students', metavar='student', nargs='+',
-                        help="student email")
+                        help="student emails (can be partial)")
     parser.add_argument('-f', '--failures', action='store_true',
-                        help="list failures")
+                        help="exam failures")
     parser.add_argument('-r', '--re_run', action='store_true',
                         help="re-run failed jobs")
+    parser.add_argument('-H', '--handin_records', action='store_true',
+                        help="exam failures or re-run jobs from handin records")
+    parser.add_argument('-l', '--list_students', action='store_true',
+                        help="list student submissions")
+    parser.add_argument('-d', '--dry_run', action='store_true',
+                        help="dry_run")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="more info")
     self.args = parser.parse_args()
+# end of class CmdLine
 
 # represent attributes associated to a given lab
 class Lab:
-  def __init__(self, cfg, labIndex):
+  def __init__(self, cfg, cmdLine, labIndex):
     self.cfg = cfg
     self.name = cfg.labs[labIndex]["name"]
     self.handinSuffix = cfg.labs[labIndex]["handinSuffix"]
@@ -65,14 +70,19 @@ class Lab:
                                       "handin",
                                       "*" + self.handinSuffix])
     self.outputDir = None
-    if cfg.tangoFileRoot:
-      self.outputDir = "/".join([cfg.tangoFileRoot,
-                                      "test-" + self.courseLab,
-                                      "output"])
+    self.outputDir = "/".join([cfg.tangoFileRoot,
+                               "test-" + self.courseLab,
+                               "output"])
+    self.outputFileQuery = self.outputDir + "/*" + self.name + ".txt"
+    if cmdLine.args.handin_records:
+      self.outputFileQuery = self.courseLabDir + "/handin/*" + self.name + "_autograde.txt"
+    print "EXAM FAILURES from", self.outputFileQuery
+# end of class Lab
   
 class Cmd:
-  def __init__(self, cfg):
+  def __init__(self, cfg, cmdLine):
     self.cfg = cfg
+    self.cmdLine = cmdLine
     outBytes = subprocess.check_output(["ps", "-auxw"])
     for line in outBytes.decode("utf-8").split("\n"):
       if cfg.tangoHostPort in line:
@@ -91,8 +101,11 @@ class Cmd:
   #end of __init__
 
   def run(self, cmd):  # an internal util function
-    print "EXEC tango-cli", cmd
-    os.system(self.basic + cmd)
+    if self.cmdLine.args.dry_run:
+      print "DRY-RUN tango-cli", cmd
+    else:
+      print "EXEC tango-cli", cmd
+      os.system(self.basic + cmd)
     print "======================================="    
 
   def info(self):
@@ -118,3 +131,34 @@ class Cmd:
   def poll(self, lab, studentFile):
     myCmd = " --poll -l " + lab.courseLab
     self.run(myCmd + " --outputFile " + studentFile["output"])
+# end of class Cmd
+
+# =================== stand alone functions ======================
+
+# get student handin files or output files, assuming file names start with student email
+def getStudent2file(lab, fileQuery):
+  files = sorted(glob.glob(lab.outputFileQuery))  # files are sorted by student email
+  students = []
+  student2file = {}
+  student2version = {}
+
+  for f in files:
+    baseName = f.split("/").pop()
+    matchObj = re.match(r'(.*)_([0-9]+)_(.*)', baseName, re.M|re.I)
+    (email, version) = (matchObj.group(1), matchObj.group(2))
+    if email not in students:
+      students.append(email)
+    if email not in student2version or version > student2version[email]:
+      student2version[email] = version
+      student2file[email] = f
+  return (students, student2file)
+
+def getRerunList(cfg, lab):
+  (students, student2file) = getStudent2file(lab, lab.outputFileQuery)
+
+  failedStudents = []
+  for s in students:
+    if "\"scores\":" not in open(student2file[s]).read():
+      failedStudents.append(s)
+
+  return failedStudents
