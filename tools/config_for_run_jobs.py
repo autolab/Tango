@@ -23,7 +23,7 @@ class Config:
   # Range of student submissions to run (sorted by student emails)
   # If either is None, all student submissions are run, unless
   # -r, -f, or -s is given to run_jobs.
-  firstStudentNum = None # start from index 3
+  firstStudentNum = 3 # start from index 3 (set to None for all students)
   totalStudents = 1 # run one student
 
   # YOUR Tango container's root dir for submissions and output
