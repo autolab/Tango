@@ -18,10 +18,6 @@ cmd = Cmd(cfg, cmdLine)
 startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
-# if either is None, then all student works are submitted.
-firstStudentNum = None
-totalStudents = 1
-
 for labIndex in cmdLine.args.indecies:
   if labIndex >= len(cfg.labs):
     print("lab index %d is out of range" % labIndex)
@@ -65,6 +61,9 @@ for labIndex in cmdLine.args.indecies:
   studentIndexList = []
   studentsToRun = []
   studentList = cmdLine.args.students
+
+  firstStudentNum = cfg.firstStudentNum
+  totalStudents = cfg.totalStudents
 
   # look for failures from output or from lab's handin (with "-H" option)
   if cmdLine.args.re_run or cmdLine.args.failures:

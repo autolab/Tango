@@ -20,6 +20,12 @@ class Config:
     {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
     {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
 
+  # Range of student submissions to run (sorted by student emails)
+  # If either is None, all student submissions are run, unless
+  # -r, -f, or -s is given to run_jobs.
+  firstStudentNum = None # start from index 3
+  totalStudents = 1 # run one student
+
   # YOUR Tango container's root dir for submissions and output
   tangoFileRoot = "/mnt/charlene/tango_courselabs"
   
