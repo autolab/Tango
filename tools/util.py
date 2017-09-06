@@ -44,7 +44,7 @@ class Lab:
     self.courseLabDir = cfg.courseRoot + "/" + self.name
     self.makefile = self.courseLabDir + "/" + "autograde-Makefile"
     self.autogradeTar = self.courseLabDir + "/" + "autograde.tar"
-    self.handinFilesQuery = "/".join([self.courseLabDir,
+    self.handinFileQuery = "/".join([self.courseLabDir,
                                       "handin",
                                       "*" + self.handinSuffix])
     self.outputDir = None

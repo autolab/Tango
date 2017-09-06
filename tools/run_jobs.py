@@ -33,7 +33,7 @@ for labIndex in cmdLine.args.indecies:
   # get student handin files, the last submission for each student,
   # and make a map from email to useful attrbutes
   
-  for file in sorted(glob.glob(lab.handinFilesQuery)):
+  for file in sorted(glob.glob(lab.handinFileQuery)):
     baseName = file.split("/").pop()
     matchObj = re.match(r'(.*)_[0-9]+_(.*)', baseName, re.M|re.I)
     email = matchObj.group(1)
@@ -51,6 +51,8 @@ for labIndex in cmdLine.args.indecies:
   # print the students and the indices
   if cmdLine.args.list_students:
     i = 0
+    print ("# %d student handin for lab %s from %s" %
+           (len(student2file), lab.name, lab.handinFileQuery))
     for student in students:
       print i, student, student2file[student]
       i += 1
@@ -69,7 +71,7 @@ for labIndex in cmdLine.args.indecies:
   if cmdLine.args.re_run or cmdLine.args.failures:
     studentList = util.getRerunList(cfg, lab)
 
-  if studentList:  # for -s, -r or -f option
+  if studentList or cmdLine.args.re_run or cmdLine.args.failures:
     for studentToRun in studentList:
       studentIndex = None
       nMatches = 0
@@ -97,10 +99,11 @@ for labIndex in cmdLine.args.indecies:
 
   print ("# Found total %d student submissions for lab %s" % (len(students), lab.name))
   if cmdLine.args.failures:
-    print ("# %d failed submissions from %s" % (len(studentIndexList), lab.outputFileQuery))
+    print ("# %d failed submissions for lab %s from %s" %
+           (len(studentIndexList), lab.name, lab.outputFileQuery))
     for index in studentIndexList:
       print ("%3d: %s" % (index, students[index]))
-    exit()
+    continue  # move onto next lab
 
   if cmdLine.args.verbose:
     print ("# Students submissions: %d" % len(studentIndexList))
@@ -108,6 +111,10 @@ for labIndex in cmdLine.args.indecies:
       print ("%3d: %s" % (index, students[index]))
   else:
     print ("# Students to run: %d" % (len(studentIndexList)))
+
+  if len(studentIndexList) == 0:
+    print ("# No student submissions for lab %s" % lab.name)
+    continue  # move onto next lab
 
   cmd.info()
   cmd.open(lab)
@@ -118,7 +125,7 @@ for labIndex in cmdLine.args.indecies:
 
   # load and run student submission
   for i in studentIndexList:
-    print ("\n# Submit for %s @ %s" % (students[i], lab.name))
+    print ("\n# Submit %s for lab %s" % (students[i], lab.name))
     cmd.upload(lab, student2file[students[i]]["full"])
     cmd.addJob(lab, student2file[students[i]])
     outputFiles.append(lab.outputDir + "/" + student2file[students[i]]["output"])
@@ -128,13 +135,13 @@ if cmdLine.args.dry_run:
   print "\nDry run done"
   exit()
 
-print "\nNow waiting for output files..."
+print("\nNow waiting for %d output files..." % len(outputFiles))
 remainingFiles = list(outputFiles)
 numberRemaining = len(remainingFiles)
 loopDelay = 5
 badOutputFiles = []
 
-while True:
+while True and len(outputFiles) > 0:
   time.sleep(loopDelay)
 
   finishedFiles = []
@@ -161,6 +168,13 @@ while True:
     break
 
 if badOutputFiles:
-  print("Found %d bad output files" % len(badOutputFiles))
+  # not all bad files are really bad because the file copying may not
+  # be done when the error is reported, particularly if the file is long
+  realBadFiles = []
   for f in badOutputFiles:
+    if "\"scores\":" not in open(f).read():
+      realBadFiles.append(f)
+
+  print("Found %d bad output files" % len(realBadFiles))
+  for f in realBadFiles:
     print("bad output: %s" % f)

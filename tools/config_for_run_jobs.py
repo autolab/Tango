@@ -9,9 +9,9 @@ class Config:
   # to the least-likely.
 
   # YOUR course name
-  course = "czang-exp"
+  course = "your-name-experiment"
   
-  # YOUR root dir for course/lab definitions and handin
+  # YOUR root dir for course/lab definitions and handin (student submissions)
   courseRoot = "/n/scratch/czang/f16/"
 
   # YOUR lab definitions. The index of the lab is given to run_job.py
@@ -27,10 +27,10 @@ class Config:
   totalStudents = 1 # run one student
 
   # YOUR Tango container's root dir for submissions and output
-  tangoFileRoot = "/mnt/charlene/tango_courselabs"
+  tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
   
-  # YOUR Tango repo root (cloned from Autolab github)
-  tangoDir = "/mnt/charlene/Tango"
+  # YOUR Tango repo root (cloned from xyzisinus' Autolab github)
+  tangoDir = "/h/myname/Tango"
 
   # Sometimes multiple experimental Tango containers are run on one machine.
   # They are identified by different ports.
