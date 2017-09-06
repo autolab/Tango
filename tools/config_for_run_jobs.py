@@ -28,7 +28,7 @@ class Config:
 
   # YOUR Tango container's root dir for submissions and output
   tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
-  
+
   # YOUR Tango repo root (cloned from xyzisinus' Autolab github)
   tangoDir = "/h/myname/Tango"
 
