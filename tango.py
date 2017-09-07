@@ -52,6 +52,13 @@ class TangoServer:
 
     def __init__(self):
         self.daemon = True
+
+        # init logging early, or some logging will be lost
+        logging.basicConfig(
+            filename=Config.LOGFILE,
+            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+            level=Config.LOGLEVEL,
+        )
         
         vmms = None
         if Config.VMMS_NAME == "tashiSSH":
@@ -75,11 +82,6 @@ class TangoServer:
             # be initiated separately
             JobManager(self.jobQueue).start()
         
-        logging.basicConfig(
-            filename=Config.LOGFILE,
-            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-            level=Config.LOGLEVEL,
-        )
         self.start_time = time.time()
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")

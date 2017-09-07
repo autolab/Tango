@@ -153,6 +153,7 @@ class Config:
 
     EC2_REGION = ''
     EC2_USER_NAME = ''
+    EC2_AUTO_SCALING_GROUP_NAME = None  # or the name of the auto scaling group
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''
