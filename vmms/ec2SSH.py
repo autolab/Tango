@@ -99,6 +99,11 @@ class Ec2SSH:
         instance - Instance object that stores information about the
         VM created
         """
+
+        self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
+
+        self.log.info("init Ec2SSH")
+
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
@@ -107,7 +112,6 @@ class Ec2SSH:
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
             self.useDefaultKeyPair = True
-        self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
 
         # Use boto3 to read images.  Find the "Name" tag and use it as key to
         # build a map from "Name tag" to boto3's image structure.
@@ -140,6 +144,23 @@ class Ec2SSH:
         ignoredAmis = list(set(imageAmis) - set(taggedAmis))
         if (len(ignoredAmis) > 0):
             self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
+
+        # preliminary code for auto scaling group (configured by EC2_AUTO_SCALING_GROUP_NAME)
+        # Here we get the pointer to the group, if any.
+        # When an instance is created, it's attached to the group.
+        # When an instance is terminated, it's detached.
+        self.asg = None
+        self.auto_scaling_group = None
+        if config.Config.EC2_AUTO_SCALING_GROUP_NAME:
+            self.asg = boto3.client("autoscaling", config.Config.EC2_REGION)
+            groups = self.asg.describe_auto_scaling_groups(AutoScalingGroupNames=[config.Config.EC2_AUTO_SCALING_GROUP_NAME])
+            if len(groups['AutoScalingGroups']) == 1:
+                self.auto_scaling_group = groups['AutoScalingGroups'][0]
+                self.log.info("Use aws auto scaling group %s" % config.Config.EC2_AUTO_SCALING_GROUP_NAME)
+
+                instances = self.asg.describe_auto_scaling_instances()['AutoScalingInstances']
+            else:
+                self.log.info("Cannot find auto scaling group %s" % config.Config.EC2_AUTO_SCALING_GROUP_NAME)
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -232,15 +253,16 @@ class Ec2SSH:
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM - Tell EC2 to create a new VM instance.
+        """ initializeVM - Tell EC2 to create a new VM instance.  return None on failure
 
         Returns a boto.ec2.instance.Instance object.
         """
         # Create the instance and obtain the reservation
+        newInstance = None
         try:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
-            self.log.info("initiliazeVM: %s %s" % (instanceName, str(ec2instance)))
+            self.log.info("initializeVM: %s %s" % (instanceName, str(ec2instance)))
             # ensure that security group exists
             self.createSecurityGroup()
             if self.useDefaultKeyPair:
@@ -250,44 +272,46 @@ class Ec2SSH:
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
                 self.createKeyPair()
 
-
             reservation = self.connection.run_instances(
                 ec2instance['ami'],
                 key_name=self.key_pair_name,
                 security_groups=[
                     config.Config.DEFAULT_SECURITY_GROUP],
                 instance_type=ec2instance['instance_type'])
-
             newInstance = self.getInstanceByReservationId(reservation.id)
             if newInstance:
                 # Assign name to EC2 instance
                 self.connection.create_tags([newInstance.id], {"Name": instanceName})
                 self.log.info("new instance created %s" % newInstance)
             else:
-                self.log.info("failed to find new instance for %s" % instanceName)
-                # Todo: should throw exception, etc.  But without full understanding
-                # of the overall code structure, don't do anything for now. XXXxxx???
-                return vm
+                raise ValueError("cannot find new instance for %s" % instanceName)
 
             # Wait for instance to reach 'running' state
-            state = -1
             start_time = time.time()
-            while state is not config.Config.INSTANCE_RUNNING:
-                newInstance = self.getInstanceByReservationId(reservation.id)
-                if not newInstance:  # XXXxxx??? again, need error handling
-                    self.log.info("failed to obtain status for %s" % instanceName)
-                    return vm
-
-                state = newInstance.state_code
-                self.log.debug(
-                    "VM %s: Waiting to reach 'running' state. Current state: %s (%d)" %
-                    (instanceName, newInstance.state, state))
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            while True:
                 elapsed_secs = time.time() - start_time
-                if (elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT):
-                    self.log.debug(
-                        "VM %s: Did not reach 'running' state before timeout period of %d" %
-                        (instanceName, config.Config.TIMER_POLL_INTERVAL))
+
+                newInstance = self.getInstanceByReservationId(reservation.id)
+                if not newInstance:
+                    raise ValueError("cannot obtain aws instance for %s" % instanceName)
+
+                if newInstance.state == "pending":
+                    if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
+                        raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
+                                         (instanceName, config.Config.TIMER_POLL_INTERVAL))
+
+                    self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
+                    time.sleep(config.Config.TIMER_POLL_INTERVAL)
+                    continue
+
+                if newInstance.state == "running":
+                    self.log.debug("VM %s: has reached 'running' state in %d seconds" %
+                                   (instanceName, elapsed_secs))
+                    break
+
+                raise ValueError("VM %s: quit waiting when seeing state '%s' after %d seconds" %
+                                 (instanceName, newInstance.state, elapsed_secs))
+            # end of while loop
 
             self.log.info(
                 "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
@@ -297,6 +321,11 @@ class Ec2SSH:
                  newInstance.public_dns_name,
                  newInstance.ip_address))
 
+            if self.auto_scaling_group:
+                self.asg.attach_instances(InstanceIds=[newInstance.id],
+                                          AutoScalingGroupName=config.Config.EC2_AUTO_SCALING_GROUP_NAME)
+                self.log.info("attach new instance %s to auto scaling group" % newInstance.id)
+
             # Save domain and id ssigned by EC2 in vm object
             vm.domain_name = newInstance.ip_address
             vm.ec2_id = newInstance.id
@@ -305,7 +334,8 @@ class Ec2SSH:
 
         except Exception as e:
             self.log.debug("initializeVM Failed: %s" % e)
-
+            if newInstance:
+                self.connection.terminate_instances(instance_ids=[newInstance.id])
             return None
 
     def waitVM(self, vm, max_secs):
@@ -462,14 +492,27 @@ class Ec2SSH:
         # test if the instance still exists
         reservations = self.connection.get_all_instances(instance_ids=[vm.ec2_id])
         if not reservations:
-          self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
-          return []
+            self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
+            return []
 
         self.log.info("destroyVM: %s %s" % (vm.ec2_id, vm.name))
+
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
+
+        if self.auto_scaling_group:
+            response = self.asg.describe_auto_scaling_instances(InstanceIds=[vm.ec2_id],
+                                                                MaxRecords=1)
+            if len(response['AutoScalingInstances']) == 1:
+                self.asg.detach_instances(InstanceIds=[vm.ec2_id],
+                                          AutoScalingGroupName=config.Config.EC2_AUTO_SCALING_GROUP_NAME,
+                                          ShouldDecrementDesiredCapacity=True)
+                self.log.info("detach instance %s %s from auto scaling group" % (vm.ec2_id, vm.name))
+            else:
+                self.log.info("instance %s %s not in auto scaling group" % (vm.ec2_id, vm.name))
+
         return ret
 
     def safeDestroyVM(self, vm):

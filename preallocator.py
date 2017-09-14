@@ -42,10 +42,27 @@ class Preallocator:
         else:
             return 0
 
+    def decrementPoolSize(self, vm):
+        """
+        Called by worker to shrink the pool, after returning a vm to free pool
+        """
+
+        if not (Config.POOL_SIZE_LOW_WATER_MARK and vm.name in self.machines.keys()):
+            return
+
+        delta = self.freePoolSize(vm.name) - Config.POOL_SIZE_LOW_WATER_MARK
+        if delta > 0:
+            self.log.info("decrementPoolSize: remove %d vms from pool %s" % (delta, vm.name))
+            for i in range(delta):
+                threading.Thread(target=self.__destroy(vm)).start()
+
     def incrementPoolSize(self, vm, delta):
         """
         Called by jobQueue to create the pool and allcoate given number of vms
         """
+
+        if not delta:  # POOL_ALLOC_INCREMENT may not be defined in Config
+            delta = 1
 
         self.lock.acquire()
         if vm.name not in self.machines.keys():
@@ -142,15 +159,41 @@ class Preallocator:
         self.machines.set(vm.name, machine)
         self.lock.release()
 
+    # Note: This function is called from removeVM() to handle the case when a vm
+    # is in free pool.  In theory this should never happen but we want to ensure
+    # that.  To solve the problem cleanly, preallocator should provide ONE primitive
+    # to add/remove a vm from both total and free pools, instead of two disjoint ones.
+    def removeFromFreePool(self, vm):
+        dieVM = None
+        self.lock.acquire()
+        size = self.machines.get(vm.name)[1].qsize()
+        self.log.info("removeFromFreePool: %s in pool %s" % (vm.id, vm.name))
+        for i in range(size):  # go through free pool
+            vm = self.machines.get(vm.name)[1].get_nowait()
+            # put it back into free pool, if not our vm
+            if vm.id != id:
+                self.machines.get(vm.name)[1].put(vm)
+            else:
+                self.log.info("removeFromFreePool: found %s in pool %s" % (vm.id, vm.name))
+                # don't put this particular vm back to free pool, that is removal
+        self.lock.release()
+
     def removeVM(self, vm):
         """ removeVM - remove a particular VM instance from the pool
         """
         self.lock.acquire()
         machine = self.machines.get(vm.name)
+        if vm.id not in machine[0]:
+            self.log.error("removeVM: %s NOT found in pool" % (vm.id, vm.name))
+            self.lock.release()
+            return
+
         self.log.info("removeVM: %s" % vm.id)
         machine[0].remove(vm.id)
         self.machines.set(vm.name, machine)
         self.lock.release()
+
+        self.removeFromFreePool(vm)  # also remove from free pool, just in case
 
     def _getNextID(self):
         """ _getNextID - returns next ID to be used for a preallocated
@@ -181,7 +224,10 @@ class Preallocator:
             newVM = copy.deepcopy(vm)
             newVM.id = self._getNextID()
             self.log.debug("__create|calling initializeVM")
-            vmms.initializeVM(newVM)
+            ret = vmms.initializeVM(newVM)
+            if not ret:    # ret is None when fails
+                self.log.debug("__create|failed initializeVM")
+                continue
             self.log.debug("__create|done with initializeVM")
             time.sleep(Config.CREATEVM_SECS)
 
@@ -204,7 +250,7 @@ class Preallocator:
         self.lock.release()
 
         if dieVM:
-            self.log.info("__destroy: %s" % vm.id)
+            self.log.info("__destroy: %s" % dieVM.id)
             self.removeVM(dieVM)
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(dieVM)
@@ -219,7 +265,10 @@ class Preallocator:
         newVM.id = self._getNextID()
 
         self.log.info("createVM|calling initializeVM")
-        vmms.initializeVM(newVM)
+        ret = vmms.initializeVM(newVM)
+        if not ret:
+            self.log.debug("createVM|failed initializeVM")
+            return
         self.log.info("createVM|done with initializeVM %s" % newVM.id)
 
         self.addVM(newVM)
@@ -240,9 +289,6 @@ class Preallocator:
         self.lock.acquire()
         size = self.machines.get(vmName)[1].qsize()
         self.log.info("destroyVM: free:total pool %d:%d" % (size, len(self.machines.get(vmName)[0])))
-        # xxxXXX??? the following code is questionable: It requires that
-        # all vms are free.  Otherwise it doesn't do anything.  Is this desired
-        # behavior?
         if (size == len(self.machines.get(vmName)[0])):
             for i in range(size):
                 vm = self.machines.get(vmName)[1].get_nowait()

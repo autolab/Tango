@@ -52,6 +52,7 @@ class Worker(threading.Thread):
             self.vmms.safeDestroyVM(self.job.vm)
         elif return_vm:
             self.preallocator.freeVM(self.job.vm)
+            self.preallocator.decrementPoolSize(self.job.vm)  # may reduce size of pool
         else:
             self.vmms.safeDestroyVM(self.job.vm)
             if replace_vm:
