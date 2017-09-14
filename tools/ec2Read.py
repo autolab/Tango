@@ -23,6 +23,7 @@ def listInstances():
   for vm in vms:
     print "vm", vm.name
   print "list instances", len(vms)
+  print "pools", ec2.img2ami.keys()
   for key in server.preallocator.machines.keys():
     pool = server.preallocator.getPool(key)
     print "pool", key, pool["total"], pool["free"]
@@ -33,6 +34,14 @@ def createInstances(num):
     print "creating", num, "for pool", poolName
     vm = TangoMachine(vmms="ec2SSH", image=imageName)
     server.preallocVM(vm, num)
+
+def shrinkPools():
+  for imageName in pools:
+    (poolName, ext) = os.path.splitext(imageName)
+    vm = TangoMachine(vmms="ec2SSH", image=imageName)
+    vm.name = poolName
+    print "shrink pool", vm.name
+    server.preallocator.decrementPoolSize(vm)
 
 def destroyRedisPools():
   for key in server.preallocator.machines.keys():
@@ -53,11 +62,15 @@ ec2 = server.preallocator.vmms["ec2SSH"]
 pools = ec2.img2ami
 
 listInstances()
+exit()
 destroyInstances()
 destroyRedisPools()
 createInstances(2)
+shrinkPools()
+exit()
+
 allocateVMs()
+exit()
 server.resetTango(server.preallocator.vmms)
 listInstances()
 
-exit()
