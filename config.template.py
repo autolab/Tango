@@ -106,10 +106,13 @@ class Config:
     CREATEVM_SECS = 1
 
     # Default vm pool size
-    POOL_SIZE = 2
+    POOL_SIZE = 10
+
+    # vm pool reserve size.  If set, free pool size is maintained at the level.
+    POOL_SIZE_LOW_WATER_MARK = None  # optional, can be None
 
     # Default increment step when enlarging vm pool
-    POOL_ALLOC_INCREMENT = 2
+    POOL_ALLOC_INCREMENT = 2  # can be None, which is treated as 1
 
     # Optionally log finer-grained timing information
     LOG_TIMING = False
