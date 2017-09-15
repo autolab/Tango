@@ -151,12 +151,14 @@ class Ec2SSH:
         # When an instance is terminated, it's detached.
         self.asg = None
         self.auto_scaling_group = None
-        if config.Config.EC2_AUTO_SCALING_GROUP_NAME:
+        self.auto_scaling_group_name = None
+        if hasattr(config.Config, 'EC2_AUTO_SCALING_GROUP_NAME') and config.Config.EC2_AUTO_SCALING_GROUP_NAME:
             self.asg = boto3.client("autoscaling", config.Config.EC2_REGION)
             groups = self.asg.describe_auto_scaling_groups(AutoScalingGroupNames=[config.Config.EC2_AUTO_SCALING_GROUP_NAME])
             if len(groups['AutoScalingGroups']) == 1:
                 self.auto_scaling_group = groups['AutoScalingGroups'][0]
-                self.log.info("Use aws auto scaling group %s" % config.Config.EC2_AUTO_SCALING_GROUP_NAME)
+                self.auto_scaling_group_name = config.Config.EC2_AUTO_SCALING_GROUP_NAME
+                self.log.info("Use aws auto scaling group %s" % self.auto_scaling_group_name)
 
                 instances = self.asg.describe_auto_scaling_instances()['AutoScalingInstances']
             else:
@@ -323,7 +325,7 @@ class Ec2SSH:
 
             if self.auto_scaling_group:
                 self.asg.attach_instances(InstanceIds=[newInstance.id],
-                                          AutoScalingGroupName=config.Config.EC2_AUTO_SCALING_GROUP_NAME)
+                                          AutoScalingGroupName=self.auto_scaling_group_name)
                 self.log.info("attach new instance %s to auto scaling group" % newInstance.id)
 
             # Save domain and id ssigned by EC2 in vm object
@@ -507,7 +509,7 @@ class Ec2SSH:
                                                                 MaxRecords=1)
             if len(response['AutoScalingInstances']) == 1:
                 self.asg.detach_instances(InstanceIds=[vm.ec2_id],
-                                          AutoScalingGroupName=config.Config.EC2_AUTO_SCALING_GROUP_NAME,
+                                          AutoScalingGroupName=self.auto_scaling_group_name,
                                           ShouldDecrementDesiredCapacity=True)
                 self.log.info("detach instance %s %s from auto scaling group" % (vm.ec2_id, vm.name))
             else:

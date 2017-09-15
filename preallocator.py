@@ -47,7 +47,8 @@ class Preallocator:
         Called by worker to shrink the pool, after returning a vm to free pool
         """
 
-        if not (Config.POOL_SIZE_LOW_WATER_MARK and vm.name in self.machines.keys()):
+        if not (hasattr(Config, 'POOL_SIZE_LOW_WATER_MARK') and
+                Config.POOL_SIZE_LOW_WATER_MARK and vm.name in self.machines.keys()):
             return
 
         delta = self.freePoolSize(vm.name) - Config.POOL_SIZE_LOW_WATER_MARK
@@ -60,9 +61,6 @@ class Preallocator:
         """
         Called by jobQueue to create the pool and allcoate given number of vms
         """
-
-        if not delta:  # POOL_ALLOC_INCREMENT may not be defined in Config
-            delta = 1
 
         self.lock.acquire()
         if vm.name not in self.machines.keys():

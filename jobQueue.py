@@ -212,7 +212,10 @@ class JobQueue:
             # the limit for pool is not reached yet
             if self.preallocator.freePoolSize(job.vm.name) == 0 and \
                 self.preallocator.poolSize(job.vm.name) < Config.POOL_SIZE:
-                self.preallocator.incrementPoolSize(job.vm, Config.POOL_ALLOC_INCREMENT)
+                increment = 1
+                if hasattr(Config, 'POOL_ALLOC_INCREMENT') and Config.POOL_ALLOC_INCREMENT:
+                    increment = Config.POOL_ALLOC_INCREMENT
+                self.preallocator.incrementPoolSize(job.vm, increment)
 
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
