@@ -109,7 +109,7 @@ class Config:
     POOL_SIZE = 10
 
     # vm pool reserve size.  If set, free pool size is maintained at the level.
-    POOL_SIZE_LOW_WATER_MARK = None  # optional, can be None
+    POOL_SIZE_LOW_WATER_MARK = 5  # optional, can be None
 
     # Default increment step when enlarging vm pool
     POOL_ALLOC_INCREMENT = 2  # can be None, which is treated as 1
