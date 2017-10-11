@@ -369,11 +369,11 @@ class TangoREST:
             if (int(deadJobs) == 0):
                 jobs = self.tango.getJobs(0)
                 self.log.debug(
-                    "Retrieved live jobs (deadJobs = %s)" % deadJobs)
+                    "Retrieved %d live jobs (deadJobs = %s)" % (len(jobs), deadJobs))
             elif (int(deadJobs) == 1):
                 jobs = self.tango.getJobs(-1)
                 self.log.debug(
-                    "Retrieved dead jobs (deadJobs = %s)" % deadJobs)
+                    "Retrieved %d dead jobs (deadJobs = %s)" % (len(jobs), deadJobs))
             result['jobs'] = list()
             for job in jobs:
                 result['jobs'].append(self.convertTangoJobObj(job))

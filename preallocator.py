@@ -48,7 +48,7 @@ class Preallocator:
         """
 
         if not (hasattr(Config, 'POOL_SIZE_LOW_WATER_MARK') and
-                Config.POOL_SIZE_LOW_WATER_MARK and vm.name in self.machines.keys()):
+                Config.POOL_SIZE_LOW_WATER_MARK >= 0 and vm.name in self.machines.keys()):
             return
 
         delta = self.freePoolSize(vm.name) - Config.POOL_SIZE_LOW_WATER_MARK
