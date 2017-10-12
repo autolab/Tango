@@ -15,6 +15,11 @@ cfg = Config()
 cmdLine = CommandLine(cfg)
 cmd = Cmd(cfg, cmdLine)
 
+if cmdLine.args.jobs:
+  cmd.jobs()
+  exit()
+
+
 startTime = time.mktime(datetime.datetime.now().timetuple())
 outputFiles = []
 
@@ -140,22 +145,26 @@ remainingFiles = list(outputFiles)
 numberRemaining = len(remainingFiles)
 loopDelay = 5
 badOutputFiles = []
+justFinishedFiles = []
 
 while True and len(outputFiles) > 0:
   time.sleep(loopDelay)
 
-  finishedFiles = []
+  # if we check the output file for scores as soon as it shows up,
+  # the file may not fulled copied.  So we check the files found in
+  # the last round.
+  for file in justFinishedFiles:
+    if "\"scores\":" not in open(file).read():
+      badOutputFiles.append(file)
+      print("output missing scores: %s" % file)
+    else:
+      print("Output ready: %s" % file)
+
+  justFinishedFiles = []
   for file in remainingFiles:
     if os.path.exists(file) and os.path.getmtime(file) > startTime:
-      finishedFiles.append(file)
-      if "\"scores\":" not in open(file).read():
-        badOutputFiles.append(file)
-        print("BAD output %s" % file)
-        os.system("tail -5 %s" % file)
-      else:
-        print("Output %s is ready" % file)
-
-  remainingFiles = set(remainingFiles) - set(finishedFiles)
+      justFinishedFiles.append(file)
+  remainingFiles = set(remainingFiles) - set(justFinishedFiles)
   nFinished = numberRemaining - len(remainingFiles)
   print("%d jobs finished in the last %d seconds" % (nFinished, loopDelay))
   print("%d unfinished out of %d" % (len(remainingFiles), len(outputFiles)))

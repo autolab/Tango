@@ -1,4 +1,4 @@
-import subprocess, os, argparse, glob, re
+import subprocess, os, argparse, glob, re, json
 
 class CommandLine():
   def printLabs(self, name=None):
@@ -26,6 +26,8 @@ class CommandLine():
                         help="exam failures or re-run jobs from handin records")
     parser.add_argument('-l', '--list_students', action='store_true',
                         help="list student submissions")
+    parser.add_argument('-j', '--jobs', action='store_true',
+                        help="list all jobs (test index ignored)")
     parser.add_argument('-d', '--dry_run', action='store_true',
                         help="dry_run")
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -84,7 +86,11 @@ class Cmd:
     else:
       print "EXEC tango-cli", cmd
       os.system(self.basic + cmd)
-    print "======================================="    
+    print "======================================="
+
+  def runAndOutput(self, cmd):
+    print "EXEC-CAPTURE tango-cli", cmd
+    return os.popen(self.basic + cmd).read()
 
   def info(self):
     self.run(" --info")
@@ -109,6 +115,18 @@ class Cmd:
   def poll(self, lab, studentFile):
     myCmd = " --poll -l " + lab.courseLab
     self.run(myCmd + " --outputFile " + studentFile["output"])
+
+  def jobs(self):
+    result = json.loads(self.runAndOutput(" --jobs ").splitlines()[1])
+    nJobs = len(result["jobs"])
+    print "Waiting/running jobs:", nJobs
+    print json.dumps(result, indent=2, sort_keys=True)
+    print "======================================="
+
+    result = json.loads(self.runAndOutput(" --jobs --deadJobs 1 ").splitlines()[1])
+    nJobs = len(result["jobs"])
+    print "Completed jobs:", nJobs
+    print json.dumps(result, indent=2, sort_keys=True)
 # end of class Cmd
 
 # =================== stand alone functions ======================
