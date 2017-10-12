@@ -125,26 +125,47 @@ class Preallocator:
 
         return vm
 
+    def addToFreePool(self, vm):
+        """ addToFreePool - Returns a VM instance to the free list
+        """
+
+        self.lock.acquire()
+        machine = self.machines.get(vm.name)
+        self.log.info("addToFreePool: add %s to free pool" % vm.id)
+        machine[1].put(vm)
+        self.machines.set(vm.name, machine)
+        self.lock.release()
+
     def freeVM(self, vm):
         """ freeVM - Returns a VM instance to the free list
         """
         # Sanity check: Return a VM to the free list only if it is
         # still a member of the pool.
         not_found = False
+        should_destroy = False
         self.lock.acquire()
         if vm and vm.id in self.machines.get(vm.name)[0]:
-            machine = self.machines.get(vm.name)
-            self.log.info("freeVM: return %s to free pool" % vm.id)
-            machine[1].put(vm)
-            self.machines.set(vm.name, machine)
+            if (hasattr(Config, 'POOL_SIZE_LOW_WATER_MARK') and
+                Config.POOL_SIZE_LOW_WATER_MARK >= 0 and
+                vm.name in self.machines.keys() and
+                self.freePoolSize(vm.name) >= Config.POOL_SIZE_LOW_WATER_MARK):
+                self.log.info("freeVM: over low water mark. will destroy %s" % vm.id)
+                should_destroy = True
+            else:
+                machine = self.machines.get(vm.name)
+                self.log.info("freeVM: return %s to free pool" % vm.id)
+                machine[1].put(vm)
+                self.machines.set(vm.name, machine)
         else:
+            self.log.info("freeVM: not found in pool %s.  will destroy %s" % (vm.name, vm.id))
             not_found = True
         self.lock.release()
 
         # The VM is no longer in the pool.
-        if not_found:
+        if not_found or should_destroy:
             self.log.info("freeVM: will destroy %s" % vm.id)
             vmms = self.vmms[vm.vmms]
+            self.removeVM(vm)
             vmms.safeDestroyVM(vm)
 
     def addVM(self, vm):
@@ -230,7 +251,7 @@ class Preallocator:
             time.sleep(Config.CREATEVM_SECS)
 
             self.addVM(newVM)
-            self.freeVM(newVM)
+            self.addToFreePool(newVM)
             self.log.debug("__create: Added vm %s to pool %s " %
                            (newVM.id, newVM.name))
 
@@ -270,7 +291,7 @@ class Preallocator:
         self.log.info("createVM|done with initializeVM %s" % newVM.id)
 
         self.addVM(newVM)
-        self.freeVM(newVM)
+        self.addToFreePool(newVM)
         self.log.debug("createVM: Added vm %s to pool %s" %
                        (newVM.id, newVM.name))
 
