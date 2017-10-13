@@ -22,14 +22,17 @@ def destroyInstances():
 
 def listInstances():
   vms = ec2.getVMs()
-  print "aws instances"
-  for vm in vms:
+  print "aws instances", len(vms)
+  for vm in sorted(vms, key=lambda x: x.name):
     print "vm", vm.name
-  print "list instances", len(vms)
   print "pools", ec2.img2ami.keys()
   for key in server.preallocator.machines.keys():
     pool = server.preallocator.getPool(key)
-    print "pool", key, pool["total"], pool["free"]
+    totalPool = pool["total"]
+    freePool = pool["free"]
+    totalPool.sort()
+    freePool.sort()
+    print "pool", key, "total", len(totalPool), totalPool, freePool
 
 def createInstances(num):
   for imageName in pools:
