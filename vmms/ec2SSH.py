@@ -280,6 +280,11 @@ class Ec2SSH:
                 security_groups=[
                     config.Config.DEFAULT_SECURITY_GROUP],
                 instance_type=ec2instance['instance_type'])
+
+            # Sleep for a while to prevent random transient errors observed
+            # when the instance is not available yet
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+
             newInstance = self.getInstanceByReservationId(reservation.id)
             if newInstance:
                 # Assign name to EC2 instance

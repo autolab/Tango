@@ -10,9 +10,13 @@ from config import Config
 redisConnection = None
 
 
-def getRedisConnection():
+def getRedisConnection(connection=None):
     global redisConnection
     if redisConnection is None:
+        if connection:
+            redisConnection = connection
+            return redisConnection
+
         redisConnection = redis.StrictRedis(
             host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
 
