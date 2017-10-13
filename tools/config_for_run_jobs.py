@@ -38,5 +38,10 @@ class Config:
 
   # IP of the tango container is usually computed automatically
   tangoIP = ""
-  
+
+  # Redis port.  Sometimes we have two redis running, each support a Tango
+  # In such case a different forwarding port is assigned to it.
+  # Note: This variable is used by ec2Read.py only.
+  redisPort = 6379  # standard
+
 # end of class Config

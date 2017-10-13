@@ -6,6 +6,9 @@ from tangoObjects import TangoQueue
 from tangoObjects import TangoMachine
 from tango import TangoServer
 from config import Config
+import tangoObjects
+import config_for_run_jobs
+import redis
 
 # test vmms.ec2SSH's image extraction code, etc
 # also serve as a template of accessing the ec2SSH vmms
@@ -56,6 +59,15 @@ def allocateVMs():
     total = server.preallocator.getPool(key)["total"]
     free = server.preallocator.getPool(key)["free"]
     print "after allocation", key, total, free
+
+
+# When a host has two Tango containers (for experiment), there are two
+# redis servers, too.  They differ by the forwarding port number, which
+# is defined in config_for_run_jobs.py.  To select the redis server,
+# We get the connection here and pass it into tangoObjects
+redisConnection = redis.StrictRedis(
+  host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisPort, db=0)
+tangoObjects.getRedisConnection(connection=redisConnection)
 
 server = TangoServer()
 ec2 = server.preallocator.vmms["ec2SSH"]
