@@ -9,7 +9,7 @@ from config import Config
 
 redisConnection = None
 
-
+# Pass in an existing connection to redis, sometimes necessary for testing.
 def getRedisConnection(connection=None):
     global redisConnection
     if redisConnection is None:
