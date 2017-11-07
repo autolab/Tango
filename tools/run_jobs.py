@@ -172,7 +172,7 @@ while True and len(outputFiles) > 0:
   print("elapsed time: %s\n" % (str(datetime.timedelta(seconds = now - startTime))))
 
   numberRemaining = len(remainingFiles)
-  if numberRemaining == 0:
+  if numberRemaining == 0 and not justFinishedFiles:
     print "All output files are counted for :))"
     break
 
