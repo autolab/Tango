@@ -46,14 +46,17 @@ class Lab:
     self.courseLabDir = cfg.courseRoot + "/" + self.name
     self.makefile = self.courseLabDir + "/" + "autograde-Makefile"
     self.autogradeTar = self.courseLabDir + "/" + "autograde.tar"
-    self.handinFileQuery = "/".join([self.courseLabDir,
-                                      "handin",
-                                      "*" + self.handinSuffix])
-    self.outputDir = None
+
+    self.handinDir = "/".join([self.courseLabDir, "handin"])
+    self.handinFileQuery = "/".join([self.handinDir, "*" + self.handinSuffix])
+    self.handinOutputFileQuery = "/".join([self.handinDir, "*_autograde.txt"])
+    self.handinOutputFileSuffix = "_" + self.name + "_autograde.txt"
+
     self.outputDir = "/".join([cfg.tangoFileRoot,
                                "test-" + self.courseLab,
                                "output"])
     self.outputFileQuery = self.outputDir + "/*" + self.name + ".txt"
+
     if cmdLine.args.handin_records:
       self.outputFileQuery = self.courseLabDir + "/handin/*" + self.name + "_autograde.txt"
     print "EXAM FAILURES from", self.outputFileQuery
@@ -158,3 +161,6 @@ def getRerunList(cfg, lab):
       failedStudents.append(s)
 
   return failedStudents
+
+def outputOK(file):
+  return True if "\"scores\":" in open(file).read() else False

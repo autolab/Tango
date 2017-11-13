@@ -37,21 +37,72 @@ for labIndex in cmdLine.args.indecies:
 
   # get student handin files, the last submission for each student,
   # and make a map from email to useful attrbutes
-  
+
+  # if the handin dir also has the output files from the past, use them
+  # as baseline.  A crude test is to see if the number of output files is
+  # close to the number of handin files (within 10% difference).
+  nOutputFiles = len(glob.glob(lab.handinOutputFileQuery))
+  nHandinFiles = len(glob.glob(lab.handinFileQuery))
+  checkHandinOutput = True if abs(nOutputFiles / float(nHandinFiles) - 1.0) < 0.1 else False
+
   for file in sorted(glob.glob(lab.handinFileQuery)):
     baseName = file.split("/").pop()
-    matchObj = re.match(r'(.*)_[0-9]+_(.*)', baseName, re.M|re.I)
+    matchObj = re.match(r'(.*)_([0-9]+)_(.*)', baseName, re.M|re.I)
     email = matchObj.group(1)
+    versionStr = matchObj.group(2)
+    version = int(versionStr)
     
     withoutSuffix = baseName.replace(lab.handinSuffix, "")
     outputFile = withoutSuffix + "_" + lab.name + ".txt"
     jobName = lab.courseLab + "_" + withoutSuffix
-    
+
+    handinOutput = None
+    passed = None
+    if checkHandinOutput:
+      handinOutput = lab.handinDir + "/" + email + "_" + versionStr + lab.handinOutputFileSuffix
+      if os.path.isfile(handinOutput):
+        passed = True if util.outputOK(handinOutput) else False
+      else:
+        handinOutput = None
+
+    # add newly seen student
     if email not in students:
       students.append(email)
-    studentFile = {"full": file, "base": baseName, "job": jobName,
-                   "stripped": matchObj.group(2), "output": outputFile}
-    student2file[email] = studentFile
+
+    # if previous output is available, only use the submission that has matching output
+    if checkHandinOutput:
+      if email not in student2file or \
+         (version > student2file[email]["version"] and \
+          (handinOutput and student2file[email]["existingOutput"]) or
+          (not handinOutput and not student2file[email]["existingOutput"])) or \
+         (not student2file[email]["existingOutput"] and handinOutput):
+        studentFile = {"result": passed, "existingOutput": handinOutput,  # previous outcome
+                       "version": version, "full": file, "base": baseName, "job": jobName,
+                       "stripped": matchObj.group(3), "output": outputFile}
+        student2file[email] = studentFile
+    elif email not in student2file or version > student2file[email]["version"]:
+      studentFile = {"version": version, "full": file, "base": baseName, "job": jobName,
+                     "stripped": matchObj.group(3), "output": outputFile}
+      student2file[email] = studentFile
+  # end of for loop in handin files
+
+  # report pre-existing failures and missing output files
+  knownFailures = []
+  outcomeUnknown = []
+  if checkHandinOutput:
+    for student in students:
+      if student2file[student]["result"] == None:
+        outcomeUnknown.append(student)
+      elif not student2file[student]["result"]:
+        knownFailures.append(student)
+    if knownFailures:
+      print "#", len(knownFailures), "known failures"
+      for student in knownFailures:
+        print student, student2file[student]["existingOutput"]
+    if outcomeUnknown:
+      print "#", len(outcomeUnknownn), "students without existing output files"
+      for student in outcomeUnknown:
+        print student
 
   # print the students and the indices
   if cmdLine.args.list_students:
