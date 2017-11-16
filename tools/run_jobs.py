@@ -100,7 +100,7 @@ for labIndex in cmdLine.args.indecies:
       for student in knownFailures:
         print student, student2file[student]["existingOutput"]
     if outcomeUnknown:
-      print "#", len(outcomeUnknownn), "students without existing output files"
+      print "#", len(outcomeUnknown), "students without existing output files"
       for student in outcomeUnknown:
         print student
 
@@ -196,6 +196,8 @@ remainingFiles = list(outputFiles)
 numberRemaining = len(remainingFiles)
 loopDelay = 5
 badOutputFiles = []
+inconsistentResults = []
+noCompareResults = []
 justFinishedFiles = []
 
 while True and len(outputFiles) > 0:
@@ -205,11 +207,22 @@ while True and len(outputFiles) > 0:
   # the file may not fulled copied.  So we check the files found in
   # the last round.
   for file in justFinishedFiles:
-    if "\"scores\":" not in open(file).read():
-      badOutputFiles.append(file)
-      print("output missing scores: %s" % file)
-    else:
+    OK = util.outputOK(file)
+    if OK:
       print("Output ready: %s" % file)
+    else:
+      badOutputFiles.append(file)
+      print("Output missing scores: %s" % file)
+
+    if checkHandinOutput:
+      matchObj = re.match(r'(.*)_[0-9]+_.*', os.path.basename(file), re.M|re.I)
+      email = matchObj.group(1)
+      if student2file[email]["result"] == None:
+        noCompareResults.append(file)
+        print("No existing result for comparison")
+      elif student2file[email]["result"] != OK:
+        inconsistentResults.append([student2file[email]["existingOutput"], file])
+        print("Inconsistent with existing result %s" % student2file[email]["existingOutput"])
 
   justFinishedFiles = []
   for file in remainingFiles:
@@ -228,13 +241,18 @@ while True and len(outputFiles) > 0:
     break
 
 if badOutputFiles:
-  # not all bad files are really bad because the file copying may not
-  # be done when the error is reported, particularly if the file is long
-  realBadFiles = []
+  print("Found %d output files without scores" % len(badOutputFiles))
   for f in badOutputFiles:
-    if "\"scores\":" not in open(f).read():
-      realBadFiles.append(f)
+    print("Output without scores: %s" % f)
 
-  print("Found %d bad output files" % len(realBadFiles))
-  for f in realBadFiles:
-    print("bad output: %s" % f)
+if inconsistentResults:
+  print("Found %d inconsistent results" % len(inconsistentResults))
+  for r in inconsistentResults:
+    r0 = "with scores" if util.outputOK(r[0]) else "without scores"
+    r1 = "with scores" if util.outputOK(r[1]) else "without scores"
+    print("Existing(%s): %s new(%s): %s" % (r0, r[0], r1, r[1]))
+
+if noCompareResults:
+  print("Found %d results without existing comparision" % len(noCompareResults))
+  for f in noCompareResults:
+    print("No comparison: %s" % f)
