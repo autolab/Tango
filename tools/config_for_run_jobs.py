@@ -10,43 +10,31 @@ class Config:
 
   # YOUR course name
   course = "your-name-experiment"
-  course = "czang-exp"
   
   # YOUR root dir for course/lab definitions and handin (student submissions)
   courseRoot = "/n/scratch/czang/f16/"
-  #courseRoot = "/n/scratch/czang/f17/"
-  courseRoot = "/mnt/data/f16/"
-  courseRoot = "/tmp"
-  
+
   # YOUR lab definitions. The index of the lab is given to run_job.py
   labs = [
-    {"name": "cloudfscheckpoint2dedup", "handinSuffix": ".tar", "image": "746.img"},
     {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint2", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "xyz.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "xyz.img"},
-    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "xyz.img"}]
+    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
+    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
 
   # Range of student submissions to run (sorted by student emails)
   # If either is None, all student submissions are run, unless
   # -r, -f, or -s is given to run_jobs.
-  # firstStudentNum = 3 # start from index 3 (set to None for all students)
-  firstStudentNum = 0 # start from index 3 (set to None for all students)
-  totalStudents = 10 # run one student
+  firstStudentNum = 3 # start from index 3 (set to None for all students)
+  totalStudents = 1 # run one student
 
   # YOUR Tango container's root dir for submissions and output
   tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
-  tangoFileRoot = "/mnt/charlene/tango_courselabs"
 
   # YOUR Tango repo root (cloned from xyzisinus' Autolab github)
   tangoDir = "/h/myname/Tango"
-  tangoDir = "/mnt/charlene/Tango"
 
   # Sometimes multiple experimental Tango containers are run on one machine.
   # They are identified by different ports.
   tangoHostPort = "host-port 8600"
-  tangoHostPort = "host-port 8660"
 
   # IP of the tango container is usually computed automatically
   tangoIP = ""
@@ -55,6 +43,5 @@ class Config:
   # In such case a different forwarding port is assigned to it.
   # Note: This variable is used by ec2Read.py only.
   redisPort = 6379  # standard
-  # redisPort = 6380
-  
+
 # end of class Config
