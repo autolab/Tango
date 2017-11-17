@@ -26,6 +26,8 @@ def listInstancesLong():
   response = ec2client.describe_instances()
   for reservation in response["Reservations"]:
     for instance in reservation["Instances"]:
+      if instance["State"]["Name"] != "running":
+        continue
       nameTag = (item for item in instance["Tags"] if item["Key"] == "Name").next()
       nameInstances.append({"Name": nameTag["Value"] if nameTag else "None",
                             "Instance": instance})
