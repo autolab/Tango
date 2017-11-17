@@ -1,4 +1,4 @@
-import os, sys, time, re
+import os, sys, time, re, json, pprint
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vmms.ec2SSH import Ec2SSH
 from preallocator import Preallocator
@@ -9,6 +9,7 @@ from config import Config
 import tangoObjects
 import config_for_run_jobs
 import redis
+import boto3
 
 # test vmms.ec2SSH's image extraction code, etc
 # also serve as a template of accessing the ec2SSH vmms
@@ -20,11 +21,44 @@ def destroyInstances():
       print "destroy", vm.name
       ec2.destroyVM(vm)
 
+def listInstancesLong():
+  nameInstances = []
+  response = ec2client.describe_instances()
+  for reservation in response["Reservations"]:
+    for instance in reservation["Instances"]:
+      nameTag = (item for item in instance["Tags"] if item["Key"] == "Name").next()
+      nameInstances.append({"Name": nameTag["Value"] if nameTag else "None",
+                            "Instance": instance})
+
+  print len(nameInstances), "instances:"
+  for item in sorted(nameInstances, key=lambda x: x["Name"]):
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(instance)
+    instance = item["Instance"]
+    print("%s: %s %s %s" %
+          (item["Name"], instance["InstanceId"], instance["PublicIpAddress"], instance["LaunchTime"]))
+    for tag in instance["Tags"]:
+      print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
+
+  """ useful sometimes
+    print "ImageId:", instance["ImageId"]
+    print "PublicDnsName:", instance["PublicDnsName"]
+    print "InstanceType:", instance["InstanceType"]
+    print "State:", instance["State"]["Name"]
+    print "SecurityGroups:", instance["SecurityGroups"]
+    image = ec2resource.Image(instance["ImageId"])
+    print "Image:", image.image_id
+    for tag in image.tags:
+    print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
+  """
+
 def listInstances():
+  """
   vms = ec2.getVMs()
   print "aws instances", len(vms)
   for vm in sorted(vms, key=lambda x: x.name):
-    print "vm", vm.name
+    print "vm", vm.name, vm.ec2_id
+  """
   print "pools", ec2.img2ami.keys()
   for key in server.preallocator.machines.keys():
     pool = server.preallocator.getPool(key)
@@ -71,11 +105,14 @@ def allocateVMs():
 redisConnection = redis.StrictRedis(
   host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisPort, db=0)
 tangoObjects.getRedisConnection(connection=redisConnection)
+ec2client = boto3.client("ec2", Config.EC2_REGION)
+ec2resource = boto3.resource("ec2", Config.EC2_REGION)
 
 server = TangoServer()
 ec2 = server.preallocator.vmms["ec2SSH"]
 pools = ec2.img2ami
 
+listInstancesLong()
 listInstances()
 exit()
 destroyInstances()
