@@ -34,15 +34,16 @@ def utc_to_local(utc_dt):
   local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
   return local_tz.normalize(local_dt)
 
-def changeTags(instanceId):
+# test changing tags to keep the vm after test failure
+def changeTags(instanceId, name, notes):
+  return
+  print "change tags for", instanceId
   instance = boto3resource.Instance(instanceId)
-  print instance.tags
-  nameTag = (item for item in instance.tags if item["Key"] == "Name").next()
-  if nameTag:
-    tagCopy = [nameTag["Key"], nameTag["Value"]]
-    print tagCopy
-  # instance.delete_tags(Tags=[intance.tags[0]])
-  print boto3resource.Instance(instanceId).tags
+  tag = boto3resource.Tag(instanceId, "Name", name)
+  if tag:
+    tag.delete()
+  instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + name}])
+  instance.create_tags(Tags=[{"Key": "Notes", "Value": notes}])
 
 def listInstancesLong():
   nameInstances = []
@@ -58,7 +59,9 @@ def listInstancesLong():
       else:
         nameInstances.append({"Name": "None", "Instance": instance})
 
-      # changeTags(nameInstances[-1]["Instance"]["InstanceId"])
+  sortedInstances = sorted(nameInstances, key=lambda x: x["Name"])
+  changeTags(sortedInstances[-1]["Instance"]["InstanceId"],
+             sortedInstances[-1]["Name"], "test-name-xxx")
 
   print len(nameInstances), "instances:"
   for item in sorted(nameInstances, key=lambda x: x["Name"]):
