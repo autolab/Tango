@@ -113,6 +113,9 @@ class Ec2SSH:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
             self.useDefaultKeyPair = True
 
+        self.boto3connection = boto3.client("ec2", config.Config.EC2_REGION)
+        self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+
         # Use boto3 to read images.  Find the "Name" tag and use it as key to
         # build a map from "Name tag" to boto3's image structure.
         # The code is currently using boto 2 for most of the work and we don't
@@ -447,6 +450,7 @@ class Ec2SSH:
                                                maxOutputFileSize)
         ret = timeout(["ssh"] + self.ssh_flags +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+        # return 3 # xxx inject error to test KEEP_VM_AFTER_FAILURE
         return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
@@ -502,7 +506,21 @@ class Ec2SSH:
             self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
             return []
 
-        self.log.info("destroyVM: %s %s" % (vm.ec2_id, vm.name))
+        self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.doNotDestroy, vm.notes))
+
+        if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
+           config.Config.KEEP_VM_AFTER_FAILURE and vm.doNotDestroy:
+          iName = self.instanceName(vm.id, vm.name)
+          self.log.info("Will keep VM %s for further debugging" % iName)
+          instance = self.boto3resource.Instance(vm.ec2_id)
+          # delete original name tag and replace it with "failed-xxx"
+          # add notes tag for test name
+          tag = self.boto3resource.Tag(vm.ec2_id, "Name", iName)
+          if tag:
+            tag.delete()
+          instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + iName}])
+          instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
+          return
 
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key

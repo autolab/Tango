@@ -61,6 +61,10 @@ class TangoMachine():
         self.resume = resume
         self.id = id
         self.instance_id = id
+        # The following attributes can instruct vmms to set the test machine
+        # aside for further investigation.
+        self.doNotDestroy = False
+        self.notes = None
 
     def __repr__(self):
         return "TangoMachine(image: %s, vmms: %s, id: %s)" % (self.image, self.vmms, self.id)

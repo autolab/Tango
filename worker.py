@@ -312,6 +312,8 @@ class Worker(threading.Thread):
                     # the VM.
                     msg = "Error: OS error while running job on VM"
                     (returnVM, replaceVM) = (False, True)
+                    self.job.vm.doNotDestroy = True
+                    self.job.vm.notes = str(self.job.id) + "_" + self.job.name
                 else:  # This should never happen
                     msg = "Error: Unknown autodriver error (status=%d)" % (
                         ret["runjob"])
