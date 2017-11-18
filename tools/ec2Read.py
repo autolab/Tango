@@ -1,4 +1,4 @@
-import os, sys, time, re, json, pprint
+import os, sys, time, re, json, pprint, datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vmms.ec2SSH import Ec2SSH
 from preallocator import Preallocator
@@ -10,9 +10,16 @@ import tangoObjects
 import config_for_run_jobs
 import redis
 import boto3
+import pytz
+import tzlocal
 
 # test vmms.ec2SSH's image extraction code, etc
 # also serve as a template of accessing the ec2SSH vmms
+
+local_tz = pytz.timezone("EST")
+def utc_to_local(utc_dt):
+  local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+  return local_tz.normalize(local_dt)
 
 def destroyInstances():
   vms = ec2.getVMs()
@@ -21,26 +28,51 @@ def destroyInstances():
       print "destroy", vm.name
       ec2.destroyVM(vm)
 
+local_tz = pytz.timezone("EST")
+
+def utc_to_local(utc_dt):
+  local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+  return local_tz.normalize(local_dt)
+
+def changeTags(instanceId):
+  instance = boto3resource.Instance(instanceId)
+  print instance.tags
+  nameTag = (item for item in instance.tags if item["Key"] == "Name").next()
+  if nameTag:
+    tagCopy = [nameTag["Key"], nameTag["Value"]]
+    print tagCopy
+  # instance.delete_tags(Tags=[intance.tags[0]])
+  print boto3resource.Instance(instanceId).tags
+
 def listInstancesLong():
   nameInstances = []
-  response = ec2client.describe_instances()
+  response = boto3connection.describe_instances()
   for reservation in response["Reservations"]:
     for instance in reservation["Instances"]:
       if instance["State"]["Name"] != "running":
         continue
-      nameTag = (item for item in instance["Tags"] if item["Key"] == "Name").next()
-      nameInstances.append({"Name": nameTag["Value"] if nameTag else "None",
-                            "Instance": instance})
+      if "Tags" in instance:
+        nameTag = (item for item in instance["Tags"] if item["Key"] == "Name").next()
+        nameInstances.append({"Name": nameTag["Value"] if nameTag else "None",
+                              "Instance": instance})
+      else:
+        nameInstances.append({"Name": "None", "Instance": instance})
+
+      # changeTags(nameInstances[-1]["Instance"]["InstanceId"])
 
   print len(nameInstances), "instances:"
   for item in sorted(nameInstances, key=lambda x: x["Name"]):
     # pp = pprint.PrettyPrinter(indent=2)
     # pp.pprint(instance)
     instance = item["Instance"]
+    launchTime = utc_to_local(instance["LaunchTime"])
     print("%s: %s %s %s" %
-          (item["Name"], instance["InstanceId"], instance["PublicIpAddress"], instance["LaunchTime"]))
-    for tag in instance["Tags"]:
-      print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
+          (item["Name"], instance["InstanceId"], instance["PublicIpAddress"], launchTime))
+    if "Tags" in instance:
+      for tag in instance["Tags"]:
+        print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
+    else:
+      print("\t No tags")
 
   """ useful sometimes
     print "ImageId:", instance["ImageId"]
@@ -48,7 +80,7 @@ def listInstancesLong():
     print "InstanceType:", instance["InstanceType"]
     print "State:", instance["State"]["Name"]
     print "SecurityGroups:", instance["SecurityGroups"]
-    image = ec2resource.Image(instance["ImageId"])
+    image = boto3resource.Image(instance["ImageId"])
     print "Image:", image.image_id
     for tag in image.tags:
     print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
@@ -107,8 +139,8 @@ def allocateVMs():
 redisConnection = redis.StrictRedis(
   host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisPort, db=0)
 tangoObjects.getRedisConnection(connection=redisConnection)
-ec2client = boto3.client("ec2", Config.EC2_REGION)
-ec2resource = boto3.resource("ec2", Config.EC2_REGION)
+boto3connection = boto3.client("ec2", Config.EC2_REGION)
+boto3resource = boto3.resource("ec2", Config.EC2_REGION)
 
 server = TangoServer()
 ec2 = server.preallocator.vmms["ec2SSH"]
