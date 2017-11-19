@@ -28,7 +28,6 @@ class Status:
         self.found_dir = self.create(0, "Found directory")
         self.made_dir = self.create(0, "Created directory")
         self.file_uploaded = self.create(0, "Uploaded file")
-        self.file_exists = self.create(0, "File exists")
         self.job_added = self.create(0, "Job added")
         self.obtained_info = self.create(0, "Found info successfully")
         self.obtained_jobs = self.create(0, "Found list of jobs")
@@ -102,18 +101,19 @@ class TangoREST:
         labPath = self.getDirPath(key, courselab)
         return "%s/%s" % (labPath, self.OUTPUT_FOLDER)
 
-    def checkFileExists(self, directory, filename, fileMD5):
-        """ checkFileExists - Checks if a file exists in a
-            directory
+    def computeMD5(self, directory):
+        """ computeMD5 - Computes the MD5 hash of given files in the
+        given directory
         """
+        result = {}
         for elem in os.listdir(directory):
-            if elem == filename:
-                try:
-                    body = open("%s/%s" % (directory, elem)).read()
-                    md5hash = hashlib.md5(body).hexdigest()
-                    return md5hash == fileMD5
-                except IOError:
-                    continue
+            try:
+                body = open("%s/%s" % (directory, elem)).read()
+                md5hash = hashlib.md5(body).hexdigest()
+                result[elem] = md5hash
+            except IOError:
+                continue
+        return result
 
     def createTangoMachine(self, image, vmms=Config.VMMS_NAME,
                            vmObj={'cores': 1, 'memory': 512}):
@@ -244,7 +244,7 @@ class TangoREST:
                     self.log.info(
                         "Found directory for (%s, %s)" % (key, courselab))
                     statusObj = self.status.found_dir
-                    statusObj['files'] = {}
+                    statusObj['files'] = self.computeMD5(labPath)
                     return statusObj
                 else:
                     outputPath = self.getOutPath(key, courselab)
@@ -262,8 +262,7 @@ class TangoREST:
             return self.status.wrong_key
 
     def upload(self, key, courselab, file, body):
-        """ upload - Upload file as an input file in key-courselab if the
-        same file doesn't exist already
+        """ upload - Upload file as an input file in key-courselab
         """
         self.log.debug("Received upload request(%s, %s, %s)" %
                        (key, courselab, file))
@@ -271,11 +270,6 @@ class TangoREST:
             labPath = self.getDirPath(key, courselab)
             try:
                 if os.path.exists(labPath):
-                    fileMD5 = hashlib.md5(body).hexdigest()
-                    if self.checkFileExists(labPath, file, fileMD5):
-                        self.log.info(
-                            "File (%s, %s, %s) exists" % (key, courselab, file))
-                        return self.status.file_exists
                     absPath = "%s/%s" % (labPath, file)
                     fh = open(absPath, "wt")
                     fh.write(body)
