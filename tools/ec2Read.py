@@ -60,8 +60,8 @@ def listInstancesLong():
         nameInstances.append({"Name": "None", "Instance": instance})
 
   sortedInstances = sorted(nameInstances, key=lambda x: x["Name"])
-  changeTags(sortedInstances[-1]["Instance"]["InstanceId"],
-             sortedInstances[-1]["Name"], "test-name-xxx")
+  # changeTags(sortedInstances[-1]["Instance"]["InstanceId"],
+  #            sortedInstances[-1]["Name"], "test-name-xxx")
 
   print len(nameInstances), "instances:"
   for item in sorted(nameInstances, key=lambda x: x["Name"]):
