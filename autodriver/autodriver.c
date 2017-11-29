@@ -84,6 +84,8 @@ struct arguments {
     char *directory;
 } args;
 
+unsigned long startTime = 0;
+
 /**
  * @brief Parses a string into an unsigned integer.
  *
@@ -425,6 +427,7 @@ static int monitor_child(pid_t child) {
 
         if (sigtimedwait(&sigset, NULL, &timeout) < 0) {
             // Child timed out
+            printf(OUTPUT_HEADER "Job timed out after %d seconds\n", args.timeout);
             assert(errno == EAGAIN);
             kill(child, SIGKILL);
             killed = 1;
@@ -436,9 +439,9 @@ static int monitor_child(pid_t child) {
         exit(EXIT_OSERROR);
     }
 
-    if (killed) {
-        printf(OUTPUT_HEADER "Job timed out after %d seconds\n", args.timeout);
-    } else {
+    printf(OUTPUT_HEADER "Duration of test is %lu seconds\n", time(NULL) - startTime);
+
+    if (!killed) {
         printf(OUTPUT_HEADER "Job exited with status %d\n", 
             WEXITSTATUS(status));
     }
@@ -503,7 +506,7 @@ static void run_job(void) {
     int fd;
     if ((fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC,
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-        ERROR_ERRNO("Error opening output file");
+        ERROR_ERRNO("Error creating output file");
         exit(EXIT_OSERROR);
     }
 
@@ -540,6 +543,7 @@ int main(int argc, char **argv) {
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
+    startTime = time(NULL);
 
     // Make sure this isn't being run as root
     if (getuid() == 0) {
