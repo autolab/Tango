@@ -36,16 +36,38 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
 
 #define min(x, y)       ((x) < (y) ? (x) : (y))
 
+char timestampStr[100];
+char * getTimestamp(void) {
+  time_t ltime = time(NULL);
+  struct tm* tmInfo = localtime(&ltime);
+  strftime(timestampStr, 100, "%Y%m%d-%H:%M:%S", tmInfo);
+  return timestampStr;  // return global variable for conveniece
+}
+
+void printError(char *msg, int line, int dumpErrno) {
+  if (dumpErrno) {
+    printf("Autodriver@%s: ERROR %s at line %d: %s\n", getTimestamp(), msg, line,
+           strerror(errno));
+  } else {
+    printf("Autodriver@%s: ERROR %s at line %d\n", getTimestamp(), msg, line);
+  }
+}
+
 #define OUTPUT_HEADER   "Autodriver: "
 
-#define ERROR_ERRNO(msg)                                                      \
-    printf(OUTPUT_HEADER "%s at line %d: %s\n", msg, __LINE__, strerror(errno))
+#define ERROR_ERRNO(msg) printError(msg, __LINE__, 1)
 
-#define ERROR(msg)                                                            \
-    printf(OUTPUT_HEADER "%s at line %d\n", msg, __LINE__)
+#define ERROR(msg) printError(msg, __LINE__, 0)
+
+#define MESSAGE(format, ...)  \
+  printf("Autodriver@%s: " format "\n", getTimestamp(), ##__VA_ARGS__)
+
+#define TIMESTAMP()  \
+  printf("Autodriver@%s: Time stamp inserted by audodriver\n", getTimestamp());
 
 #define EXIT__BASE     1
 
@@ -82,6 +104,8 @@ struct arguments {
     struct passwd user_info;
     char *passwd_buf;
     char *directory;
+    char *timezone;
+    unsigned timestamp_interval;
 } args;
 
 unsigned long startTime = 0;
@@ -235,6 +259,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 "The argument to osize must be a nonnegative integer");
         }
         break;
+    case 'i':
+        if (parse_uint(arg, &arguments->timestamp_interval) < 0) {
+            argp_failure(state, EXIT_USAGE, 0,
+                "The argument to timestamp-interval must be a nonnegative integer");
+        }
+        break;
+    case 'z':
+        args.timezone = arg;
+        break;
     case ARGP_KEY_ARG:
         switch (state->arg_num) {
         case 0:
@@ -322,6 +355,8 @@ static void dump_output(void) {
         exit(EXIT_OSERROR);
     }
 
+    // xxx insert time stamps.
+
     struct stat stat;
     if (fstat(outfd, &stat) < 0) {
         ERROR_ERRNO("Error stating output file");
@@ -338,6 +373,9 @@ static void dump_output(void) {
         if (dump_file(outfd, part_size, stat.st_size - part_size) < 0) {
             exit(EXIT_OSERROR);
         }
+
+        // xxx message indicating file has been truncated
+
     } else {
         if (dump_file(outfd, stat.st_size, 0) < 0) {
             exit(EXIT_OSERROR);
@@ -401,6 +439,8 @@ static void cleanup(void) {
     }
 }
 
+// xxx add thread function for time stamp recording
+
 /**
  * @brief Monitors the progression of the child
  *
@@ -433,6 +473,8 @@ static int monitor_child(pid_t child) {
             killed = 1;
         }
     }
+
+    // xxx create a thread for time stamp recording
 
     if (waitpid(child, &status, 0) < 0) {
         ERROR_ERRNO("Error reaping child");
@@ -504,7 +546,7 @@ static void run_job(void) {
 
     // Redirect output
     int fd;
-    if ((fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC,
+    if ((fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,  // no buffering
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
         ERROR_ERRNO("Error creating output file");
         exit(EXIT_OSERROR);
@@ -525,11 +567,13 @@ static void run_job(void) {
         exit(EXIT_OSERROR);
     }
 
+    /* xxx this should be open
     // Switch into the folder
     if (chdir(args.directory) < 0) {
         ERROR_ERRNO("Error changing directory");
         exit(EXIT_OSERROR);
     }
+    */
 
     // Finally exec job
     execl("/usr/bin/make", "make", NULL);
@@ -543,6 +587,8 @@ int main(int argc, char **argv) {
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
+    args.timestamp_interval = 30;
+    args.timezone = NULL;
     startTime = time(NULL);
 
     // Make sure this isn't being run as root
@@ -570,6 +616,10 @@ int main(int argc, char **argv) {
             "Limit the amount of time a job is allowed to run (seconds)", 0},
         {"osize", 'o', "size", 0,
             "Limit the amount of output returned (bytes)", 0},
+        {"timestamp-interval", 'i', "interval", 0,
+            "Interval (seconds) for placing timestamps in user output file", 0},
+        {"timezone", 'z', "timezone", 0,
+            "Timezone setting. Default is UTC", 0},
         {0, 0, 0, 0, 0, 0}
     };
 
@@ -578,7 +628,24 @@ int main(int argc, char **argv) {
 
     argp_parse(&parser, argc, argv, 0, NULL, &args);
 
-    setup_dir();
+    // set time zone preference: -z argument, TZ environment variable, system wide
+    if (args.timezone) {
+      char tz[100];
+      strcpy(tz, "TZ=");
+      strcat(tz, args.timezone);
+      putenv(tz);
+    }
+    tzset();
+    MESSAGE("Time zone %s:%s", tzname[0], tzname[1]);
+
+    /*
+    ERROR("test test");
+    MESSAGE("%s %d interval %d", "abc", 123, args.timestamp_interval);
+    TIMESTAMP();
+    exit(1);
+    */
+
+    // setup_dir();  // xxx should be open
 
     // Block SIGCHLD to make sure monitor_child recieves it.
     sigset_t sigset;
