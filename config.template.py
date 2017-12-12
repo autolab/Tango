@@ -69,6 +69,10 @@ class Config:
     RUNJOB_TIMEOUT = 60
     COPYOUT_TIMEOUT = 30
 
+    # time zone and timestamp report interval for autodriver execution
+    AUTODRIVER_LOGGING_TIME_ZONE = "UTC"  # e.g. "America/New_York". NULL => UTC
+    AUTODRIVER_TIMESTAMP_INTERVAL = 0  # in seconds. 0 => no timestamp insersion
+
     # Docker constants
     BOOT2DOCKER_INIT_TIMEOUT = 5
     BOOT2DOCKER_START_TIMEOUT = 30
@@ -111,8 +115,8 @@ class Config:
     # vm pool reserve size.  If set, free pool size is maintained at the level.
     POOL_SIZE_LOW_WATER_MARK = 5  # optional, can be None
 
-    # Default increment step when enlarging vm pool
-    POOL_ALLOC_INCREMENT = 2  # can be None, which is treated as 1
+    # Increment step when enlarging vm pool
+    POOL_ALLOC_INCREMENT = 2  # can be None, which is treated as 1, the default
 
     # Optionally log finer-grained timing information
     LOG_TIMING = False
