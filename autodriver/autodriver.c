@@ -37,37 +37,31 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 
 #define min(x, y)       ((x) < (y) ? (x) : (y))
 
 char timestampStr[100];
-char * getTimestamp(void) {
-  time_t ltime = time(NULL);
+char * getTimestamp(time_t t) {
+  time_t ltime = t ? t : time(NULL);
   struct tm* tmInfo = localtime(&ltime);
   strftime(timestampStr, 100, "%Y%m%d-%H:%M:%S", tmInfo);
   return timestampStr;  // return global variable for conveniece
 }
 
-void printError(char *msg, int line, int dumpErrno) {
-  if (dumpErrno) {
-    printf("Autodriver@%s: ERROR %s at line %d: %s\n", getTimestamp(), msg, line,
-           strerror(errno));
-  } else {
-    printf("Autodriver@%s: ERROR %s at line %d\n", getTimestamp(), msg, line);
-  }
-}
+#define ERROR_ERRNO(format, ...)  \
+  printf("Autodriver@%s: ERROR " format " at line %d: %s\n", \
+         getTimestamp(0), ##__VA_ARGS__, __LINE__, strerror(errno))
 
-#define OUTPUT_HEADER   "Autodriver: "
-
-#define ERROR_ERRNO(msg) printError(msg, __LINE__, 1)
-
-#define ERROR(msg) printError(msg, __LINE__, 0)
+#define ERROR(format, ...)  \
+  printf("Autodriver@%s: ERROR " format " at line %d\n", \
+         getTimestamp(0), ##__VA_ARGS__, __LINE__)
 
 #define MESSAGE(format, ...)  \
-  printf("Autodriver@%s: " format "\n", getTimestamp(), ##__VA_ARGS__)
+  printf("Autodriver@%s: " format "\n", getTimestamp(0), ##__VA_ARGS__)
 
 #define TIMESTAMP()  \
-  printf("Autodriver@%s: Time stamp inserted by audodriver\n", getTimestamp());
+  printf("Autodriver@%s: Time stamp inserted by autodriver\n", getTimestamp(0));
 
 #define EXIT__BASE     1
 
@@ -109,6 +103,14 @@ struct arguments {
 } args;
 
 unsigned long startTime = 0;
+
+typedef struct {
+  time_t time;
+  size_t cursor;
+} timestamp_map_t;
+
+// #define TIMESTAMP_MAP_CHUNK_SIZE 1024  xxx put it back
+#define TIMESTAMP_MAP_CHUNK_SIZE 10
 
 /**
  * @brief Parses a string into an unsigned integer.
@@ -369,7 +371,7 @@ static void dump_output(void) {
         if (dump_file(outfd, part_size, 0) < 0) {
             exit(EXIT_OSERROR);
         }
-        printf("\n...[excess bytes elided]...\n");
+        MESSAGE("\n...[excess bytes elided by autodriver]...\n");
         if (dump_file(outfd, part_size, stat.st_size - part_size) < 0) {
             exit(EXIT_OSERROR);
         }
@@ -439,7 +441,46 @@ static void cleanup(void) {
     }
 }
 
-// xxx add thread function for time stamp recording
+// pthread function, keep a map of timestamp and user's output file size
+timestamp_map_t *timestampMap = NULL;
+unsigned timestampCount = 0;
+void *timestampFunc() {
+  sleep(10);  // wait a bit for the output file to be created by child process
+  while (1) {
+    if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
+      timestamp_map_t *newBuffer =
+        realloc(timestampMap,
+                sizeof(timestamp_map_t) * (TIMESTAMP_MAP_CHUNK_SIZE + timestampCount));
+      // printf("allocate %d items\n", (TIMESTAMP_MAP_CHUNK_SIZE + timestampCount));
+      if (!newBuffer){
+        ERROR_ERRNO("Failed to allocate timestamp map. Current map size %d",
+                    timestampCount);
+        exit(EXIT_OSERROR);
+      }
+      timestampMap = newBuffer;
+      newBuffer += timestampCount;
+      memset(newBuffer, 0, sizeof(timestamp_map_t) * TIMESTAMP_MAP_CHUNK_SIZE);
+    }
+
+    int outfd;
+    if ((outfd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
+        ERROR_ERRNO("Error opening output file");
+        exit(EXIT_OSERROR);
+    }
+    struct stat buf;
+    fstat(outfd, &buf);
+    timestampMap[timestampCount].time = time(NULL);
+    timestampMap[timestampCount].cursor = buf.st_size;
+    timestampCount++;
+    if (close(outfd) < 0) {
+      ERROR_ERRNO("Error closing output file");
+      exit(EXIT_OSERROR);
+    }
+    sleep(args.timestamp_interval);
+  }
+
+  return NULL;
+}
 
 /**
  * @brief Monitors the progression of the child
@@ -455,6 +496,15 @@ static int monitor_child(pid_t child) {
     int killed = 0;
     int status;
 
+    // create a thread for for file size tracking by time interval
+    pthread_t timestampThread = 0;  // this thread needs no cancellation
+    if (args.timestamp_interval) {
+      if (pthread_create(&timestampThread, NULL, timestampFunc, NULL)) {
+        ERROR_ERRNO("Failed to create timestamp thread");
+        exit(EXIT_OSERROR);
+      }
+    }
+
     // Handle the timeout if we have to
     if (args.timeout != 0) {
         struct timespec timeout;
@@ -467,25 +517,22 @@ static int monitor_child(pid_t child) {
 
         if (sigtimedwait(&sigset, NULL, &timeout) < 0) {
             // Child timed out
-            printf(OUTPUT_HEADER "Job timed out after %d seconds\n", args.timeout);
+            ERROR_ERRNO("Job timed out after %d seconds\n", args.timeout);
             assert(errno == EAGAIN);
             kill(child, SIGKILL);
             killed = 1;
         }
     }
 
-    // xxx create a thread for time stamp recording
-
     if (waitpid(child, &status, 0) < 0) {
         ERROR_ERRNO("Error reaping child");
         exit(EXIT_OSERROR);
     }
 
-    printf(OUTPUT_HEADER "Duration of test is %lu seconds\n", time(NULL) - startTime);
+    MESSAGE("Duration of test is %lu seconds", time(NULL) - startTime);
 
     if (!killed) {
-        printf(OUTPUT_HEADER "Job exited with status %d\n", 
-            WEXITSTATUS(status));
+        MESSAGE("Job exited with status %d", WEXITSTATUS(status));
     }
 
     dump_output();
@@ -567,13 +614,11 @@ static void run_job(void) {
         exit(EXIT_OSERROR);
     }
 
-    /* xxx this should be open
     // Switch into the folder
     if (chdir(args.directory) < 0) {
         ERROR_ERRNO("Error changing directory");
         exit(EXIT_OSERROR);
     }
-    */
 
     // Finally exec job
     execl("/usr/bin/make", "make", NULL);
@@ -587,13 +632,13 @@ int main(int argc, char **argv) {
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
-    args.timestamp_interval = 30;
+    args.timestamp_interval = 1;  // xxx change back to 30
     args.timezone = NULL;
     startTime = time(NULL);
 
     // Make sure this isn't being run as root
     if (getuid() == 0) {
-        printf(OUTPUT_HEADER "Autodriver should not be run as root.\n");
+        ERROR("Autodriver should not be run as root");
         exit(EXIT_USAGE);
     }
 
@@ -645,7 +690,7 @@ int main(int argc, char **argv) {
     exit(1);
     */
 
-    // setup_dir();  // xxx should be open
+    setup_dir();
 
     // Block SIGCHLD to make sure monitor_child recieves it.
     sigset_t sigset;
