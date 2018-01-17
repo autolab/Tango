@@ -114,9 +114,7 @@ unsigned timestampCount = 0;
 unsigned currentStamp = 0;
 
 size_t outputFileSize = 0;
-
-int outputTruncated = 0;
-int timestampInserted = 0;
+int output_fd;  // OUTPUT_FILE created/opened by main process, used by child
 
 /**
  * @brief Parses a string into an unsigned integer.
@@ -190,7 +188,6 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
 
 // pthread function, keep a map of timestamp and user's output file size
 void *timestampFunc() {
-  sleep(10);  // wait a bit for the output file to be created by child process
   while (1) {
     if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
       timestamp_map_t *newBuffer =
@@ -218,7 +215,7 @@ void *timestampFunc() {
     timestampMap[timestampCount].offset = buf.st_size;
     timestampCount++;
     if (close(outfd) < 0) {
-      ERROR_ERRNO("Error closing output file");
+      ERROR_ERRNO("Error closing output file by timestamp thread");
       exit(EXIT_OSERROR);
     }
     sleep(args.timestamp_interval);
@@ -227,7 +224,7 @@ void *timestampFunc() {
   return NULL;
 }
 
-int writeBuffer(char *buffer, size_t nBytes) {
+int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
   ssize_t nwritten;
   size_t  write_rem;
   char *write_base;
@@ -258,13 +255,11 @@ int writeBuffer(char *buffer, size_t nBytes) {
  * @return 0 on success, -1 on failure
  */
 static int dump_file(int fd, size_t bytes, off_t offset) {
-    char buffer[BUFSIZE];
     size_t read_rem = bytes;
-    size_t currentOffset = offset;
     size_t nextOffset = offset;
 
-    char *endOfBuffer = "END OF BUFFER\n";
-    char *aboutToInsert = "ABOUT TO INSERT\n";
+    char *endOfBuffer = "\nEND OF BUFFER\n";
+    char *aboutToInsert = "ABOUT TO INSERT\n";  // xxx remove
 
     // Flush stdout so our writes here don't race with buffer flushes
     if (fflush(stdout) != 0) {
@@ -278,40 +273,48 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
     }
 
     while (read_rem > 0) {
+      char buffer[BUFSIZE];
       ssize_t nread;
-      char *scanCursor;
+      size_t bufferOffset = nextOffset;
 
-      currentOffset = nextOffset;
       memset(buffer, 0, BUFSIZE);
-
       if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
         ERROR_ERRNO("Error reading from output file");
         return -1;
       }
       read_rem -= nread;
       nextOffset += nread;  // offset of currently read buffer in the file
-      scanCursor = buffer;
+      char *scanCursor = buffer;
+      size_t eolOffset = 0;
 
       // pace through timestamps that fall into the buffer
       while (currentStamp < timestampCount &&
              timestampMap[currentStamp].offset < nextOffset) {
-        char *nextEol = strchr(scanCursor, '\n');
-        if (!nextEol) {  // no line break found in read buffer to insert timestamp
-          break;
+
+        // there might be unused timestamps from last read buffer or before last eol
+        if (timestampMap[currentStamp].offset < bufferOffset ||
+            timestampMap[currentStamp].offset <= eolOffset) {
+          currentStamp++;
+          continue;
         }
 
-        // no timestamp at EOF because the scores are on the last line
-        size_t eolOffset = currentOffset + (nextEol - buffer);
-        if (eolOffset + 1 == outputFileSize) {
-          WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));  // xxx remove
+        char *eolSearchStart = timestampMap[currentStamp].offset - bufferOffset + buffer;
+        char *nextEol = strchr(eolSearchStart, '\n');
+        if (!nextEol) {  // no line break found in read buffer to insert timestamp
           break;
         }
 
         // write the stuff up to the line break
         WRITE_BUFFER(scanCursor, nextEol - scanCursor + 1);  // write up to \n
         // WRITE_BUFFER(aboutToInsert, strlen(aboutToInsert));
-        timestampInserted = 1;
-        currentOffset += nextEol - scanCursor + 1;
+        scanCursor = nextEol + 1;
+
+        // no timestamp at EOF, because the test scores are on the last line
+        eolOffset = bufferOffset + (nextEol - buffer);
+        if (eolOffset + 1 >= outputFileSize) {
+          WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));  // xxx remove
+          break;
+        }
 
         // write the timestamp
         char stampInsert[200];
@@ -319,28 +322,11 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
                 getTimestamp(timestampMap[currentStamp].time),
                 timestampMap[currentStamp].offset);
         WRITE_BUFFER(stampInsert, strlen(stampInsert));
-        scanCursor = nextEol + 1;
+        currentStamp++;
+      }  // while loop through the stamps in read buffer
 
-        // skip the timestamps that lead up to the line break
-        while (currentStamp + 1 < timestampCount) {
-          currentStamp++;
-
-          if (timestampMap[currentStamp].offset > eolOffset) {
-            break;
-          }
-
-          char stampInsert[200];
-          sprintf(stampInsert, "skip timestamp %s @ %lu\n",
-                  getTimestamp(timestampMap[currentStamp].time),
-                  timestampMap[currentStamp].offset);
-          WRITE_BUFFER(stampInsert, strlen(stampInsert));
-        }
-      }  // while loop through all stamps in read buffer
-
-      if (currentOffset < nextOffset) {
-        WRITE_BUFFER(scanCursor, nextOffset - currentOffset);  // write rest of buffer
-        WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));
-      }
+      WRITE_BUFFER(scanCursor, nread - (scanCursor - buffer));
+      // WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));
     }  // while loop finish reading
 
     return 0;
@@ -482,12 +468,12 @@ static void dump_output(void) {
 
     // Truncate output if we have to
     if (args.osize > 0 && stat.st_size > args.osize) {
+        MESSAGE("Output too large -- will be elided in the middle");
         unsigned part_size = args.osize / 2;
         if (dump_file(outfd, part_size, 0) < 0) {
             exit(EXIT_OSERROR);
         }
         MESSAGE("\n...[excess bytes elided by autodriver]...\n");
-        outputTruncated = 1;
         if (dump_file(outfd, part_size, stat.st_size - part_size) < 0) {
             exit(EXIT_OSERROR);
         }
@@ -497,7 +483,7 @@ static void dump_output(void) {
         }
     }
     if (close(outfd) < 0) {
-        ERROR_ERRNO("Error closing output file");
+        ERROR_ERRNO("Error closing output file by parent process");
         exit(EXIT_OSERROR);
     }
 }
@@ -666,12 +652,7 @@ static void run_job(void) {
     }
 
     // Redirect output
-    int fd;
-    if ((fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,  // no buffering
-                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-        ERROR_ERRNO("Error creating output file");
-        exit(EXIT_OSERROR);
-    }
+    int fd = output_fd;
 
     if (dup2(fd, STDOUT_FILENO) < 0) {
         ERROR_ERRNO("Error redirecting standard output");
@@ -684,7 +665,7 @@ static void run_job(void) {
     }
 
     if (close(fd) < 0) {
-        ERROR_ERRNO("Error closing output file");
+        ERROR_ERRNO("Error closing output file by child process");
         exit(EXIT_OSERROR);
     }
 
@@ -765,6 +746,12 @@ int main(int argc, char **argv) {
     sigaddset(&sigset, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigset, NULL);
 
+    if ((output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
+                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+        ERROR_ERRNO("Error creating output file");
+        exit(EXIT_OSERROR);
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
         ERROR_ERRNO("Unable to fork");
@@ -772,6 +759,10 @@ int main(int argc, char **argv) {
     } else if (pid == 0) {
         run_job();
     } else {
+        if (close(output_fd) < 0) {
+            ERROR_ERRNO("Error closing output file by main process");
+            exit(EXIT_OSERROR);
+        }
         monitor_child(pid);
     }
 
