@@ -82,8 +82,6 @@ char * getTimestamp(time_t t) {
 /* Number of seconds to wait in between pkills */
 #define SHUTDOWN_GRACE_TIME 3
 
-error_t argp_err_exit_status = EXIT_USAGE;
-
 /**
  * @brief A structure containing all of the user-configurable settings
  */
@@ -106,12 +104,10 @@ typedef struct {
   size_t offset;
 } timestamp_map_t;
 
-// #define TIMESTAMP_MAP_CHUNK_SIZE 1024  xxx put it back
-#define TIMESTAMP_MAP_CHUNK_SIZE 10
+#define TIMESTAMP_MAP_CHUNK_SIZE 1024
 
-timestamp_map_t *timestampMap = NULL;
+timestamp_map_t *timestampMap = NULL;  // remember time@offset of output file
 unsigned timestampCount = 0;
-unsigned currentStamp = 0;
 
 size_t outputFileSize = 0;
 int output_fd;  // OUTPUT_FILE created/opened by main process, used by child
@@ -186,14 +182,14 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
     return 0;
 }
 
-// pthread function, keep a map of timestamp and user's output file size
+// pthread function, keep a map of timestamp and user's output file offset
 void *timestampFunc() {
   while (1) {
+    // allocate/reallocate space to create/grow the map
     if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
       timestamp_map_t *newBuffer =
         realloc(timestampMap,
                 sizeof(timestamp_map_t) * (TIMESTAMP_MAP_CHUNK_SIZE + timestampCount));
-      // printf("allocate %d items\n", (TIMESTAMP_MAP_CHUNK_SIZE + timestampCount));
       if (!newBuffer){
         ERROR_ERRNO("Failed to allocate timestamp map. Current map size %d",
                     timestampCount);
@@ -218,6 +214,7 @@ void *timestampFunc() {
       ERROR_ERRNO("Error closing output file by timestamp thread");
       exit(EXIT_OSERROR);
     }
+
     sleep(args.timestamp_interval);
   }
 
@@ -225,12 +222,10 @@ void *timestampFunc() {
 }
 
 int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
-  ssize_t nwritten;
-  size_t  write_rem;
-  char *write_base;
+  ssize_t nwritten = 0;
+  size_t  write_rem = nBytes;
+  char *write_base = buffer;
 
-  write_rem = nBytes;
-  write_base = buffer;
   while (write_rem > 0) {
     if ((nwritten = write(STDOUT_FILENO, write_base, write_rem)) < 0) {
       ERROR_ERRNO("Error writing output");
@@ -255,11 +250,14 @@ int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
  * @return 0 on success, -1 on failure
  */
 static int dump_file(int fd, size_t bytes, off_t offset) {
+    static unsigned currentStamp = 0;
     size_t read_rem = bytes;
     size_t nextOffset = offset;
 
-    char *endOfBuffer = "\nEND OF BUFFER\n";
-    char *aboutToInsert = "ABOUT TO INSERT\n";  // xxx remove
+    if (offset) {  // second part of output file, after truncating in the middle
+        char *msg = "\n...[excess bytes elided by autodriver]...\n";
+        WRITE_BUFFER(msg, strlen(msg));
+    }
 
     // Flush stdout so our writes here don't race with buffer flushes
     if (fflush(stdout) != 0) {
@@ -306,27 +304,25 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
 
         // write the stuff up to the line break
         WRITE_BUFFER(scanCursor, nextEol - scanCursor + 1);  // write up to \n
-        // WRITE_BUFFER(aboutToInsert, strlen(aboutToInsert));
         scanCursor = nextEol + 1;
 
         // no timestamp at EOF, because the test scores are on the last line
         eolOffset = bufferOffset + (nextEol - buffer);
         if (eolOffset + 1 >= outputFileSize) {
-          WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));  // xxx remove
           break;
         }
 
         // write the timestamp
         char stampInsert[200];
-        sprintf(stampInsert, "...[timestamp inserted by autodriver: %s @ %lu]...\n",
+        sprintf(stampInsert,
+                "...[timestamp %s inserted by autodriver at offset ~%lu. Maybe out of sync with output's own timestamps.]...\n",
                 getTimestamp(timestampMap[currentStamp].time),
                 timestampMap[currentStamp].offset);
         WRITE_BUFFER(stampInsert, strlen(stampInsert));
         currentStamp++;
-      }  // while loop through the stamps in read buffer
+      }  // while loop through the stamps falling into read buffer's range
 
       WRITE_BUFFER(scanCursor, nread - (scanCursor - buffer));
-      // WRITE_BUFFER(endOfBuffer, strlen(endOfBuffer));
     }  // while loop finish reading
 
     return 0;
@@ -468,12 +464,12 @@ static void dump_output(void) {
 
     // Truncate output if we have to
     if (args.osize > 0 && stat.st_size > args.osize) {
-        MESSAGE("Output too large -- will be elided in the middle");
+        MESSAGE("Output size %lu > limit %u -- will elide in the middle",
+                stat.st_size, args.osize);
         unsigned part_size = args.osize / 2;
         if (dump_file(outfd, part_size, 0) < 0) {
             exit(EXIT_OSERROR);
         }
-        MESSAGE("\n...[excess bytes elided by autodriver]...\n");
         if (dump_file(outfd, part_size, stat.st_size - part_size) < 0) {
             exit(EXIT_OSERROR);
         }
@@ -528,8 +524,6 @@ static void cleanup(void) {
         try++;
     }
 
-    exit(0);  // remove xxx
-    
     // Delete all of the files owned by the user in ~user, /tmp, /var/tmp
     // We are currently in ~user.
     // (Note by @mpandya: the find binary is in /bin in RHEL but in /usr/bin
@@ -595,6 +589,10 @@ static int monitor_child(pid_t child) {
         MESSAGE("Job exited with status %d", WEXITSTATUS(status));
     }
 
+    if (args.timestamp_interval > 0) {
+      MESSAGE("Timestamps inserted at %d-second or larger intervals, depending output rates",
+              args.timestamp_interval);
+    }
     dump_output();
     cleanup();
     exit(killed ? EXIT_TIMEOUT : EXIT_SUCCESS);
@@ -687,7 +685,7 @@ int main(int argc, char **argv) {
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
-    args.timestamp_interval = 1;  // xxx change back to 30
+    args.timestamp_interval = 0;
     args.timezone = NULL;
     startTime = time(NULL);
 
@@ -768,4 +766,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
