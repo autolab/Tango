@@ -102,6 +102,7 @@ unsigned long startTime = 0;
 typedef struct {
   time_t time;
   size_t offset;
+  int offsetJumped;
 } timestamp_map_t;
 
 #define TIMESTAMP_MAP_CHUNK_SIZE 1024
@@ -110,7 +111,8 @@ timestamp_map_t *timestampMap = NULL;  // remember time@offset of output file
 unsigned timestampCount = 0;
 
 size_t outputFileSize = 0;
-int output_fd;  // OUTPUT_FILE created/opened by main process, used by child
+int child_output_fd;  // OUTPUT_FILE created/opened by main process, used by child
+int parent_output_fd;  // OUTPUT_FILE created/opened by main process, used by parent
 
 /**
  * @brief Parses a string into an unsigned integer.
@@ -184,6 +186,7 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
 
 // pthread function, keep a map of timestamp and user's output file offset
 void *timestampFunc() {
+  // time_t lastIntervalStamp = time(NULL);
   while (1) {
     // allocate/reallocate space to create/grow the map
     if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
@@ -193,27 +196,36 @@ void *timestampFunc() {
       if (!newBuffer){
         ERROR_ERRNO("Failed to allocate timestamp map. Current map size %d",
                     timestampCount);
-        exit(EXIT_OSERROR);
+        continue;  // continue without allocation
       }
       timestampMap = newBuffer;
       newBuffer += timestampCount;
       memset(newBuffer, 0, sizeof(timestamp_map_t) * TIMESTAMP_MAP_CHUNK_SIZE);
     }
 
-    int outfd;
-    if ((outfd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-        ERROR_ERRNO("Error opening output file");
-        exit(EXIT_OSERROR);
-    }
     struct stat buf;
-    fstat(outfd, &buf);
+    if (parent_output_fd <= 0 || fstat(parent_output_fd, &buf) < 0) {
+      ERROR_ERRNO("Error statting output file to read offset");
+      continue;  // simply skip this time
+    }
+
+    /*
+    time_t currentTime = time(NULL);
+    int addStamp = 0;
+    if (currentTime - lastIntervalStamp >= args.timestamp_interval) {
+      addStamp = 1;
+      lastIntervalStamp = currentTime;
+    }
+    */
+
     timestampMap[timestampCount].time = time(NULL);
     timestampMap[timestampCount].offset = buf.st_size;
     timestampCount++;
-    if (close(outfd) < 0) {
-      ERROR_ERRNO("Error closing output file by timestamp thread");
-      exit(EXIT_OSERROR);
-    }
+
+    /*
+    printf("current time %lu\n", time(NULL));
+    sleep(1);
+    */
 
     sleep(args.timestamp_interval);
   }
@@ -451,13 +463,13 @@ static void setup_dir(void) {
 static void dump_output(void) {
     int outfd;
     if ((outfd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-        ERROR_ERRNO("Error opening output file");
+        ERROR_ERRNO("Error opening output file at the end of test");
         exit(EXIT_OSERROR);
     }
 
     struct stat stat;
     if (fstat(outfd, &stat) < 0) {
-        ERROR_ERRNO("Error stating output file");
+        ERROR_ERRNO("Error statting output file");
         exit(EXIT_OSERROR);
     }
     outputFileSize = stat.st_size;
@@ -479,7 +491,7 @@ static void dump_output(void) {
         }
     }
     if (close(outfd) < 0) {
-        ERROR_ERRNO("Error closing output file by parent process");
+        ERROR_ERRNO("Error closing output file at the end of test");
         exit(EXIT_OSERROR);
     }
 }
@@ -498,7 +510,7 @@ static int kill_processes(char *sig) {
 
     if ((ret = call_program("/usr/bin/pkill", pkill_args)) > 1) {
         ERROR("Error killing user processes");
-        exit(EXIT_OSERROR);
+        // don't quit.  Let the caller decide
     }
     return ret;
 }
@@ -509,6 +521,10 @@ static int kill_processes(char *sig) {
  * Kills all processes and deletes all files
  */
 static void cleanup(void) {
+    if (parent_output_fd <= 0 || close(parent_output_fd) < 0) {
+      ERROR_ERRNO("Error closing output file before cleanup");
+    }
+
     // Kill all of the user's processes
     int ret;
     int try = 0;
@@ -518,7 +534,7 @@ static void cleanup(void) {
         sleep(SHUTDOWN_GRACE_TIME);
         if (try > MAX_KILL_ATTEMPTS) {
             ERROR("Gave up killing user processes");
-            exit(EXIT_OSERROR);
+            break;  // continue to cleanup with best effort
         }
         ret = kill_processes("-KILL");
         try++;
@@ -650,7 +666,7 @@ static void run_job(void) {
     }
 
     // Redirect output
-    int fd = output_fd;
+    int fd = child_output_fd;
 
     if (dup2(fd, STDOUT_FILENO) < 0) {
         ERROR_ERRNO("Error redirecting standard output");
@@ -744,7 +760,7 @@ int main(int argc, char **argv) {
     sigaddset(&sigset, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-    if ((output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
+    if ((child_output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
         ERROR_ERRNO("Error creating output file");
         exit(EXIT_OSERROR);
@@ -757,10 +773,17 @@ int main(int argc, char **argv) {
     } else if (pid == 0) {
         run_job();
     } else {
-        if (close(output_fd) < 0) {
-            ERROR_ERRNO("Error closing output file by main process");
-            exit(EXIT_OSERROR);
+        if (close(child_output_fd) < 0) {
+            ERROR_ERRNO("Error closing output file by parent process");
+            // don't quit for this type of error
         }
+
+        // open output file read only to build timestamp:offset map
+        if ((parent_output_fd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
+          ERROR_ERRNO("Error opening output file by parent process");
+          // don't quit for this type of error
+        }
+
         monitor_child(pid);
     }
 
