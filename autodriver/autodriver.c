@@ -102,7 +102,6 @@ unsigned long startTime = 0;
 typedef struct {
   time_t time;
   size_t offset;
-  int offsetJumped;
 } timestamp_map_t;
 
 #define TIMESTAMP_MAP_CHUNK_SIZE 1024
@@ -186,8 +185,12 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
 
 // pthread function, keep a map of timestamp and user's output file offset
 void *timestampFunc() {
-  // time_t lastIntervalStamp = time(NULL);
+  time_t lastStamp = 0;
+  int lastJumpIndex = -1;
+
   while (1) {
+    sleep(1);
+
     // allocate/reallocate space to create/grow the map
     if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
       timestamp_map_t *newBuffer =
@@ -209,25 +212,28 @@ void *timestampFunc() {
       continue;  // simply skip this time
     }
 
-    /*
+    size_t currentOffset = buf.st_size;
     time_t currentTime = time(NULL);
-    int addStamp = 0;
-    if (currentTime - lastIntervalStamp >= args.timestamp_interval) {
-      addStamp = 1;
-      lastIntervalStamp = currentTime;
+
+    // record following timestamps:
+    // 1. enough time has passed since last timestamp or
+    // 2. output has grown and enough time has passed since last offset change
+
+    if (timestampCount == 0 ||
+        timestampMap[timestampCount - 1].offset != currentOffset) {
+      if (lastJumpIndex >= 0 &&
+          currentTime - timestampMap[lastJumpIndex].time < args.timestamp_interval) {
+        continue;
+      }
+      lastJumpIndex = timestampCount;
+    } else if (currentTime - lastStamp < args.timestamp_interval) {
+      continue;
     }
-    */
 
-    timestampMap[timestampCount].time = time(NULL);
-    timestampMap[timestampCount].offset = buf.st_size;
+    lastStamp = currentTime;
+    timestampMap[timestampCount].time = currentTime;
+    timestampMap[timestampCount].offset = currentOffset;
     timestampCount++;
-
-    /*
-    printf("current time %lu\n", time(NULL));
-    sleep(1);
-    */
-
-    sleep(args.timestamp_interval);
   }
 
   return NULL;
@@ -568,7 +574,7 @@ static int monitor_child(pid_t child) {
 
     // create a thread for for file size tracking by time interval
     pthread_t timestampThread = 0;  // this thread needs no cancellation
-    if (args.timestamp_interval) {
+    if (args.timestamp_interval > 0) {
       if (pthread_create(&timestampThread, NULL, timestampFunc, NULL)) {
         ERROR_ERRNO("Failed to create timestamp thread");
         exit(EXIT_OSERROR);
@@ -599,14 +605,14 @@ static int monitor_child(pid_t child) {
         exit(EXIT_OSERROR);
     }
 
-    MESSAGE("Duration of test is %lu seconds", time(NULL) - startTime);
+    MESSAGE("Test terminates. Duration: %lu seconds", time(NULL) - startTime);
 
     if (!killed) {
         MESSAGE("Job exited with status %d", WEXITSTATUS(status));
     }
 
     if (args.timestamp_interval > 0) {
-      MESSAGE("Timestamps inserted at %d-second or larger intervals, depending output rates",
+      MESSAGE("Timestamps inserted at %d-second or larger intervals, depending on output rates",
               args.timestamp_interval);
     }
     dump_output();
@@ -750,7 +756,7 @@ int main(int argc, char **argv) {
       putenv(tz);
     }
     tzset();
-    MESSAGE("Time zone %s:%s", tzname[0], tzname[1]);
+    MESSAGE("Test Starts. Time zone %s:%s", tzname[0], tzname[1]);
 
     setup_dir();
 
