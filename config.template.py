@@ -70,7 +70,7 @@ class Config:
     COPYOUT_TIMEOUT = 30
 
     # time zone and timestamp report interval for autodriver execution
-    AUTODRIVER_LOGGING_TIME_ZONE = "UTC"  # e.g. "America/New_York". NULL => UTC
+    AUTODRIVER_LOGGING_TIME_ZONE = "UTC"  # e.g. "America/New_York".
     AUTODRIVER_TIMESTAMP_INTERVAL = 0  # in seconds. 0 => no timestamp insersion
 
     # Docker constants
