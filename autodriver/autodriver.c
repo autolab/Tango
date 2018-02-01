@@ -208,7 +208,7 @@ void *timestampFunc() {
 
     struct stat buf;
     if (parent_output_fd <= 0 || fstat(parent_output_fd, &buf) < 0) {
-      ERROR_ERRNO("Error statting output file to read offset");
+      ERROR_ERRNO("Statting output file to read offset");
       continue;  // simply skip this time
     }
 
@@ -246,7 +246,7 @@ int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
 
   while (write_rem > 0) {
     if ((nwritten = write(STDOUT_FILENO, write_base, write_rem)) < 0) {
-      ERROR_ERRNO("Error writing output");
+      ERROR_ERRNO("Writing output");
       return -1;
     }
     write_rem -= nwritten;
@@ -279,12 +279,12 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
 
     // Flush stdout so our writes here don't race with buffer flushes
     if (fflush(stdout) != 0) {
-        ERROR_ERRNO("Error flushing standard out");
+        ERROR_ERRNO("Flushing standard out");
         return -1;
     }
 
     if (lseek(fd, offset, SEEK_SET) < 0) {
-        ERROR_ERRNO("Error seeking in output file");
+        ERROR_ERRNO("Seeking in output file");
         return -1;
     }
 
@@ -295,7 +295,7 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
 
       memset(buffer, 0, BUFSIZE);
       if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
-        ERROR_ERRNO("Error reading from output file");
+        ERROR_ERRNO("Reading from output file");
         return -1;
       }
       read_rem -= nread;
@@ -443,13 +443,13 @@ static void setup_dir(void) {
     char *mv_args[] = {"/bin/mv", "-f", args.directory, 
         args.user_info.pw_dir, NULL};
     if (call_program("/bin/mv", mv_args) != 0) {
-        ERROR("Error moving directory");
+        ERROR("Moving directory");
         exit(EXIT_OSERROR);
     }
 
     // And switch over to that directory
     if (chdir(args.user_info.pw_dir) < 0) {
-        ERROR_ERRNO("Error changing directories");
+        ERROR_ERRNO("Changing directories");
         exit(EXIT_OSERROR);
     }
 
@@ -458,7 +458,7 @@ static void setup_dir(void) {
     sprintf(owner, "%d:%d", args.user_info.pw_uid, args.user_info.pw_gid);
     char *chown_args[] = {"/bin/chown", "-R", owner, args.directory, NULL};
     if (call_program("/bin/chown", chown_args) != 0) {
-        ERROR("Error chowining directory");
+        ERROR("Chowining directory");
         exit(EXIT_OSERROR);
     }
 }
@@ -469,13 +469,13 @@ static void setup_dir(void) {
 static void dump_output(void) {
     int outfd;
     if ((outfd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-        ERROR_ERRNO("Error opening output file at the end of test");
+        ERROR_ERRNO("Opening output file at the end of test");
         exit(EXIT_OSERROR);
     }
 
     struct stat stat;
     if (fstat(outfd, &stat) < 0) {
-        ERROR_ERRNO("Error statting output file");
+        ERROR_ERRNO("Statting output file");
         exit(EXIT_OSERROR);
     }
     outputFileSize = stat.st_size;
@@ -497,7 +497,7 @@ static void dump_output(void) {
         }
     }
     if (close(outfd) < 0) {
-        ERROR_ERRNO("Error closing output file at the end of test");
+        ERROR_ERRNO("Closing output file at the end of test");
         exit(EXIT_OSERROR);
     }
 }
@@ -515,7 +515,7 @@ static int kill_processes(char *sig) {
         GRADING_USER, NULL};
 
     if ((ret = call_program("/usr/bin/pkill", pkill_args)) > 1) {
-        ERROR("Error killing user processes");
+        ERROR("Killing user processes");
         // don't quit.  Let the caller decide
     }
     return ret;
@@ -528,7 +528,7 @@ static int kill_processes(char *sig) {
  */
 static void cleanup(void) {
     if (parent_output_fd <= 0 || close(parent_output_fd) < 0) {
-      ERROR_ERRNO("Error closing output file before cleanup");
+      ERROR_ERRNO("Closing output file before cleanup");
     }
 
     // Kill all of the user's processes
@@ -553,7 +553,7 @@ static void cleanup(void) {
     char *find_args[] = {"find", "/usr/bin/find", ".", "/tmp", "/var/tmp", "-user", 
         args.user_info.pw_name, "-delete", NULL};
     if (call_program("/usr/bin/env", find_args) != 0) {
-        ERROR("Error deleting user's files");
+        ERROR("Deleting user's files");
         exit(EXIT_OSERROR);
     }
 }
@@ -601,7 +601,7 @@ static int monitor_child(pid_t child) {
     }
 
     if (waitpid(child, &status, 0) < 0) {
-        ERROR_ERRNO("Error reaping child");
+        ERROR_ERRNO("Reaping child");
         exit(EXIT_OSERROR);
     }
 
@@ -640,7 +640,7 @@ static void run_job(void) {
     if (args.nproc != 0) {
         struct rlimit rlimit = {args.nproc, args.nproc};
         if (setrlimit(RLIMIT_NPROC, &rlimit) < 0) {
-            perror("Error setting process limit");
+            perror("Setting process limit");
             exit(EXIT_OSERROR);
         }
     }
@@ -648,26 +648,26 @@ static void run_job(void) {
     if (args.fsize != 0) {
         struct rlimit rlimit = {args.fsize, args.fsize};
         if (setrlimit(RLIMIT_FSIZE, &rlimit) < 0) {
-            ERROR_ERRNO("Error setting filesize limit");
+            ERROR_ERRNO("Setting filesize limit");
             exit(EXIT_OSERROR);
         }
     }
 
     // Drop permissions
     if (initgroups(args.user_info.pw_name, args.user_info.pw_gid) < 0) {
-        ERROR_ERRNO("Error setting supplementary group IDs");
+        ERROR_ERRNO("Setting supplementary group IDs");
         exit(EXIT_OSERROR);
     }
 
     if (setresgid(args.user_info.pw_gid, args.user_info.pw_gid,
             args.user_info.pw_gid) < 0) {
-        ERROR_ERRNO("Error setting group ID");
+        ERROR_ERRNO("Setting group ID");
         exit(EXIT_OSERROR);
     }
 
     if (setresuid(args.user_info.pw_uid, args.user_info.pw_uid,
             args.user_info.pw_uid) < 0) {
-        ERROR_ERRNO("Error setting user ID");
+        ERROR_ERRNO("Setting user ID");
         exit(EXIT_OSERROR);
     }
 
@@ -675,29 +675,29 @@ static void run_job(void) {
     int fd = child_output_fd;
 
     if (dup2(fd, STDOUT_FILENO) < 0) {
-        ERROR_ERRNO("Error redirecting standard output");
+        ERROR_ERRNO("Redirecting standard output");
         exit(EXIT_OSERROR);
     }
 
     if (dup2(fd, STDERR_FILENO) < 0) {
-        ERROR_ERRNO("Error redirecting standard error");
+        ERROR_ERRNO("Redirecting standard error");
         exit(EXIT_OSERROR);
     }
 
     if (close(fd) < 0) {
-        ERROR_ERRNO("Error closing output file by child process");
+        ERROR_ERRNO("Closing output file by child process");
         exit(EXIT_OSERROR);
     }
 
     // Switch into the folder
     if (chdir(args.directory) < 0) {
-        ERROR_ERRNO("Error changing directory");
+        ERROR_ERRNO("Changing directory");
         exit(EXIT_OSERROR);
     }
 
     // Finally exec job
     execl("/usr/bin/make", "make", NULL);
-    ERROR_ERRNO("Error executing make");
+    ERROR_ERRNO("Eexecuting make");
     exit(EXIT_OSERROR);
 }
 
@@ -768,7 +768,7 @@ int main(int argc, char **argv) {
 
     if ((child_output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-        ERROR_ERRNO("Error creating output file");
+        ERROR_ERRNO("Creating output file");
         exit(EXIT_OSERROR);
     }
 
@@ -780,13 +780,13 @@ int main(int argc, char **argv) {
         run_job();
     } else {
         if (close(child_output_fd) < 0) {
-            ERROR_ERRNO("Error closing output file by parent process");
+            ERROR_ERRNO("Closing output file by parent process");
             // don't quit for this type of error
         }
 
         // open output file read only to build timestamp:offset map
         if ((parent_output_fd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-          ERROR_ERRNO("Error opening output file by parent process");
+          ERROR_ERRNO("Opening output file by parent process");
           // don't quit for this type of error
         }
 
