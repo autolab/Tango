@@ -60,6 +60,9 @@ char * getTimestamp(time_t t) {
 #define MESSAGE(format, ...)  \
   printf("Autodriver@%s: " format "\n", getTimestamp(0), ##__VA_ARGS__)
 
+#define NL_MESSAGE(format, ...)  \
+  printf("\nAutodriver@%s: " format "\n", getTimestamp(0), ##__VA_ARGS__)
+
 #define EXIT__BASE     1
 
 /* Exit codes for use after errors */
@@ -98,6 +101,7 @@ struct arguments {
 } args;
 
 unsigned long startTime = 0;
+int childTimedOut = 0;
 
 typedef struct {
   time_t time;
@@ -108,10 +112,10 @@ typedef struct {
 
 timestamp_map_t *timestampMap = NULL;  // remember time@offset of output file
 unsigned timestampCount = 0;
+int childFinished = 0;
 
 size_t outputFileSize = 0;
 int child_output_fd;  // OUTPUT_FILE created/opened by main process, used by child
-int parent_output_fd;  // OUTPUT_FILE created/opened by main process, used by parent
 
 /**
  * @brief Parses a string into an unsigned integer.
@@ -187,8 +191,19 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
 void *timestampFunc() {
   time_t lastStamp = 0;
   int lastJumpIndex = -1;
+  int output_fd;
+
+  // open output file read only to build timestamp:offset map
+  if ((output_fd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
+    ERROR_ERRNO("Opening output file by parent process");
+    // don't quit for this type of error
+  }
 
   while (1) {
+    if (childFinished) {
+      break;
+    }
+
     sleep(1);
 
     // allocate/reallocate space to create/grow the map
@@ -207,7 +222,7 @@ void *timestampFunc() {
     }
 
     struct stat buf;
-    if (parent_output_fd <= 0 || fstat(parent_output_fd, &buf) < 0) {
+    if (output_fd <= 0 || fstat(output_fd, &buf) < 0) {
       ERROR_ERRNO("Statting output file to read offset");
       continue;  // simply skip this time
     }
@@ -236,6 +251,9 @@ void *timestampFunc() {
     timestampCount++;
   }
 
+  if (output_fd <= 0 || close(output_fd) < 0) {
+    ERROR_ERRNO("Closing output file before cleanup");
+  }
   return NULL;
 }
 
@@ -458,7 +476,7 @@ static void setup_dir(void) {
     sprintf(owner, "%d:%d", args.user_info.pw_uid, args.user_info.pw_gid);
     char *chown_args[] = {"/bin/chown", "-R", owner, args.directory, NULL};
     if (call_program("/bin/chown", chown_args) != 0) {
-        ERROR("Chowining directory");
+        ERROR("Chowning directory");
         exit(EXIT_OSERROR);
     }
 }
@@ -527,10 +545,6 @@ static int kill_processes(char *sig) {
  * Kills all processes and deletes all files
  */
 static void cleanup(void) {
-    if (parent_output_fd <= 0 || close(parent_output_fd) < 0) {
-      ERROR_ERRNO("Closing output file before cleanup");
-    }
-
     // Kill all of the user's processes
     int ret;
     int try = 0;
@@ -597,6 +611,7 @@ static int monitor_child(pid_t child) {
             assert(errno == EAGAIN);
             kill(child, SIGKILL);
             killed = 1;
+            childTimedOut = 1;
         }
     }
 
@@ -615,7 +630,13 @@ static int monitor_child(pid_t child) {
       MESSAGE("Timestamps inserted at %d-second or larger intervals, depending on output rates",
               args.timestamp_interval);
     }
+
+    childFinished = 1;
     dump_output();
+    if (childTimedOut) {
+      NL_MESSAGE("ERROR Job timed out");  // print error again at the end of output
+    }
+
     cleanup();
     exit(killed ? EXIT_TIMEOUT : EXIT_SUCCESS);
 }
@@ -771,6 +792,11 @@ int main(int argc, char **argv) {
         ERROR_ERRNO("Creating output file");
         exit(EXIT_OSERROR);
     }
+    // chown output file to user "autograde"
+    if (fchown(child_output_fd, args.user_info.pw_uid, args.user_info.pw_gid) < 0) {
+        ERROR_ERRNO("Error chowning output file");
+        exit(EXIT_OSERROR);
+    }
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -782,12 +808,6 @@ int main(int argc, char **argv) {
         if (close(child_output_fd) < 0) {
             ERROR_ERRNO("Closing output file by parent process");
             // don't quit for this type of error
-        }
-
-        // open output file read only to build timestamp:offset map
-        if ((parent_output_fd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-          ERROR_ERRNO("Opening output file by parent process");
-          // don't quit for this type of error
         }
 
         monitor_child(pid);
