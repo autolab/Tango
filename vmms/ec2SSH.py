@@ -444,10 +444,13 @@ class Ec2SSH:
                        self.instanceName(vm.id, vm.name))
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-                %d -o %d autolab &> output" % (config.Config.VM_ULIMIT_USER_PROC,
-                                               config.Config.VM_ULIMIT_FILE_SIZE,
-                                               runTimeout,
-                                               maxOutputFileSize)
+                %d -o %d -z %s -i %d autolab &> output" % (
+                  config.Config.VM_ULIMIT_USER_PROC,
+                  config.Config.VM_ULIMIT_FILE_SIZE,
+                  runTimeout,
+                  maxOutputFileSize,
+                  config.Config.AUTODRIVER_LOGGING_TIME_ZONE,
+                  config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
         ret = timeout(["ssh"] + self.ssh_flags +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
         # return 3 # xxx inject error to test KEEP_VM_AFTER_FAILURE

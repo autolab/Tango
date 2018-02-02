@@ -112,19 +112,19 @@ class Worker(threading.Thread):
         """ appendMsg - Append a timestamped Tango message to a file
         """
         f = open(filename, "a")
-        f.write("Autograder [%s]: %s\n" % (datetime.now().ctime(), msg))
+        f.write("Autolab [%s]: %s\n" % (datetime.now().ctime(), msg))
         f.close()
 
     def catFiles(self, f1, f2):
         """ catFiles - cat f1 f2 > f2, where f1 is the Tango header
         and f2 is the output from the Autodriver
         """
-        self.appendMsg(f1, "Here is the output from the autograder:\n---")
+        self.appendMsg(f1, "Output of autodriver from grading VM:\n")
         (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
         wf=os.fdopen(wfd, "a")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
-        # f2 may not exist if autograder failed
+        # f2 may not exist if autodriver failed
         try:
             with open(f2, "rb") as f2fd:
                 shutil.copyfileobj(f2fd, wf)
@@ -324,7 +324,7 @@ class Worker(threading.Thread):
 
             self.jobQueue.makeDead(self.job.id, msg)
 
-            # Update the text that users see in the autograder output file
+            # Update the text that users see in the autodriver output file
             self.appendMsg(hdrfile, msg)
             self.catFiles(hdrfile, self.job.outputFile)
 
