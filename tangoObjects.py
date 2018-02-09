@@ -115,6 +115,7 @@ class TangoJob():
         return not self.assigned
 
     def appendTrace(self, trace_str):
+        # trace attached to the object can be retrived and sent to rest api caller
         self.syncRemote()
         self.trace.append(trace_str)
         self.updateRemote()

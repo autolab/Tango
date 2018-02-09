@@ -451,11 +451,11 @@ class Ec2SSH:
                   maxOutputFileSize,
                   config.Config.AUTODRIVER_LOGGING_TIME_ZONE,
                   config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
+        # runTimeout * 2 is a conservative estimate.
+        # autodriver handles timeout on the target vm.
         ret = timeout(["ssh"] + self.ssh_flags +
                        ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
-        # return 3 # xxx inject error to test KEEP_VM_AFTER_FAILURE
         return ret
-        # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the file output on the VM to the file
@@ -516,7 +516,7 @@ class Ec2SSH:
           iName = self.instanceName(vm.id, vm.name)
           self.log.info("Will keep VM %s for further debugging" % iName)
           instance = self.boto3resource.Instance(vm.ec2_id)
-          # delete original name tag and replace it with "failed-xxx"
+          # delete original name tag and replace it with "failed-xyz"
           # add notes tag for test name
           tag = self.boto3resource.Tag(vm.ec2_id, "Name", iName)
           if tag:
