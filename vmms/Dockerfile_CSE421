@@ -22,9 +22,9 @@ RUN chmod +s /usr/bin/autodriver
 ###############################################
 # configuraion and setup for bochs and pintos #
 ###############################################
-ENV PINTOSDIR /home/pintos
+ENV PINTOSDIR /home/autograde/pintos_base
 ENV DSTDIR /usr/local
-ENV SRCDIR /home/source
+ENV SRCDIR $PINTOSDIR/sources
 RUN mkdir -p $SRCDIR
 RUN mkdir -p $PINTOSDIR
 RUN mkdir -p $DSTDIR/bin
