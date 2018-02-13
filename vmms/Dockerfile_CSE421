@@ -3,7 +3,7 @@ MAINTAINER Farshad Ghanei <farshadg@buffalo.edu>
 #prerequisites
 RUN apt-get update --fix-missing
 RUN apt-get update && apt-get install -y apt-utils
-RUN apt-get install -y gcc make build-essential libcunit1-dev libcunit1-doc libcunit1 wget python qemu xorg-dev libncurses5-dev gdb
+RUN apt-get install -y gcc make build-essential libcunit1-dev libcunit1-doc libcunit1 wget python qemu xorg-dev libncurses5-dev gdb git
 # Install autodriver
 WORKDIR /home
 RUN useradd autolab
@@ -22,29 +22,35 @@ RUN chmod +s /usr/bin/autodriver
 ###############################################
 # configuraion and setup for bochs and pintos #
 ###############################################
-ENV PINTOSDIR /home/autograde/pintos_base
+ENV PINTOSDIR /home/pintos
 ENV DSTDIR /usr/local
-ENV SRCDIR $PINTOSDIR/sources
+ENV SRCDIR /home/source
+RUN mkdir -p $SRCDIR
+RUN mkdir -p $PINTOSDIR
+RUN mkdir -p $DSTDIR/bin
 ENV BXSHARE $DSTDIR/share/bochs
 ENV PATH="${DSTDIR}/bin:${PATH}"
-RUN mkdir -p $SRCDIR
-RUN mkdir -p $DSTDIR/bin
-#These files may be put on a local server, but keep the folder structure
-RUN wget -P $SRCDIR http://web.stanford.edu/class/cs140/projects/pintos/bochs-2.2.6.tar.gz
-RUN wget -P $SRCDIR http://web.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz
-RUN tar -xzf $SRCDIR/pintos.tar.gz -C $SRCDIR
-RUN mv $SRCDIR/pintos/* $PINTOSDIR
-RUN sed -i '26s/$/ -march=i386/' $PINTOSDIR/src/Make.config
-RUN sed -i '21s/$/ -m32 -march=i386/' $PINTOSDIR/src/Make.config
-RUN sed -i '6i LDLIBS = -lm' $PINTOSDIR/src/utils/Makefile
-RUN sed -i "5i GDBMACROS=$PINTOSDIR/src/misc/gdb-macros" $PINTOSDIR/src/utils/pintos-gdb
-RUN sed -i "911s/.*/\\tif (1) {/" $PINTOSDIR/src/utils/pintos
-RUN sed -i '927,935 s/^/#/' $PINTOSDIR/src/utils/pintos
-RUN sed -i "28i sed -i '95i using namespace __gnu_cxx;' bx_debug/symbols.cc" $PINTOSDIR/src/misc/bochs-2.2.6-build.sh
-RUN $PINTOSDIR/src/misc/bochs-2.2.6-build.sh
+
+# These files may be put on a local server, but keep the folder structure
+WORKDIR $SRCDIR/
+RUN git clone git://pintos-os.org/pintos-anon
+RUN mv pintos-anon/* $PINTOSDIR
+#RUN wget http://web.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz
+#RUN tar -xzf pintos.tar.gz
+#RUN mv pintos/* $PINTOSDIR
+
+WORKDIR $SRCDIR/
+RUN wget http://www.oldlinux.org/Linux.old/bochs/Bochs/bochs-2.2.6/bochs-2.2.6.tar.gz
+#RUN wget http://web.stanford.edu/class/cs140/projects/pintos/bochs-2.2.6.tar.gz
+
+WORKDIR $PINTOSDIR/src/misc/
+RUN ./bochs-2.2.6-build.sh
+
 WORKDIR $PINTOSDIR/src/utils/
+RUN sed -i "5i GDBMACROS=$PINTOSDIR/src/misc/gdb-macros" pintos-gdb
 RUN make
 RUN cp backtrace pintos pintos-gdb pintos-mkdisk Pintos.pm pintos-set-cmdline squish-pty squish-unix $DSTDIR/bin
+
 RUN chown -R autograde:autograde /home/autograde
 RUN chown -R autograde:autograde $BXSHARE
 RUN chown -R autograde:autograde $DSTDIR/bin
@@ -55,3 +61,4 @@ RUN rm -rf Tango/
 # Check installation
 RUN ls -l /home
 RUN which autodriver
+
