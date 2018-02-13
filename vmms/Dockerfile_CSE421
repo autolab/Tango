@@ -1,0 +1,57 @@
+FROM ubuntu:16.04
+MAINTAINER Farshad Ghanei <farshadg@buffalo.edu>
+#prerequisites
+RUN apt-get update --fix-missing
+RUN apt-get update && apt-get install -y apt-utils
+RUN apt-get install -y gcc make build-essential libcunit1-dev libcunit1-doc libcunit1 wget python qemu xorg-dev libncurses5-dev gdb
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+###############################################
+# configuraion and setup for bochs and pintos #
+###############################################
+ENV PINTOSDIR /home/autograde/pintos_base
+ENV DSTDIR /usr/local
+ENV SRCDIR $PINTOSDIR/sources
+ENV BXSHARE $DSTDIR/share/bochs
+ENV PATH="${DSTDIR}/bin:${PATH}"
+RUN mkdir -p $SRCDIR
+RUN mkdir -p $DSTDIR/bin
+#These files may be put on a local server, but keep the folder structure
+RUN wget -P $SRCDIR http://web.stanford.edu/class/cs140/projects/pintos/bochs-2.2.6.tar.gz
+RUN wget -P $SRCDIR http://web.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz
+RUN tar -xzf $SRCDIR/pintos.tar.gz -C $SRCDIR
+RUN mv $SRCDIR/pintos/* $PINTOSDIR
+RUN sed -i '26s/$/ -march=i386/' $PINTOSDIR/src/Make.config
+RUN sed -i '21s/$/ -m32 -march=i386/' $PINTOSDIR/src/Make.config
+RUN sed -i '6i LDLIBS = -lm' $PINTOSDIR/src/utils/Makefile
+RUN sed -i "5i GDBMACROS=$PINTOSDIR/src/misc/gdb-macros" $PINTOSDIR/src/utils/pintos-gdb
+RUN sed -i "911s/.*/\\tif (1) {/" $PINTOSDIR/src/utils/pintos
+RUN sed -i '927,935 s/^/#/' $PINTOSDIR/src/utils/pintos
+RUN sed -i "28i sed -i '95i using namespace __gnu_cxx;' bx_debug/symbols.cc" $PINTOSDIR/src/misc/bochs-2.2.6-build.sh
+RUN $PINTOSDIR/src/misc/bochs-2.2.6-build.sh
+WORKDIR $PINTOSDIR/src/utils/
+RUN make
+RUN cp backtrace pintos pintos-gdb pintos-mkdisk Pintos.pm pintos-set-cmdline squish-pty squish-unix $DSTDIR/bin
+RUN chown -R autograde:autograde /home/autograde
+RUN chown -R autograde:autograde $BXSHARE
+RUN chown -R autograde:autograde $DSTDIR/bin
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+# Check installation
+RUN ls -l /home
+RUN which autodriver
