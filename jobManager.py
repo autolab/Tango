@@ -52,8 +52,9 @@ class JobManager:
         """
         id = self.nextId
         self.nextId += 1
-        if self.nextId > 99999:
-            self.nextId = 10000
+        # xxx simply wrap the id without guarding condition is bad. disable for now.
+        # if self.nextId > 99999:
+        #    self.nextId = 10000
         return id
 
     def __manage(self):
