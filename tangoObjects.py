@@ -5,6 +5,8 @@
 import redis
 import pickle
 import Queue
+import logging
+from datetime import datetime
 from config import Config
 
 redisConnection = None
@@ -99,6 +101,7 @@ class TangoJob():
         self._remoteLocation = None
         self.accessKeyId = accessKeyId
         self.accessKey = accessKey
+        self.tm = datetime.now()
 
     def makeAssigned(self):
         self.syncRemote()
@@ -291,6 +294,7 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = getRedisConnection()
         self.hash_name = object_name
+        self.log = logging.getLogger("TangoRemoteDictionary")
 
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
@@ -328,8 +332,12 @@ class TangoRemoteDictionary():
         self.r.delete(self.hash_name)
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
-                if self.get(i) != None])
+        # find all non-empty spots in the job id spectrum (actual jobs) and sort
+        # by the time of creation to prevent starvation of jobs with larger ids
+
+        return iter(sorted([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                            if self.get(i) != None], key=lambda x: x[1].tm))
+
 
 class TangoNativeDictionary():
 
@@ -356,8 +364,8 @@ class TangoNativeDictionary():
             del self.dict[str(id)]
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
-                if self.get(i) != None])
+        return iter(sorted([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                            if self.get(i) != None], key=lambda x: x[1].tm))
 
     def _clean(self):
         # only for testing
