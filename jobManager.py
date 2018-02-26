@@ -106,9 +106,8 @@ class JobManager:
                     # Now dispatch the job to a worker
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                   (job.name, job.id, preVM.name, job.retries))
-                    job.appendTrace(
-                        "%s|Dispatched job %s:%d [try %d]" %
-                        (datetime.utcnow().ctime(), job.name, job.id, job.retries))
+                    job.appendTrace("Dispatched job %s:%d [try %d]" %
+                                    (job.name, job.id, job.retries))
 
                     Worker(
                         job,

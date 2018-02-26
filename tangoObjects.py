@@ -120,7 +120,7 @@ class TangoJob():
     def appendTrace(self, trace_str):
         # trace attached to the object can be retrived and sent to rest api caller
         self.syncRemote()
-        self.trace.append(trace_str)
+        self.trace.append("%s|%s" % (datetime.now().ctime(), trace_str))
         self.updateRemote()
 
     def setId(self, new_id):

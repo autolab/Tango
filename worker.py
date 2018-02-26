@@ -166,7 +166,7 @@ class Worker(threading.Thread):
         else:
           msg = "failed " + msg + " (status=%d)" % status
       self.log.info(msg)
-      self.job.appendTrace("%s|%s" % (datetime.now().ctime(), msg))
+      self.job.appendTrace(msg)
 
     #
     # Main worker function

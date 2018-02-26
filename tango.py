@@ -297,30 +297,26 @@ class TangoServer:
         # Every job must have a name
         if not job.name:
             self.log.error("validateJob: Missing job.name")
-            job.appendTrace("%s|validateJob: Missing job.name" %
-                            (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing job.name")
             errors += 1
 
         # Check the virtual machine field
         if not job.vm:
             self.log.error("validateJob: Missing job.vm")
-            job.appendTrace("%s|validateJob: Missing job.vm" %
-                            (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing job.vm")
             errors += 1
         else:
             if not job.vm.image:
                 self.log.error("validateJob: Missing job.vm.image")
-                job.appendTrace("%s|validateJob: Missing job.vm.image" %
-                                (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing job.vm.image")
                 errors += 1
             else:
                 vobj = vmms[Config.VMMS_NAME]
                 imgList = vobj.getImages()
                 if job.vm.image not in imgList:
-                    self.log.error("validateJob: Image not found: %s" %
-                              job.vm.image)
-                    job.appendTrace("%s|validateJob: Image not found: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.image))
+                    self.log.error("validateJob: Image not found: %s" % job.vm.image)
+                                   
+                    job.appendTrace("validateJob: Image not found: %s" % job.vm.image)
                     errors += 1
                 else:
                     (name, ext) = os.path.splitext(job.vm.image)
@@ -328,26 +324,23 @@ class TangoServer:
 
             if not job.vm.vmms:
                 self.log.error("validateJob: Missing job.vm.vmms")
-                job.appendTrace("%s|validateJob: Missing job.vm.vmms" %
-                                (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing job.vm.vmms")
                 errors += 1
             else:
                 if job.vm.vmms not in vmms:
                     self.log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
-                    job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.vmms))
+                    job.appendTrace("validateJob: Invalid vmms name: %s" % job.vm.vmms)
                     errors += 1
 
         # Check the output file
         if not job.outputFile:
             self.log.error("validateJob: Missing job.outputFile")
-            job.appendTrace("%s|validateJob: Missing job.outputFile" % (datetime.utcnow().ctime()))           
+            job.appendTrace("validateJob: Missing job.outputFile")
             errors += 1
         else:
             if not os.path.exists(os.path.dirname(job.outputFile)):
-                self.log.error("validateJob: Bad output path: %s", job.outputFile)
-                job.appendTrace("%s|validateJob: Bad output path: %s" %
-                                (datetime.utcnow().ctime(), job.outputFile))
+                self.log.error("validateJob: Bad output path: %s" % job.outputFile)
+                job.appendTrace("validateJob: Bad output path: %s" % job.outputFile)
                 errors += 1
 
         # Check for max output file size parameter
@@ -361,14 +354,12 @@ class TangoServer:
         for inputFile in job.input:
             if not inputFile.localFile:
                 self.log.error("validateJob: Missing inputFile.localFile")
-                job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
-                            (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing inputFile.localFile")
                 errors += 1
             else:
                 if not os.path.exists(os.path.dirname(job.outputFile)):
-                    self.log.error("validateJob: Bad output path: %s", job.outputFile)
-                    job.appendTrace("%s|validateJob: Bad output path: %s" %
-                                    (datetime.utcnow().ctime(), job.outputFile))
+                    self.log.error("validateJob: Bad output path: %s" % job.outputFile)
+                    job.appendTrace("validateJob: Bad output path: %s" % job.outputFile)
                     errors += 1
 
             if inputFile.destFile == 'Makefile':
@@ -377,7 +368,7 @@ class TangoServer:
         # Check if input files include a Makefile
         if not hasMakefile:
             self.log.error("validateJob: Missing Makefile in input files.")
-            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing Makefile in input files.")
             errors+=1    
 
         # Check if job timeout has been set; If not set timeout to default
@@ -389,8 +380,7 @@ class TangoServer:
         # Any problems, return an error status
         if errors > 0:
             self.log.error("validateJob: Job rejected: %d errors" % errors)
-            job.appendTrace("%s|validateJob: Job rejected: %d errors" %
-                                (datetime.utcnow().ctime(), errors))
+            job.appendTrace("validateJob: Job rejected: %d errors" % errors)
             return -1
         else:
             return 0

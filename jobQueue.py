@@ -90,8 +90,7 @@ class JobQueue:
         self.log.debug("add| Acquired lock to job queue.")
 
         self.liveJobs.set(job.id, job)
-        job.appendTrace("%s|Added job %s:%d to queue" %
-                        (datetime.utcnow().ctime(), job.name, job.id))
+        job.appendTrace("Added job %s:%d to queue" % (job.name, job.id))
 
         self.log.debug("Ref: " + str(job._remoteLocation))
         self.log.debug("job_id: " + str(job.id))
@@ -275,7 +274,7 @@ class JobQueue:
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)           
             self.liveJobs.delete(id)
-            job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
+            job.appendTrace(reason)
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status
