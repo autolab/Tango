@@ -42,21 +42,6 @@ class Preallocator:
         else:
             return 0
 
-    def decrementPoolSize(self, vm):
-        """
-        Called by worker to shrink the pool, after returning a vm to free pool
-        """
-
-        if not (hasattr(Config, 'POOL_SIZE_LOW_WATER_MARK') and
-                Config.POOL_SIZE_LOW_WATER_MARK >= 0 and vm.name in self.machines.keys()):
-            return
-
-        delta = self.freePoolSize(vm.name) - Config.POOL_SIZE_LOW_WATER_MARK
-        if delta > 0:
-            self.log.info("decrementPoolSize: remove %d vms from pool %s" % (delta, vm.name))
-            for i in range(delta):
-                threading.Thread(target=self.__destroy(vm)).start()
-
     def incrementPoolSize(self, vm, delta):
         """
         Called by jobQueue to create the pool and allcoate given number of vms
