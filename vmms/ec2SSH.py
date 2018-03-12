@@ -418,15 +418,22 @@ class Ec2SSH:
         domain_name = self.domainName(vm)
         self.log.debug("runJob: Running job on VM %s" %
                        self.instanceName(vm.id, vm.name))
-        # Setting ulimits for VM and running job
-        runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-                %d -o %d -z %s -i %d autolab &> output" % (
-                  config.Config.VM_ULIMIT_USER_PROC,
-                  config.Config.VM_ULIMIT_FILE_SIZE,
-                  runTimeout,
-                  maxOutputFileSize,
-                  config.Config.AUTODRIVER_LOGGING_TIME_ZONE,
-                  config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
+
+        # Setting arguments for VM and running job
+        runcmd = "/usr/bin/time --output=time.out autodriver \
+        -u %d -f %d -t %d -o %d " % (
+          config.Config.VM_ULIMIT_USER_PROC,
+          config.Config.VM_ULIMIT_FILE_SIZE,
+          runTimeout,
+          maxOutputFileSize)
+        if hasattr(config.Config, 'AUTODRIVER_LOGGING_TIME_ZONE') and \
+           config.Config.AUTODRIVER_LOGGING_TIME_ZONE:
+          runcmd = runcmd + ("-z %s " % config.Config.AUTODRIVER_LOGGING_TIME_ZONE)
+        if hasattr(config.Config, 'AUTODRIVER_TIMESTAMP_INTERVAL') and \
+           config.Config.AUTODRIVER_TIMESTAMP_INTERVAL:
+          runcmd = runcmd + ("-i %d " % config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
+        runcmd = runcmd + "autolab &> output"
+
         # runTimeout * 2 is a conservative estimate.
         # autodriver handles timeout on the target vm.
         ret = timeout(["ssh"] + self.ssh_flags +
