@@ -23,6 +23,7 @@ class Config:
     PORT = 3000
 
     # Log file. Setting this to None sends the server output to stdout
+    # Strongly suggest setting up a log file
     LOGFILE = None
 
     # Logging level
@@ -58,7 +59,7 @@ class Config:
 
     # We have the option to reuse VMs or discard them after each use
     # xxxXXX??? strongly suspect the code path for the False case
-    # not working, after a failed experiment.
+    # not working, after a failed experiment. -- czang@cmu.edu
     REUSE_VMS = True
 
     # Worker waits this many seconds for functions waitvm, copyin (per
@@ -70,6 +71,7 @@ class Config:
     COPYOUT_TIMEOUT = 30
 
     # time zone and timestamp report interval for autodriver execution
+    # both are optional.
     AUTODRIVER_LOGGING_TIME_ZONE = "UTC"  # e.g. "America/New_York".
     AUTODRIVER_TIMESTAMP_INTERVAL = 0  # in seconds. 0 => no timestamp insersion
 
@@ -105,6 +107,9 @@ class Config:
 
     # Give VMMS this many seconds to destroy a VM before giving up
     DESTROY_SECS = 5
+
+    # When set to True, put the vm aside for debugging after OS ERROR by autodriver
+    KEEP_VM_AFTER_FAILURE = None
 
     # Time to wait between creating VM instances to give DNS time to cool down
     CREATEVM_SECS = 1
@@ -160,7 +165,6 @@ class Config:
 
     EC2_REGION = ''
     EC2_USER_NAME = ''
-    EC2_AUTO_SCALING_GROUP_NAME = None  # or the name of the auto scaling group
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''
