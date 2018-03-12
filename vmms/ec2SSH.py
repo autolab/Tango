@@ -148,25 +148,6 @@ class Ec2SSH:
         if (len(ignoredAmis) > 0):
             self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
 
-        # preliminary code for auto scaling group (configured by EC2_AUTO_SCALING_GROUP_NAME)
-        # Here we get the pointer to the group, if any.
-        # When an instance is created, it's attached to the group.
-        # When an instance is terminated, it's detached.
-        self.asg = None
-        self.auto_scaling_group = None
-        self.auto_scaling_group_name = None
-        if hasattr(config.Config, 'EC2_AUTO_SCALING_GROUP_NAME') and config.Config.EC2_AUTO_SCALING_GROUP_NAME:
-            self.asg = boto3.client("autoscaling", config.Config.EC2_REGION)
-            groups = self.asg.describe_auto_scaling_groups(AutoScalingGroupNames=[config.Config.EC2_AUTO_SCALING_GROUP_NAME])
-            if len(groups['AutoScalingGroups']) == 1:
-                self.auto_scaling_group = groups['AutoScalingGroups'][0]
-                self.auto_scaling_group_name = config.Config.EC2_AUTO_SCALING_GROUP_NAME
-                self.log.info("Use aws auto scaling group %s" % self.auto_scaling_group_name)
-
-                instances = self.asg.describe_auto_scaling_instances()['AutoScalingInstances']
-            else:
-                self.log.info("Cannot find auto scaling group %s" % config.Config.EC2_AUTO_SCALING_GROUP_NAME)
-
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
         this function when you need a VM instance name. Never generate
@@ -330,11 +311,6 @@ class Ec2SSH:
                  reservation.id,
                  newInstance.public_dns_name,
                  newInstance.ip_address))
-
-            if self.auto_scaling_group:
-                self.asg.attach_instances(InstanceIds=[newInstance.id],
-                                          AutoScalingGroupName=self.auto_scaling_group_name)
-                self.log.info("attach new instance %s to auto scaling group" % newInstance.id)
 
             # Save domain and id ssigned by EC2 in vm object
             vm.domain_name = newInstance.ip_address
@@ -509,7 +485,7 @@ class Ec2SSH:
             self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
             return []
 
-        self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.doNotDestroy, vm.notes))
+        self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
 
         # Keep the vm and mark with meaningful tags for debugging
         if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
@@ -530,17 +506,6 @@ class Ec2SSH:
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
-
-        if self.auto_scaling_group:
-            response = self.asg.describe_auto_scaling_instances(InstanceIds=[vm.ec2_id],
-                                                                MaxRecords=1)
-            if len(response['AutoScalingInstances']) == 1:
-                self.asg.detach_instances(InstanceIds=[vm.ec2_id],
-                                          AutoScalingGroupName=self.auto_scaling_group_name,
-                                          ShouldDecrementDesiredCapacity=True)
-                self.log.info("detach instance %s %s from auto scaling group" % (vm.ec2_id, vm.name))
-            else:
-                self.log.info("instance %s %s not in auto scaling group" % (vm.ec2_id, vm.name))
 
         return ret
 
