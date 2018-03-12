@@ -268,7 +268,7 @@ class Worker(threading.Thread):
                     (returnVM, replaceVM) = (False, True)
                     # doNotDestroy, combined with KEEP_VM_AFTER_FAILURE, will sent
                     # the vm aside for further investigation after failure.
-                    self.job.vm.doNotDestroy = True
+                    self.job.vm.keepForDebugging = True
                     self.job.vm.notes = str(self.job.id) + "_" + self.job.name
                 else:  # This should never happen
                     msg = "Error: Unknown autodriver error (status=%d)" % (

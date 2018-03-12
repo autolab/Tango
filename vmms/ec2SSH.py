@@ -511,8 +511,9 @@ class Ec2SSH:
 
         self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.doNotDestroy, vm.notes))
 
+        # Keep the vm and mark with meaningful tags for debugging
         if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
-           config.Config.KEEP_VM_AFTER_FAILURE and vm.doNotDestroy:
+           config.Config.KEEP_VM_AFTER_FAILURE and vm.keepForDebugging:
           iName = self.instanceName(vm.id, vm.name)
           self.log.info("Will keep VM %s for further debugging" % iName)
           instance = self.boto3resource.Instance(vm.ec2_id)

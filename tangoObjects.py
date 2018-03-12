@@ -65,7 +65,7 @@ class TangoMachine():
         self.instance_id = id
         # The following attributes can instruct vmms to set the test machine
         # aside for further investigation.
-        self.doNotDestroy = False
+        self.keepForDebugging = False
         self.notes = None
 
     def __repr__(self):
