@@ -102,7 +102,10 @@ class JobManager:
                     ).start()
 
                 except Exception as err:
-                    self.jobQueue.makeDead(job.id, str(err))
+                    if job:
+                        self.jobQueue.makeDead(job.id, str(err))
+                    else:
+                        self.log.info("Missing job %d, error: %s" % (id, str(err)))
 
             # Sleep for a bit and then check again
             time.sleep(Config.DISPATCH_PERIOD)
