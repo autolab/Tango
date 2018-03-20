@@ -6,10 +6,12 @@ from util import CommandLine
 from util import Lab
 import util
 
-# drive student submissions to Tango.  See ./util.py for preset configuratons.
-# the script finds course and labs at a specified location and submits work
-# from the handin directory.
-# It then waits for all output files to have newer modification time.
+# Drive exiting student submissions to Tango.
+# Find course/lab at specified location and submits work from the handin directory.
+# Then wait for job output files.
+#
+# Use -h to show usage.
+# See config_for_run_jobs.py for configuration options.
 
 cfg = Config()
 cmdLine = CommandLine(cfg)

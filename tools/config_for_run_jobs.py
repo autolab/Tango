@@ -16,9 +16,9 @@ class Config:
 
   # YOUR lab definitions. The index of the lab is given to run_job.py
   labs = [
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "newPool.img"},
-    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "newPool.img"}]
+    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "course-746.img"},
+    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "course-213.img"},
+    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "my-exp.img"}]
 
   # Range of student submissions to run (sorted by student emails)
   # If either is None, all student submissions are run, unless
@@ -39,9 +39,9 @@ class Config:
   # IP of the tango container is usually computed automatically
   tangoIP = ""
 
-  # Redis port.  Sometimes we have two redis running, each support a Tango
+  # Redis port.  Sometimes we have two redis running, each support a Tango instance.
   # In such case a different forwarding port is assigned to it.
-  # Note: This variable is used by ec2Read.py only.
+  # Note: This variable is used by tools/ec2Read.py only.
   redisPort = 6379  # standard
 
 # end of class Config
