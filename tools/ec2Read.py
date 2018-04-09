@@ -181,7 +181,8 @@ if destroyList:
           matchingInstances.append(item)
     else:
       for item in sortedInstances:  # match a "Name" tag that is not None
-        if instanceNameTag(item["Instance"]).startswith(partialStr):
+        if instanceNameTag(item["Instance"]).startswith(partialStr) or \
+           instanceNameTag(item["Instance"]).endswith(partialStr):
           matchingInstances.append(item)
 
     # remove the items already terminated
