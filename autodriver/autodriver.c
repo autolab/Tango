@@ -39,6 +39,26 @@
 #include <time.h>
 #include <pthread.h>
 
+// How autodriver works:
+//
+// The parent process creates an output file and starts a child process run_job().
+// The child process assumes under the home directory of the user "autograde"
+// there is a directory specified on the command line of this program.
+// Under that directory, there is a Makefile.
+// The child will run the Makefile to start the tests and redirects all output
+// to the output file created by the parent process.
+//
+// After the child process terminates, the parent parses the output file and
+// sends the content to stdout, in dump_output() and dump_file().  If the
+// output file is too large, it's elided in the middle.  If timestamp
+// option (-i) is specified, timestamps are inserted into the output stream.
+//
+// If timestamp option is set: The parent starts a thread timestampFunc() after
+// starting the child process.  The thread records at the given interval the
+// timestamps (output file size AND time).  While parsing the output file
+// after the child process, the recorded timestamps are inserted at the offsets
+// by insertTimestamp().
+
 #define min(x, y)       ((x) < (y) ? (x) : (y))
 
 char timestampStr[100];
@@ -187,7 +207,8 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
     return 0;
 }
 
-// pthread function, keep a map of timestamp and user's output file offset
+// pthread function, keep a map of timestamp and user's output file offset.
+// The thread is not started unless timestamp interval option is specified.
 void *timestampFunc() {
   time_t lastStamp = 0;
   int lastJumpIndex = -1;
@@ -273,8 +294,60 @@ int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
   return 0;
 }
 
-#define WRITE_BUFFER(buffer, nBytes)  \
-  if (writeBuffer(buffer, nBytes)) return -1
+// Insert the timestamp at the appropriate places.
+// When failing to write to the output file, return with updated scanCursor,
+void insertTimestamp(char *buffer,
+                     size_t bufferOffset,
+                     size_t bufferLength,
+                     char **scanCursorInOut,
+                     unsigned *currentStampInOut) {
+  char *scanCursor = *scanCursorInOut;
+  unsigned currentStamp = *currentStampInOut;
+  size_t nextOffset = bufferOffset + bufferLength;
+  size_t eolOffset = 0;
+
+  // pace through timestamps that fall into the buffer
+  while (currentStamp < timestampCount &&
+         timestampMap[currentStamp].offset < nextOffset) {
+
+    // there might be unused timestamps from last read buffer or before last eol.
+    // skip over them.
+    if (timestampMap[currentStamp].offset < bufferOffset ||
+        timestampMap[currentStamp].offset <= eolOffset) {
+      currentStamp++;
+      continue;
+    }
+
+    char *eolSearchStart = timestampMap[currentStamp].offset - bufferOffset + buffer;
+    char *nextEol = strchr(eolSearchStart, '\n');
+    if (!nextEol) {  // no line break found in read buffer to insert timestamp
+      break;
+    }
+
+    
+    // write the stuff up to the line break
+    if (writeBuffer(scanCursor, nextEol - scanCursor + 1)) {break;}
+    scanCursor = nextEol + 1;
+
+    // no timestamp at EOF, because the test scores are on the last line
+    eolOffset = bufferOffset + (nextEol - buffer);
+    if (eolOffset + 1 >= outputFileSize) {
+      break;
+    }
+
+    // write the timestamp
+    char stampInsert[200];
+    sprintf(stampInsert,
+            "...[timestamp %s inserted by autodriver at offset ~%lu. Maybe out of sync with output's own timestamps.]...\n",
+            getTimestamp(timestampMap[currentStamp].time),
+            timestampMap[currentStamp].offset);
+    if (writeBuffer(stampInsert, strlen(stampInsert))) {break;}
+    currentStamp++;
+  }  // while loop through the stamps falling into read buffer's range
+
+  *scanCursorInOut = scanCursor;
+  *currentStampInOut = currentStamp;
+}
 
 /**
  * @brief Dumps a specified number of bytes from a file to standard out
@@ -291,8 +364,9 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
     size_t nextOffset = offset;
 
     if (offset) {  // second part of output file, after truncating in the middle
-        char *msg = "\n...[excess bytes elided by autodriver]...\n";
-        WRITE_BUFFER(msg, strlen(msg));
+      // insert a message, indicating file truncation
+      char *msg = "\n...[excess bytes elided by autodriver]...\n";
+      if (writeBuffer(msg, strlen(msg))) {return -1;}
     }
 
     // Flush stdout so our writes here don't race with buffer flushes
@@ -309,7 +383,6 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
     while (read_rem > 0) {
       char buffer[BUFSIZE];
       ssize_t nread;
-      size_t bufferOffset = nextOffset;
 
       memset(buffer, 0, BUFSIZE);
       if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
@@ -317,48 +390,15 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
         return -1;
       }
       read_rem -= nread;
-      nextOffset += nread;  // offset of currently read buffer in the file
       char *scanCursor = buffer;
-      size_t eolOffset = 0;
 
-      // pace through timestamps that fall into the buffer
-      while (currentStamp < timestampCount &&
-             timestampMap[currentStamp].offset < nextOffset) {
+      if (timestampCount) {  // If inserting timestamp
+        insertTimestamp(buffer, nextOffset, nread, &scanCursor, &currentStamp);
+      }
 
-        // there might be unused timestamps from last read buffer or before last eol
-        if (timestampMap[currentStamp].offset < bufferOffset ||
-            timestampMap[currentStamp].offset <= eolOffset) {
-          currentStamp++;
-          continue;
-        }
+      if (writeBuffer(scanCursor, nread - (scanCursor - buffer))) {return -1;}
 
-        char *eolSearchStart = timestampMap[currentStamp].offset - bufferOffset + buffer;
-        char *nextEol = strchr(eolSearchStart, '\n');
-        if (!nextEol) {  // no line break found in read buffer to insert timestamp
-          break;
-        }
-
-        // write the stuff up to the line break
-        WRITE_BUFFER(scanCursor, nextEol - scanCursor + 1);  // write up to \n
-        scanCursor = nextEol + 1;
-
-        // no timestamp at EOF, because the test scores are on the last line
-        eolOffset = bufferOffset + (nextEol - buffer);
-        if (eolOffset + 1 >= outputFileSize) {
-          break;
-        }
-
-        // write the timestamp
-        char stampInsert[200];
-        sprintf(stampInsert,
-                "...[timestamp %s inserted by autodriver at offset ~%lu. Maybe out of sync with output's own timestamps.]...\n",
-                getTimestamp(timestampMap[currentStamp].time),
-                timestampMap[currentStamp].offset);
-        WRITE_BUFFER(stampInsert, strlen(stampInsert));
-        currentStamp++;
-      }  // while loop through the stamps falling into read buffer's range
-
-      WRITE_BUFFER(scanCursor, nread - (scanCursor - buffer));
+      nextOffset += nread;  // offset of next read buffer in the file
     }  // while loop finish reading
 
     return 0;
@@ -586,7 +626,7 @@ static int monitor_child(pid_t child) {
     int killed = 0;
     int status;
 
-    // create a thread for for file size tracking by time interval
+    // create a thread to track the file size at given time interval
     pthread_t timestampThread = 0;  // this thread needs no cancellation
     if (args.timestamp_interval > 0) {
       if (pthread_create(&timestampThread, NULL, timestampFunc, NULL)) {
@@ -607,7 +647,7 @@ static int monitor_child(pid_t child) {
 
         if (sigtimedwait(&sigset, NULL, &timeout) < 0) {
             // Child timed out
-            ERROR_ERRNO("Job timed out after %d seconds\n", args.timeout);
+            ERROR("Job timed out after %d seconds", args.timeout);
             assert(errno == EAGAIN);
             kill(child, SIGKILL);
             killed = 1;
@@ -787,6 +827,9 @@ int main(int argc, char **argv) {
     sigaddset(&sigset, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigset, NULL);
 
+    // output file is written by the child process while running the test.
+    // It's created here before forking, because the timestamp thread needs
+    // read access to it.
     if ((child_output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
         ERROR_ERRNO("Creating output file");
