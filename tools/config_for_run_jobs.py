@@ -32,16 +32,29 @@ class Config:
   # YOUR Tango repo root (cloned from xyzisinus' Autolab github)
   tangoDir = "/h/myname/Tango"
 
-  # Sometimes multiple experimental Tango containers are run on one machine.
-  # They are identified by different ports.
-  tangoHostPort = "host-port 8600"
-
   # IP of the tango container is usually computed automatically
   tangoIP = ""
 
-  # Redis port.  Sometimes we have two redis running, each support a Tango instance.
-  # In such case a different forwarding port is assigned to it.
-  # Note: This variable is used by tools/ec2Read.py only.
-  redisPort = 6379  # standard
+  # INFO: Where tango and redis ports are defined
+  # In docker-compose.yml file (under parent dir of Tango), there can be:
+  '''
+    tango:
+      ports:
+      - '8600:8600'
+      - '6380:6379'
+  '''
+  # The first port pair is for tango. The port before ":" is on the host and
+  # the other (optional) inside the container if tango/redis are run in a
+  # container.  The second line is for redis.
+  # Sometimes we run multiple tango/redis containers on the same host for
+  # separate experiments.  To access different tango/redis, we can give them
+  # different on-host port numbers, hence the need for the HostPort variables.
+  # A util script can reach the desirable entity using those varialbes.
+
+  # Note: This variable is used by tools/util.py (run_jobs.py) only so far.
+  tangoHostPort = "host-port 8600"
+
+  # Note: This variable is used by tools/ec2Read.py only so far.
+  redisHostPort = 6379  # default
 
 # end of class Config
