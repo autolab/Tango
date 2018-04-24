@@ -286,6 +286,7 @@ int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
   while (write_rem > 0) {
     if ((nwritten = write(STDOUT_FILENO, write_base, write_rem)) < 0) {
       ERROR_ERRNO("Writing output");
+      ERROR("Failure details: write_base %p write_rem %lu", write_base, write_rem);
       return -1;
     }
     write_rem -= nwritten;
@@ -318,15 +319,17 @@ void insertTimestamp(char *buffer,
       continue;
     }
 
-    char *eolSearchStart = timestampMap[currentStamp].offset - bufferOffset + buffer;
+    char *eolSearchStart = buffer + (timestampMap[currentStamp].offset - bufferOffset);
     char *nextEol = strchr(eolSearchStart, '\n');
     if (!nextEol) {  // no line break found in read buffer to insert timestamp
       break;
     }
 
-    
     // write the stuff up to the line break
-    if (writeBuffer(scanCursor, nextEol - scanCursor + 1)) {break;}
+    if (writeBuffer(scanCursor, (nextEol + 1) - scanCursor)) {
+      ERROR("Write failed: buffer %p cursor %p nextEol %p", buffer, scanCursor, nextEol);
+      break;
+    }
     scanCursor = nextEol + 1;
 
     // no timestamp at EOF, because the test scores are on the last line
@@ -336,7 +339,7 @@ void insertTimestamp(char *buffer,
     }
 
     // write the timestamp
-    char stampInsert[200];
+    char stampInsert[300];
     sprintf(stampInsert,
             "...[timestamp %s inserted by autodriver at offset ~%lu. Maybe out of sync with output's own timestamps.]...\n",
             getTimestamp(timestampMap[currentStamp].time),
@@ -396,7 +399,10 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
         insertTimestamp(buffer, nextOffset, nread, &scanCursor, &currentStamp);
       }
 
-      if (writeBuffer(scanCursor, nread - (scanCursor - buffer))) {return -1;}
+      if (writeBuffer(scanCursor, nread - (scanCursor - buffer))) {
+        ERROR("Write failed: buffer %p cursor %p nread %lu", buffer, scanCursor, nread);
+        return -1;
+      }
 
       nextOffset += nread;  // offset of next read buffer in the file
     }  // while loop finish reading
@@ -670,6 +676,7 @@ static int monitor_child(pid_t child) {
       MESSAGE("Timestamps inserted at %d-second or larger intervals, depending on output rates",
               args.timestamp_interval);
     }
+    MESSAGE("Also check end of output for potential errors");
 
     childFinished = 1;
     dump_output();
