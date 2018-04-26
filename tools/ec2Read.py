@@ -155,7 +155,7 @@ def allocateVMs():
 # is defined in config_for_run_jobs.py.  To select the redis server,
 # We get the connection here and pass it into tangoObjects
 redisConnection = redis.StrictRedis(
-  host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisPort, db=0)
+  host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisHostPort, db=0)
 tangoObjects.getRedisConnection(connection=redisConnection)
 boto3connection = boto3.client("ec2", Config.EC2_REGION)
 boto3resource = boto3.resource("ec2", Config.EC2_REGION)
