@@ -196,7 +196,7 @@ def tango_addJob():
         requestObj['jobName'] = args.jobname
         
         if (args.notifyURL):
-            requestObj['notifyURL'] = args.notifyURL
+            requestObj['callback_url'] = args.notifyURL
         
         requestObj['accessKeyId'] = args.accessKeyId
         requestObj['accessKey'] = args.accessKey
