@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <string.h>
 
 int main() {
+  srand((unsigned)time(NULL));
   putenv("TZ=America/New_York");
   tzset();
 
@@ -16,12 +18,19 @@ int main() {
       time_t ltime = time(NULL);
       struct tm* tmInfo = localtime(&ltime);
       strftime(timeStr, 100, "%Y%m%d-%H:%M:%S", tmInfo);
-      printf("TIME: \"%s\"\n", timeStr);
+      printf("TIME: \"%s\" followed by 3 lines of random lenth\n", timeStr);
       int j;
-      for (j = 0; j < 10; j++) {
-        printf("=%1d-0123456789", j);
+      for (j = 0; j < 3; j++) {
+        int lineLength = rand() % 2000;  // longer than autodriver's buf size
+        int count = 0;
+        char line[81];
+        memset(line, 0, 81);
+        while (count < lineLength) {
+          line[count] = '0' + count % 10;
+          count++;
+        }
+        printf("%s\n", line);
       }
-      printf("\n");
     }
     sleep(1);
   }
