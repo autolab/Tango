@@ -384,10 +384,10 @@ static int dump_file(int fd, size_t bytes, off_t offset) {
     }
 
     while (read_rem > 0) {
-      char buffer[BUFSIZE];
+      char buffer[BUFSIZE + 1];  // keep the last byte as string terminator
       ssize_t nread;
 
-      memset(buffer, 0, BUFSIZE);
+      memset(buffer, 0, BUFSIZE + 1);
       if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
         ERROR_ERRNO("Reading from output file");
         return -1;
