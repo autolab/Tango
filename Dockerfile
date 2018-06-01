@@ -1,5 +1,5 @@
 # Start with empty ubuntu machine
-FROM ubuntu:15.04
+FROM ubuntu:18.04
 
 MAINTAINER Autolab Development Team "autolab-dev@andrew.cmu.edu"
 
@@ -15,9 +15,9 @@ WORKDIR /opt/TangoService/Tango
 RUN mkdir volumes
 
 WORKDIR /opt
-
+#RUN sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
 # Install dependancies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get dist-upgrade -y && DEBIAN_FRONTEND=nointeractive apt-get install -y \
 	nginx \
 	curl \
 	git \
@@ -68,7 +68,7 @@ RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
-
+CMD ["/usr/bin/supervisord"]
 # TODO: 
 # volumes dir in root dir, supervisor only starts after calling start once , nginx also needs to be started
 # Different log numbers for two different tangos
