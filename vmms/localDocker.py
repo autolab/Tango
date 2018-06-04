@@ -135,7 +135,7 @@ class LocalDocker:
         volumePath = self.getVolumePath(instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % (volumePath, '/home/mount')]
-        args = args + ['-m %dM' % (config.Config.VM_ULIMIT_USER_RAM)]
+        args = args + ['-m%dM' % (config.Config.VM_ULIMIT_USER_RAM)]
         args = args + [vm.image]
         args = args + ['sh', '-c']
 
