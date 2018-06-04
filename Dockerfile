@@ -65,6 +65,9 @@ RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.con
 RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
 RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 
+# Add user
+RUN useradd -ms /bin/bash autolab
+
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
