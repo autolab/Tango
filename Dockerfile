@@ -15,7 +15,6 @@ WORKDIR /opt/TangoService/Tango
 RUN mkdir volumes
 
 WORKDIR /opt
-#RUN sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
 # Install dependancies
 RUN apt-get update && apt-get dist-upgrade -y && DEBIAN_FRONTEND=nointeractive apt-get install -y \
 	nginx \
