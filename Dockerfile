@@ -70,7 +70,6 @@ RUN useradd -ms /bin/bash autolab
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
-CMD ["/usr/bin/supervisord"]
 # TODO: 
 # volumes dir in root dir, supervisor only starts after calling start once , nginx also needs to be started
 # Different log numbers for two different tangos
