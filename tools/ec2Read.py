@@ -22,10 +22,14 @@ class CommandLine():
     parser = argparse.ArgumentParser(description='List AWS vms and preallocator pools')
     parser.add_argument('-d', '--instances', metavar='instance', nargs='+',
                         help="destroy vms by name tags or AWS ids (can be partial).  \"NoNameTag\" (case insensitive) deletes all instances without a \"Name\" tag")
+    parser.add_argument('-l', '--list', action='store_true', dest='listVMs', help="list vms")
+    parser.add_argument('-e', '--emptyPools', action='store_true', dest='emptyPools', help="empty redis pools")
     self.args = parser.parse_args()
 
 cmdLine = CommandLine()
 destroyList = cmdLine.args.instances
+listVMs = cmdLine.args.listVMs
+emptyPools = cmdLine.args.emptyPools
 sortedInstances = []
 
 local_tz = pytz.timezone("EST")
@@ -205,6 +209,18 @@ if destroyList:
   listInstances()
   exit()
 
+if listVMs:
+  listInstances()
+  listPools()
+  exit()
+
+if emptyPools:
+  destroyRedisPools()
+  exit()
+
+listInstances()
+listPools()
+createInstances(1)
 listInstances()
 listPools()
 exit()
