@@ -16,14 +16,13 @@ import logging
 
 import config
 
-import boto
-from boto import ec2
 import boto3
+from boto3 import ec2
+from botocore.exceptions import ClientError
 
 from tangoObjects import TangoMachine
 
 ### added to suppress boto XML output -- Jason Boles
-logging.getLogger('boto').setLevel(logging.CRITICAL)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
@@ -105,16 +104,11 @@ class Ec2SSH:
         self.log.info("init Ec2SSH")
 
         self.ssh_flags = Ec2SSH._SSH_FLAGS
-        if accessKeyId:
-            self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
-                    aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
-            self.useDefaultKeyPair = False
-        else:
-            self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
-            self.useDefaultKeyPair = True
 
-        self.boto3connection = boto3.client("ec2", config.Config.EC2_REGION)
-        self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+        self.useDefaultKeyPair = False if accessKeyId else True
+        self.boto3connection = boto3.client("ec2", config.Config.EC2_REGION,
+                                            aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
+        self.connection = self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
 
         # Use boto3 to read images.  Find the "Name" tag and use it as key to
         # build a map from "Name tag" to boto3's image structure.
@@ -220,20 +214,14 @@ class Ec2SSH:
     def createSecurityGroup(self):
         # Create may-exist security group
         try:
-            security_group = self.connection.create_security_group(
-                config.Config.DEFAULT_SECURITY_GROUP,
-                "Autolab security group - allowing all traffic")
-            # All ports, all traffics, all ips
-            security_group.authorize(from_port=None,
-                to_port=None, ip_protocol='-1', cidr_ip='0.0.0.0/0')
-        except boto.exception.EC2ResponseError:
+            response = self.connection.create_security_group(
+                GroupName=config.Config.DEFAULT_SECURITY_GROUP,
+                Description="Autolab security group - allowing all traffic")
+            security_group_id = response['GroupId']
+            self.connection.authorize_security_group_ingress(
+              GroupId=security_group_id)
+        except ClientError as e:
             pass
-
-    def getInstanceByReservationId(self, reservationId):
-        for inst in self.connection.get_all_instances():
-            if inst.id == reservationId:
-                return inst.instances.pop()
-        return None
 
     #
     # VMMS API functions
@@ -258,62 +246,65 @@ class Ec2SSH:
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
                 self.createKeyPair()
 
-            reservation = self.connection.run_instances(
-                ec2instance['ami'],
-                key_name=self.key_pair_name,
-                security_groups=[
-                    config.Config.DEFAULT_SECURITY_GROUP],
-                instance_type=ec2instance['instance_type'])
+            reservation = self.connection.create_instances(ImageId=ec2instance['ami'],
+                                                           InstanceType=ec2instance['instance_type'],
+                                                           KeyName=self.key_pair_name,
+                                                           SecurityGroups=[
+                                                             config.Config.DEFAULT_SECURITY_GROUP],
+                                                           MaxCount=1,
+                                                           MinCount=1)
 
             # Sleep for a while to prevent random transient errors observed
             # when the instance is not available yet
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
-            newInstance = self.getInstanceByReservationId(reservation.id)
+            newInstance = reservation[0]
             if newInstance:
                 # Assign name to EC2 instance
-                self.connection.create_tags([newInstance.id], {"Name": instanceName})
-                self.log.info("new instance created %s" % newInstance)
+                self.connection.create_tags(Resources=[newInstance.id],
+                                            Tags=[{"Key": "Name", "Value": instanceName}])
+                self.log.info("new instance %s created with name tag %s" %
+                              (newInstance.id, instanceName))
             else:
                 raise ValueError("cannot find new instance for %s" % instanceName)
 
             # Wait for instance to reach 'running' state
             start_time = time.time()
             while True:
-                elapsed_secs = time.time() - start_time
+              # Note: You'd think we should be able to read the state from the
+              # instance but that turns out not working.  So we round up all
+              # running intances and find our instance by instance id
 
-                newInstance = self.getInstanceByReservationId(reservation.id)
-                if not newInstance:
-                    raise ValueError("cannot obtain aws instance for %s" % instanceName)
+              filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+              instances = self.connection.instances.filter(Filters=filters)
+              instanceRunning = False
 
-                if newInstance.state == "pending":
-                    if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
-                        raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
-                                         (instanceName, config.Config.TIMER_POLL_INTERVAL))
+              newInstance.load()  # reload the state of the instance
+              for inst in instances.filter(InstanceIds=[newInstance.id]):
+                self.log.debug("VM %s: is running %s" % (instanceName, newInstance.id))
+                instanceRunning = True
 
-                    self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
-                    time.sleep(config.Config.TIMER_POLL_INTERVAL)
-                    continue
+              if instanceRunning:
+                break
 
-                if newInstance.state == "running":
-                    self.log.debug("VM %s: has reached 'running' state in %d seconds" %
-                                   (instanceName, elapsed_secs))
-                    break
+              if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
+                raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
+                                 (instanceName, config.Config.TIMER_POLL_INTERVAL))
 
-                raise ValueError("VM %s: quit waiting when seeing state '%s' after %d seconds" %
-                                 (instanceName, newInstance.state, elapsed_secs))
+              self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
+              time.sleep(config.Config.TIMER_POLL_INTERVAL)
             # end of while loop
 
             self.log.info(
                 "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
                 (instanceName,
                  newInstance.state,
-                 reservation.id,
+                 reservation,
                  newInstance.public_dns_name,
-                 newInstance.ip_address))
+                 newInstance.public_ip_address))
 
             # Save domain and id ssigned by EC2 in vm object
-            vm.domain_name = newInstance.ip_address
+            vm.domain_name = newInstance.public_ip_address
             vm.ec2_id = newInstance.id
             self.log.debug("VM %s: %s" % (instanceName, newInstance))
             return vm
@@ -321,7 +312,7 @@ class Ec2SSH:
         except Exception as e:
             self.log.debug("initializeVM Failed: %s" % e)
             if newInstance:
-                self.connection.terminate_instances(instance_ids=[newInstance.id])
+              self.connection.instances.filter(InstanceIds=[newInstance.id]).terminate()
             return None
 
     def waitVM(self, vm, max_secs):
@@ -376,6 +367,7 @@ class Ec2SSH:
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
+
             ret = timeout(["ssh"] + self.ssh_flags +
                           ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
                            "(:)"], max_secs - elapsed_secs)
@@ -486,12 +478,6 @@ class Ec2SSH:
         """ destroyVM - Removes a VM from the system
         """
 
-        # test if the instance still exists
-        reservations = self.connection.get_all_instances(instance_ids=[vm.ec2_id])
-        if not reservations:
-            self.log.info("destroyVM: instance non-exist %s %s" % (vm.ec2_id, vm.name))
-            return []
-
         self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
 
         # Keep the vm and mark with meaningful tags for debugging
@@ -509,7 +495,7 @@ class Ec2SSH:
           instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
           return
 
-        ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
+        ret = self.connection.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
@@ -519,38 +505,52 @@ class Ec2SSH:
     def safeDestroyVM(self, vm):
         return self.destroyVM(vm)
 
+    # return None or tag value if key exists
+    def getTag(self, tagList, tagKey):
+      if tagList:
+        for tag in tagList:
+          if tag["Key"] == tagKey:
+            return tag["Value"]
+      return None
+
     def getVMs(self):
-        """ getVMs - Returns the complete list of VMs on this account. Each
+        """ getVMs - Returns the running or pending VMs on this account. Each
         list entry is a boto.ec2.instance.Instance object.
         """
-        # TODO: Find a way to return vm objects as opposed ec2 instance
-        # objects.
-        instances = list()
-        for i in self.connection.get_all_instances():
-            if i.id is not config.Config.TANGO_RESERVATION_ID:
-                inst = i.instances.pop()
-                if inst.state_code is config.Config.INSTANCE_RUNNING:
-                    instances.append(inst)
 
         vms = list()
-        for inst in instances:
-            vm = TangoMachine()
-            vm.ec2_id = inst.id
-            vm.name = str(inst.tags.get('Name'))
-            self.log.debug('getVMs: Instance - %s, EC2 Id - %s' %
-                           (vm.name, vm.ec2_id))
-            vms.append(vm)
+        filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
+
+        for inst in self.connection.instances.filter(Filters=filters):
+          vm = TangoMachine()  # make a Tango internal vm structure
+          vm.ec2_id = inst.id
+          vm.id = None  # the serial number as in inst name PREFIX-serial-IMAGE
+          vm.domain_name = None
+
+          vm.name = self.getTag(inst.tags, "Name")
+          # Name tag is the standard form of prefix-serial-image
+          if vm.name and re.match("%s-" % config.Config.PREFIX, vm.name):
+            vm.id = int(vm.name.split("-")[1])
+          elif not vm.name:
+            vm.name = "Instance_id_" + inst.id + "_without_name_tag"
+
+          if inst.public_ip_address:
+            vm.domain_name = inst.public_ip_address
+
+          self.log.debug('getVMs: Instance id %s, name %s' % (vm.name, vm.ec2_id))
+          vms.append(vm)
 
         return vms
 
     def existsVM(self, vm):
         """ existsVM - Checks whether a VM exists in the vmms.
         """
-        instances = self.connection.get_all_instances()
 
-        for inst in instances:
-            if inst.instances[0].id == vm.ec2_id and inst.instances[0].state == "running":
-                return True
+        filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+        instances = self.connection.instances.filter(Filters=filters)
+        for inst in instances.filter(InstanceIds=[vm.ec2_id]):
+          self.log.debug("VM %s: exists and running" % vm.ec2_id)
+          return True
         return False
 
     def getImages(self):
