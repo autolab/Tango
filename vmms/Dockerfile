@@ -48,9 +48,8 @@ RUN apt-get install -y bison
 RUN apt-get install -y unzip
 
 #NodeJS setup
-RUN apt-get install -y curl
-RUN curl -sL https://deb.nodesource.com/setup_10.x
 RUN apt-get install -y nodejs
+RUN apt-get install -y npm
 
 # Install autodriver
 WORKDIR /home
