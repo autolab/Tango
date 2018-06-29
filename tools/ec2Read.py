@@ -20,29 +20,46 @@ import argparse
 class CommandLine():
   def __init__(self):
     parser = argparse.ArgumentParser(description='List AWS vms and preallocator pools')
-    parser.add_argument('-d', '--instances', metavar='instance', nargs='+',
-                        help="destroy vms by name tags or AWS ids (can be partial).  \"NoNameTag\" (case insensitive) deletes all instances without a \"Name\" tag")
-    parser.add_argument('-l', '--list', action='store_true', dest='listVMs', help="list vms")
-    parser.add_argument('-e', '--emptyPools', action='store_true', dest='emptyPools', help="empty redis pools")
+    parser.add_argument('-d', '--destroyVMs', action='store_true', dest='destroyVMs', help="destroy VMs and empty pools")
+    parser.add_argument('-D', '--instanceNameTags', metavar='instance', nargs='+',
+                        help="destroy instances by name tags or AWS ids (can be partial).  \"None\" (case insensitive) deletes all instances without a \"Name\" tag")
+    parser.add_argument('-l', '--list', action='store_true', dest='listVMs', help="list and ping live vms")
+    parser.add_argument('-L', '--listAll', action='store_true', dest='listInstances', help="list all instances")
     self.args = parser.parse_args()
 
 cmdLine = CommandLine()
-destroyList = cmdLine.args.instances
-listVMs = cmdLine.args.listVMs
-emptyPools = cmdLine.args.emptyPools
-sortedInstances = []
+argDestroyInstanceNameTags = cmdLine.args.instanceNameTags
+argListVMs = cmdLine.args.listVMs
+argListAllInstances = cmdLine.args.listInstances
+argDestroyVMs = cmdLine.args.destroyVMs
 
 local_tz = pytz.timezone("EST")
 def utc_to_local(utc_dt):
   local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
   return local_tz.normalize(local_dt)
 
-def destroyInstances():
+def destroyVMs():
   vms = ec2.getVMs()
+  print "number of Tango VMs:", len(vms)
   for vm in vms:
-    if re.match("%s-" % Config.PREFIX, vm.name):
-      print "destroy", vm.name
-      ec2.destroyVM(vm)
+    print "destroy", vm.name
+    ec2.destroyVM(vm)
+
+def pingVMs():
+  vms = ec2.getVMs()
+  print "number of Tango VMs:", len(vms)
+  for vm in vms:
+    if vm.id:
+      print "ping", vm.name, vm.id
+      # Note: following call needs the private key file for aws to be
+      # at wherever SECURITY_KEY_PATH in config.py points to.
+      # For example, if SECURITY_KEY_PATH = '/root/746-autograde.pem',
+      # then the file should exist there.
+      ec2.waitVM(vm, Config.WAITVM_TIMEOUT)
+    else:
+      print "VM not in Tango naming pattern:", vm.name
+
+# END of function definitions #
 
 local_tz = pytz.timezone("EST")
 
@@ -76,33 +93,34 @@ def instanceNameTag(instance):
         name = tag["Value"]
   return name
 
-def queryInstances():
-  global sortedInstances
+def listInstances(all=None):
+  sortedInstances = []
   nameInstances = []
+  instanceType = "all"
   response = boto3connection.describe_instances()
   for reservation in response["Reservations"]:
     for instance in reservation["Instances"]:
-      if instance["State"]["Name"] != "running":
+      if not all and instance["State"]["Name"] != "running":
+        instanceType = "running"
         continue
-      nameInstances.append({"Name": instanceNameTag(instance), "Instance": instance})
+      nameInstances.append({"Name": instanceNameTag(instance),
+                            "Instance": instance})
 
   sortedInstances = sorted(nameInstances, key=lambda x: x["Name"])
-  print len(sortedInstances), "instances:"
+  print "number of", instanceType, "AWS instances:", len(sortedInstances)
 
-def listInstances(knownInstances=None):
-  global sortedInstances
-  instanceList = []
-  if knownInstances:
-    instanceList = knownInstances
-  else:
-    queryInstances()
-    instanceList = sortedInstances
-
-  for item in instanceList:
+  for item in sortedInstances:
     instance = item["Instance"]
     launchTime = utc_to_local(instance["LaunchTime"])
-    print("%s: %s %s %s" %
-          (item["Name"], instance["InstanceId"], instance["PublicIpAddress"], launchTime))
+    if "PublicIpAddress" in instance:
+      print("%s: %s %s %s %s" %
+            (item["Name"], instance["InstanceId"],
+             launchTime, instance["State"]["Name"],
+             instance["PublicIpAddress"]))
+    else:
+      print("%s: %s %s %s" %
+            (item["Name"], instance["InstanceId"],
+             launchTime, instance["State"]["Name"]))
     if "Tags" in instance:
       for tag in instance["Tags"]:
         if (tag["Key"] != "Name"):
@@ -122,8 +140,10 @@ def listInstances(knownInstances=None):
     print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
   """
 
+  return sortedInstances
+
 def listPools():
-  print "pools", ec2.img2ami.keys()
+  print "Tango VM pools by AWS image", ec2.img2ami.keys()
   for key in server.preallocator.machines.keys():
     pool = server.preallocator.getPool(key)
     totalPool = pool["total"]
@@ -153,7 +173,6 @@ def allocateVMs():
     free = server.preallocator.getPool(key)["free"]
     print "after allocation", key, total, free
 
-
 # When a host has two Tango containers (for experiment), there are two
 # redis servers, too.  They differ by the forwarding port number, which
 # is defined in config_for_run_jobs.py.  To select the redis server,
@@ -168,12 +187,11 @@ server = TangoServer()
 ec2 = server.preallocator.vmms["ec2SSH"]
 pools = ec2.img2ami
 
-if destroyList:
-  print "Current"
-  listInstances()
+if argDestroyInstanceNameTags:
+  sortedInstances = listInstances()
   totalTerminated = []
 
-  for partialStr in destroyList:
+  for partialStr in argDestroyInstanceNameTags:
     matchingInstances = []
     if partialStr.lower() == "NoNameTag".lower():  # without "Name" tag
       for item in sortedInstances:
@@ -205,18 +223,31 @@ if destroyList:
       print "no instances matching query string \"%s\"" % partialStr
   # end of for loop partialStr
 
-  print "Aftermath"
-  listInstances()
+  print "Afterwards"
+  print "----------"
+  listInstances('all')
   exit()
 
-if listVMs:
+if argListAllInstances:
+  listInstances("all")
+  exit()
+
+if argListVMs:
+  listInstances()
+  listPools()
+  pingVMs()
+  exit()
+
+if argDestroyVMs:
+  destroyVMs()
+  destroyRedisPools()
+  print "Afterwards"
+  print "----------"
   listInstances()
   listPools()
   exit()
 
-if emptyPools:
-  destroyRedisPools()
-  exit()
+# Start of main actions
 
 listInstances()
 listPools()
@@ -224,25 +255,4 @@ createInstances(1)
 listInstances()
 listPools()
 exit()
-
-destroyInstances()
-destroyRedisPools()
-listInstances()
-listPools()
-exit()
-
-createInstances(2)
-listInstances()
-listPools()
-exit()
-
-allocateVMs()  # should see some vms disappear from free pool
-listInstances()
-listPools()
-exit()
-
-# resetTango will destroy all known vms that are NOT in free pool
-server.resetTango(server.preallocator.vmms)
-listInstances()
-listPools()
 
