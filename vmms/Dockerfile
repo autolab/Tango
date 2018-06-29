@@ -47,6 +47,10 @@ RUN apt-get install -y bison
 #Utility setup
 RUN apt-get install -y unzip
 
+#NodeJS setup
+RUN apt-get install -y nodejs
+RUN apt-get install -y npm
+
 # Install autodriver
 WORKDIR /home
 RUN useradd autolab
