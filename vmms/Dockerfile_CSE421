@@ -1,0 +1,64 @@
+FROM ubuntu:16.04
+MAINTAINER Farshad Ghanei <farshadg@buffalo.edu>
+#prerequisites
+RUN apt-get update --fix-missing
+RUN apt-get update && apt-get install -y apt-utils
+RUN apt-get install -y gcc make build-essential libcunit1-dev libcunit1-doc libcunit1 wget python qemu xorg-dev libncurses5-dev gdb git
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+###############################################
+# configuraion and setup for bochs and pintos #
+###############################################
+ENV PINTOSDIR /home/autograde/pintos_base
+ENV DSTDIR /usr/local
+ENV SRCDIR $PINTOSDIR/sources
+RUN mkdir -p $SRCDIR
+RUN mkdir -p $PINTOSDIR
+RUN mkdir -p $DSTDIR/bin
+ENV BXSHARE $DSTDIR/share/bochs
+ENV PATH="${DSTDIR}/bin:${PATH}"
+
+# These files may be put on a local server, but keep the folder structure
+WORKDIR $SRCDIR/
+RUN git clone git://pintos-os.org/pintos-anon
+RUN mv pintos-anon/* $PINTOSDIR
+#RUN wget http://web.stanford.edu/class/cs140/projects/pintos/pintos.tar.gz
+#RUN tar -xzf pintos.tar.gz
+#RUN mv pintos/* $PINTOSDIR
+
+WORKDIR $SRCDIR/
+RUN wget http://www.oldlinux.org/Linux.old/bochs/Bochs/bochs-2.2.6/bochs-2.2.6.tar.gz
+#RUN wget http://web.stanford.edu/class/cs140/projects/pintos/bochs-2.2.6.tar.gz
+
+WORKDIR $PINTOSDIR/src/misc/
+RUN ./bochs-2.2.6-build.sh
+
+WORKDIR $PINTOSDIR/src/utils/
+RUN sed -i "5i GDBMACROS=$PINTOSDIR/src/misc/gdb-macros" pintos-gdb
+RUN make
+RUN cp backtrace pintos pintos-gdb pintos-mkdisk Pintos.pm pintos-set-cmdline squish-pty squish-unix $DSTDIR/bin
+
+RUN chown -R autograde:autograde /home/autograde
+RUN chown -R autograde:autograde $BXSHARE
+RUN chown -R autograde:autograde $DSTDIR/bin
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+
