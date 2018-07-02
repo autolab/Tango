@@ -11,7 +11,6 @@ import config_for_run_jobs
 import redis
 import boto3
 import pytz
-import tzlocal
 import argparse
 
 # Read aws instances, Tango preallocator pools, etc.
@@ -20,6 +19,7 @@ import argparse
 class CommandLine():
   def __init__(self):
     parser = argparse.ArgumentParser(description='List AWS vms and preallocator pools')
+    parser.add_argument('-c', '--createVMs', action='store_true', dest='createVMs', help="create a VM for each pool")
     parser.add_argument('-d', '--destroyVMs', action='store_true', dest='destroyVMs', help="destroy VMs and empty pools")
     parser.add_argument('-D', '--instanceNameTags', metavar='instance', nargs='+',
                         help="destroy instances by name tags or AWS ids (can be partial).  \"None\" (case insensitive) deletes all instances without a \"Name\" tag")
@@ -28,15 +28,11 @@ class CommandLine():
     self.args = parser.parse_args()
 
 cmdLine = CommandLine()
-argDestroyInstanceNameTags = cmdLine.args.instanceNameTags
+argDestroyInstanceByNameTags = cmdLine.args.instanceNameTags
 argListVMs = cmdLine.args.listVMs
 argListAllInstances = cmdLine.args.listInstances
 argDestroyVMs = cmdLine.args.destroyVMs
-
-local_tz = pytz.timezone("EST")
-def utc_to_local(utc_dt):
-  local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
-  return local_tz.normalize(local_dt)
+argCreateVMs = cmdLine.args.createVMs
 
 def destroyVMs():
   vms = ec2.getVMs()
@@ -59,31 +55,37 @@ def pingVMs():
     else:
       print "VM not in Tango naming pattern:", vm.name
 
-# END of function definitions #
-
 local_tz = pytz.timezone("EST")
-
 def utc_to_local(utc_dt):
   local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
   return local_dt.strftime("%Y%m%d-%H:%M:%S")
 
 # to test destroying instances without "Name" tag
-def deleteNameTag():
-  response = boto3connection.describe_instances()
-  for reservation in response["Reservations"]:
-    for instance in reservation["Instances"]:
-      boto3connection.delete_tags(Resources=[instance["InstanceId"]],
-                                  Tags=[{"Key": "Name"}])
+def deleteNameTagForAllInstances():
+  instances = listInstances()
+  for instance in instances:
+    boto3connection.delete_tags(Resources=[instance["Instance"]["InstanceId"]],
+                                Tags=[{"Key": "Name"}])
+  print "Afterwards"
+  print "----------"
+  listInstances()
 
 # to test changing tags to keep the vm after test failure
-def changeTags(instanceId, name, notes):
-  print "change tags for", instanceId
-  instance = boto3resource.Instance(instanceId)
-  tag = boto3resource.Tag(instanceId, "Name", name)
-  if tag:
-    tag.delete()
-  instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + name}])
-  instance.create_tags(Tags=[{"Key": "Notes", "Value": notes}])
+def changeTagForAllInstances():
+  instances = listInstances()
+  for inst in instances:
+    instance = inst["Instance"]
+    name = inst["Name"]
+    notes = "tag " + name + " deleted"
+    boto3connection.delete_tags(Resources=[instance["InstanceId"]],
+                                Tags=[{"Key": "Name"}])
+    boto3connection.create_tags(Resources=[instance["InstanceId"]],
+                                Tags=[{"Key": "Name", "Value": "failed-" + name},
+                                      {"Key": "Notes", "Value": notes}])
+
+  print "Afterwards"
+  print "----------"
+  listInstances()
 
 def instanceNameTag(instance):
   name = "None"
@@ -173,6 +175,8 @@ def allocateVMs():
     free = server.preallocator.getPool(key)["free"]
     print "after allocation", key, total, free
 
+# END of function definitions #
+
 # When a host has two Tango containers (for experiment), there are two
 # redis servers, too.  They differ by the forwarding port number, which
 # is defined in config_for_run_jobs.py.  To select the redis server,
@@ -187,11 +191,11 @@ server = TangoServer()
 ec2 = server.preallocator.vmms["ec2SSH"]
 pools = ec2.img2ami
 
-if argDestroyInstanceNameTags:
+if argDestroyInstanceByNameTags:
   sortedInstances = listInstances()
   totalTerminated = []
 
-  for partialStr in argDestroyInstanceNameTags:
+  for partialStr in argDestroyInstanceByNameTags:
     matchingInstances = []
     if partialStr.lower() == "NoNameTag".lower():  # without "Name" tag
       for item in sortedInstances:
@@ -247,7 +251,15 @@ if argDestroyVMs:
   listPools()
   exit()
 
-# Start of main actions
+if argCreateVMs:
+  listInstances()
+  listPools()
+  createInstances(1)
+  listInstances()
+  listPools()
+  exit()
+
+# For combination of ops not provided by the command line options:
 
 listInstances()
 listPools()
