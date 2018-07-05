@@ -18,13 +18,19 @@ import argparse
 
 class CommandLine():
   def __init__(self):
-    parser = argparse.ArgumentParser(description='List AWS vms and preallocator pools')
-    parser.add_argument('-c', '--createVMs', action='store_true', dest='createVMs', help="create a VM for each pool")
-    parser.add_argument('-d', '--destroyVMs', action='store_true', dest='destroyVMs', help="destroy VMs and empty pools")
-    parser.add_argument('-D', '--instanceNameTags', metavar='instance', nargs='+',
+    parser = argparse.ArgumentParser(
+      description='List AWS vms and preallocator pools')
+    parser.add_argument('-c', '--createVMs', action='store_true',
+                        dest='createVMs', help="create a VM for each pool")
+    parser.add_argument('-d', '--destroyVMs', action='store_true',
+                        dest='destroyVMs', help="destroy VMs and empty pools")
+    parser.add_argument('-D', '--instanceNameTags', metavar='instance',
+                        nargs='+',
                         help="destroy instances by name tags or AWS ids (can be partial).  \"None\" (case insensitive) deletes all instances without a \"Name\" tag")
-    parser.add_argument('-l', '--list', action='store_true', dest='listVMs', help="list and ping live vms")
-    parser.add_argument('-L', '--listAll', action='store_true', dest='listInstances', help="list all instances")
+    parser.add_argument('-l', '--list', action='store_true',
+                        dest='listVMs', help="list and ping live vms")
+    parser.add_argument('-L', '--listAll', action='store_true',
+                        dest='listInstances', help="list all instances")
     self.args = parser.parse_args()
 
 cmdLine = CommandLine()
@@ -64,7 +70,7 @@ def utc_to_local(utc_dt):
 def deleteNameTagForAllInstances():
   instances = listInstances()
   for instance in instances:
-    boto3connection.delete_tags(Resources=[instance["Instance"]["InstanceId"]],
+    boto3connection.delete_tags(Resources=[instance["Instance"].id],
                                 Tags=[{"Key": "Name"}])
   print "Afterwards"
   print "----------"
@@ -87,62 +93,52 @@ def changeTagForAllInstances():
   print "----------"
   listInstances()
 
-def instanceNameTag(instance):
-  name = "None"
-  if "Tags" in instance:
-    for tag in instance["Tags"]:
-      if tag["Key"] == "Name":
-        name = tag["Value"]
-  return name
-
 def listInstances(all=None):
-  sortedInstances = []
-  nameInstances = []
+  nameAndInstances = []
+
+  filters=[]
   instanceType = "all"
-  response = boto3connection.describe_instances()
-  for reservation in response["Reservations"]:
-    for instance in reservation["Instances"]:
-      if not all and instance["State"]["Name"] != "running":
-        instanceType = "running"
-        continue
-      nameInstances.append({"Name": instanceNameTag(instance),
-                            "Instance": instance})
+  if not all:
+    filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+    instanceType = "running"
 
-  sortedInstances = sorted(nameInstances, key=lambda x: x["Name"])
-  print "number of", instanceType, "AWS instances:", len(sortedInstances)
+  instances = boto3resource.instances.filter(Filters=filters)
+  for instance in boto3resource.instances.filter(Filters=filters):
+    nameAndInstances.append({"Name": ec2.getTag(instance.tags, "Name"),
+                          "Instance": instance})
 
-  for item in sortedInstances:
+  nameAndInstances.sort(key=lambda x: x["Name"])
+  print "number of", instanceType, "AWS instances:", len(nameAndInstances)
+
+  for item in nameAndInstances:
     instance = item["Instance"]
-    launchTime = utc_to_local(instance["LaunchTime"])
-    if "PublicIpAddress" in instance:
+    launchTime = utc_to_local(instance.launch_time)
+    if instance.public_ip_address:
       print("%s: %s %s %s %s" %
-            (item["Name"], instance["InstanceId"],
-             launchTime, instance["State"]["Name"],
-             instance["PublicIpAddress"]))
+            (item["Name"], instance.id,
+             launchTime, instance.state["Name"],
+             instance.public_ip_address))
     else:
       print("%s: %s %s %s" %
-            (item["Name"], instance["InstanceId"],
-             launchTime, instance["State"]["Name"]))
-    if "Tags" in instance:
-      for tag in instance["Tags"]:
+            (item["Name"], instance.id,
+             launchTime, instance.state["Name"]))
+
+    if instance.tags:
+      for tag in instance.tags:
         if (tag["Key"] != "Name"):
           print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
     else:
       print("\t No tags")
 
-  """ useful sometimes
-    print "ImageId:", instance["ImageId"]
-    print "PublicDnsName:", instance["PublicDnsName"]
-    print "InstanceType:", instance["InstanceType"]
-    print "State:", instance["State"]["Name"]
-    print "SecurityGroups:", instance["SecurityGroups"]
-    image = boto3resource.Image(instance["ImageId"])
-    print "Image:", image.image_id
+    """ useful sometimes
+    print "\t InstanceType:", instance.instance_type
+    image = boto3resource.Image(instance.image_id)
+    print "\t ImageId:", image.image_id
     for tag in image.tags:
-    print("\t tag {%s: %s}" % (tag["Key"], tag["Value"]))
-  """
+      print("\t\t image tag {%s: %s}" % (tag["Key"], tag["Value"]))
+    """
 
-  return sortedInstances
+  return nameAndInstances
 
 def listPools():
   print "Tango VM pools by AWS image", ec2.img2ami.keys()
@@ -154,7 +150,8 @@ def listPools():
     freePool.sort()
     print "pool", key, "total", len(totalPool), totalPool, freePool
 
-def createInstances(num):
+# allocate "num" vms for each and every pool (image)
+def createVMs(num):
   for imageName in pools:
     (poolName, ext) = os.path.splitext(imageName)
     print "creating", num, "for pool", poolName
@@ -166,14 +163,6 @@ def destroyRedisPools():
     print "clean up pool", key
     server.preallocator.machines.set(key, [[], TangoQueue(key)])
     server.preallocator.machines.get(key)[1].make_empty()
-
-def allocateVMs():
-  freeList = []
-  for key in server.preallocator.machines.keys():
-    server.preallocator.allocVM(key)
-    total = server.preallocator.getPool(key)["total"]
-    free = server.preallocator.getPool(key)["free"]
-    print "after allocation", key, total, free
 
 # END of function definitions #
 
@@ -192,44 +181,43 @@ ec2 = server.preallocator.vmms["ec2SSH"]
 pools = ec2.img2ami
 
 if argDestroyInstanceByNameTags:
-  sortedInstances = listInstances()
+  nameAndInstances = listInstances()
   totalTerminated = []
 
+  matchingInstances = []
   for partialStr in argDestroyInstanceByNameTags:
-    matchingInstances = []
-    if partialStr.lower() == "NoNameTag".lower():  # without "Name" tag
-      for item in sortedInstances:
-        if "None" == instanceNameTag(item["Instance"]):
-          matchingInstances.append(item)
-    elif partialStr.startswith("i-"):  # match instance id
-      for item in sortedInstances:
-        if item["Instance"]["InstanceId"].startswith(partialStr):
+    if partialStr.startswith("i-"):  # match instance id
+      for item in nameAndInstances:
+        if item["Instance"].id.startswith(partialStr):
           matchingInstances.append(item)
     else:
-      for item in sortedInstances:  # match a "Name" tag that is not None
-        if instanceNameTag(item["Instance"]).startswith(partialStr) or \
-           instanceNameTag(item["Instance"]).endswith(partialStr):
+      # part of "Name" tag or None to match instances without name tag
+      for item in nameAndInstances:
+        nameTag = ec2.getTag(item["Instance"].tags, "Name")
+        if nameTag and \
+           (nameTag.startswith(partialStr) or nameTag.endswith(partialStr)):
+          matchingInstances.append(item)
+        elif not nameTag and partialStr == "None":
           matchingInstances.append(item)
 
-    # remove the items already terminated
-    instancesToTerminate = []
-    for item in matchingInstances:
-      if not any(x["Instance"]["InstanceId"] == item["Instance"]["InstanceId"] for x in totalTerminated):
-        instancesToTerminate.append(item)
-        totalTerminated.append(item)
+  # the loop above may generate duplicates in matchingInstances
+  terminatedInstances = []
+  for item in matchingInstances:
+    if item["Instance"].id not in terminatedInstances:
+      boto3connection.terminate_instances(InstanceIds=[item["Instance"].id])
+      terminatedInstances.append(item["Instance"].id)
 
-    if instancesToTerminate:
-      print "terminate %d instances matching query string \"%s\"" % (len(instancesToTerminate), partialStr)
-      listInstances(instancesToTerminate)
-      for item in instancesToTerminate:
-        boto3connection.terminate_instances(InstanceIds=[item["Instance"]["InstanceId"]])
-    else:
-      print "no instances matching query string \"%s\"" % partialStr
-  # end of for loop partialStr
+  if terminatedInstances:
+    print "terminate %d instances matching query string \"%s\":" % \
+      (len(terminatedInstances), argDestroyInstanceByNameTags)
+    for id in terminatedInstances:
+      print id
+    print "Afterwards"
+    print "----------"
+    listInstances()
+  else:
+    print "no instances matching query string \"%s\"" % argDestroyInstanceByNameTags
 
-  print "Afterwards"
-  print "----------"
-  listInstances('all')
   exit()
 
 if argListAllInstances:
@@ -254,7 +242,7 @@ if argDestroyVMs:
 if argCreateVMs:
   listInstances()
   listPools()
-  createInstances(1)
+  createVMs(1)
   listInstances()
   listPools()
   exit()
@@ -263,7 +251,7 @@ if argCreateVMs:
 
 listInstances()
 listPools()
-createInstances(1)
+createVMs(1)
 listInstances()
 listPools()
 exit()
