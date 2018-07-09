@@ -1,13 +1,8 @@
 #
 # ec2SSH.py - Implements the Tango VMMS interface to run Tango jobs on Amazon EC2.
 #
-# This implementation uses the AWS EC2 SDK to manage the virtual machines and
-# ssh and scp to access them. The following excecption are raised back
-# to the caller:
-#
-#   Ec2Exception - EC2 raises this if it encounters any problem
-#   ec2CallError - raised by ec2Call() function
-#
+# ssh and scp to access them.
+
 import subprocess
 import os
 import re
@@ -15,12 +10,10 @@ import time
 import logging
 
 import config
+from tangoObjects import TangoMachine
 
 import boto3
-from boto3 import ec2
 from botocore.exceptions import ClientError
-
-from tangoObjects import TangoMachine
 
 ### added to suppress boto XML output -- Jason Boles
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
@@ -54,7 +47,6 @@ def timeout(command, time_out=1):
         returncode = p.poll()
     return returncode
 
-
 def timeoutWithReturnStatus(command, time_out, returnValue=0):
     """ timeoutWithReturnStatus - Run a Unix command with a timeout,
     until the expected value is returned by the command; On timeout,
@@ -76,22 +68,12 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
                                  stderr=subprocess.STDOUT)
             return ret
 
-#
-# User defined exceptions
-#
-# ec2Call() exception
-
-
-class ec2CallError(Exception):
-    pass
-
-
 class Ec2SSH:
     _SSH_FLAGS = ["-i", config.Config.SECURITY_KEY_PATH,
                   "-o", "StrictHostKeyChecking no",
                   "-o", "GSSAPIAuthentication no"]
 
-    def __init__(self, accessKeyId=None, accessKey=None):
+    def __init__(self, accessKeyId=None, accessKey=None, ec2User=None):
         """ log - logger for the instance
         connection - EC2Connection object that stores the connection
         info to the EC2 network
@@ -107,16 +89,17 @@ class Ec2SSH:
 
         self.useDefaultKeyPair = False if accessKeyId else True
         self.boto3connection = boto3.client("ec2", config.Config.EC2_REGION,
-                                            aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
-        self.connection = self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+                                            aws_access_key_id=accessKeyId,
+                                            aws_secret_access_key=accessKey)
+        self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+        self.ec2User = config.Config.EC2_USER_NAME if not ec2User else ec2User
 
         # Use boto3 to read images.  Find the "Name" tag and use it as key to
         # build a map from "Name tag" to boto3's image structure.
         # The code is currently using boto 2 for most of the work and we don't
         # have the energy to upgrade it yet.  So boto and boto3 are used together.
 
-        client = boto3.client("ec2", config.Config.EC2_REGION)
-        images = client.describe_images(Owners=["self"])["Images"]
+        images = self.boto3connection.describe_images(Owners=["self"])["Images"]
         self.img2ami = {}
         for image in images:
             if "Tags" not in image:
@@ -196,15 +179,21 @@ class Ec2SSH:
     def createKeyPair(self):
         # try to delete the key to avoid collision
         self.key_pair_path = "%s/%s.pem" % \
-            (config.Config.DYNAMIC_SECURITY_KEY_PATH, self.key_pair_name)
+                             (config.Config.DYNAMIC_SECURITY_KEY_PATH,
+                              self.key_pair_name)
         self.deleteKeyPair()
-        key = self.connection.create_key_pair(self.key_pair_name)
-        key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
+        response = self.boto3connection.create_key_pair(KeyName=self.key_pair_name)
+        keyFile = open(self.key_pair_path, "w+")
+        keyFile.write(response["KeyMaterial"])
+        os.chmod(self.key_pair_path, 0o600)
+        keyFile.close()
+
         # change the SSH_FLAG accordingly
         self.ssh_flags[1] = self.key_pair_path
+        return self.key_pair_path
 
     def deleteKeyPair(self):
-        self.connection.delete_key_pair(self.key_pair_name)
+        self.boto3connection.delete_key_pair(KeyName=self.key_pair_name)
         # try to delete may not exist key file
         try:
             os.remove(self.key_pair_path)
@@ -214,11 +203,11 @@ class Ec2SSH:
     def createSecurityGroup(self):
         # Create may-exist security group
         try:
-            response = self.connection.create_security_group(
+            response = self.boto3resource.create_security_group(
                 GroupName=config.Config.DEFAULT_SECURITY_GROUP,
                 Description="Autolab security group - allowing all traffic")
             security_group_id = response['GroupId']
-            self.connection.authorize_security_group_ingress(
+            self.boto3resource.authorize_security_group_ingress(
               GroupId=security_group_id)
         except ClientError as e:
             pass
@@ -244,9 +233,9 @@ class Ec2SSH:
                 self.key_pair_path = config.Config.SECURITY_KEY_PATH
             else:
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
-                self.createKeyPair()
+                self.key_pair_path = self.createKeyPair()
 
-            reservation = self.connection.create_instances(ImageId=ec2instance['ami'],
+            reservation = self.boto3resource.create_instances(ImageId=ec2instance['ami'],
                                                            InstanceType=ec2instance['instance_type'],
                                                            KeyName=self.key_pair_name,
                                                            SecurityGroups=[
@@ -261,7 +250,7 @@ class Ec2SSH:
             newInstance = reservation[0]
             if newInstance:
                 # Assign name to EC2 instance
-                self.connection.create_tags(Resources=[newInstance.id],
+                self.boto3resource.create_tags(Resources=[newInstance.id],
                                             Tags=[{"Key": "Name", "Value": instanceName}])
                 self.log.info("new instance %s created with name tag %s" %
                               (newInstance.id, instanceName))
@@ -276,7 +265,7 @@ class Ec2SSH:
               # running intances and find our instance by instance id
 
               filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
-              instances = self.connection.instances.filter(Filters=filters)
+              instances = self.boto3resource.instances.filter(Filters=filters)
               instanceRunning = False
 
               newInstance.load()  # reload the state of the instance
@@ -312,7 +301,7 @@ class Ec2SSH:
         except Exception as e:
             self.log.debug("initializeVM Failed: %s" % e)
             if newInstance:
-              self.connection.instances.filter(InstanceIds=[newInstance.id]).terminate()
+              self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
             return None
 
     def waitVM(self, vm, max_secs):
@@ -369,7 +358,7 @@ class Ec2SSH:
             # out of time.
 
             ret = timeout(["ssh"] + self.ssh_flags +
-                          ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
+                          ["%s@%s" % (self.ec2User, domain_name),
                            "(:)"], max_secs - elapsed_secs)
 
             self.log.debug("VM %s: ssh returned with %d" %
@@ -495,7 +484,7 @@ class Ec2SSH:
           instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
           return
 
-        ret = self.connection.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
+        ret = self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
@@ -521,23 +510,27 @@ class Ec2SSH:
         vms = list()
         filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
 
-        for inst in self.connection.instances.filter(Filters=filters):
+        for inst in self.boto3resource.instances.filter(Filters=filters):
           vm = TangoMachine()  # make a Tango internal vm structure
           vm.ec2_id = inst.id
           vm.id = None  # the serial number as in inst name PREFIX-serial-IMAGE
           vm.domain_name = None
 
-          vm.name = self.getTag(inst.tags, "Name")
+          instName = self.getTag(inst.tags, "Name")
           # Name tag is the standard form of prefix-serial-image
-          if vm.name and re.match("%s-" % config.Config.PREFIX, vm.name):
-            vm.id = int(vm.name.split("-")[1])
-          elif not vm.name:
+          if instName and re.match("%s-" % config.Config.PREFIX, instName):
+            vm.id = int(instName.split("-")[1])
+            vm.name = instName.split("-")[2]
+          elif not instName:
             vm.name = "Instance_id_" + inst.id + "_without_name_tag"
+          else:
+            vm.name = instName
 
           if inst.public_ip_address:
             vm.domain_name = inst.public_ip_address
 
-          self.log.debug('getVMs: Instance id %s, name %s' % (vm.name, vm.ec2_id))
+          self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' % \
+                         (vm.ec2_id, vm.name, vm.id))
           vms.append(vm)
 
         return vms
@@ -547,7 +540,7 @@ class Ec2SSH:
         """
 
         filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
-        instances = self.connection.instances.filter(Filters=filters)
+        instances = self.boto3resource.instances.filter(Filters=filters)
         for inst in instances.filter(InstanceIds=[vm.ec2_id]):
           self.log.debug("VM %s: exists and running" % vm.ec2_id)
           return True

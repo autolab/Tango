@@ -20,12 +20,13 @@ class CommandLine():
   def __init__(self):
     parser = argparse.ArgumentParser(
       description='List AWS vms and preallocator pools')
+    parser.add_argument('-a', '--accessIdKeyUser',
+                        help="aws access id, key and user, space separated")
     parser.add_argument('-c', '--createVMs', action='store_true',
                         dest='createVMs', help="create a VM for each pool")
     parser.add_argument('-d', '--destroyVMs', action='store_true',
                         dest='destroyVMs', help="destroy VMs and empty pools")
-    parser.add_argument('-D', '--instanceNameTags', metavar='instance',
-                        nargs='+',
+    parser.add_argument('-D', '--instanceNameTags', nargs='+',
                         help="destroy instances by name tags or AWS ids (can be partial).  \"None\" (case insensitive) deletes all instances without a \"Name\" tag")
     parser.add_argument('-l', '--list', action='store_true',
                         dest='listVMs', help="list and ping live vms")
@@ -39,20 +40,24 @@ argListVMs = cmdLine.args.listVMs
 argListAllInstances = cmdLine.args.listInstances
 argDestroyVMs = cmdLine.args.destroyVMs
 argCreateVMs = cmdLine.args.createVMs
+argAccessIdKeyUser = cmdLine.args.accessIdKeyUser
 
 def destroyVMs():
   vms = ec2.getVMs()
   print "number of Tango VMs:", len(vms)
   for vm in vms:
-    print "destroy", vm.name
-    ec2.destroyVM(vm)
-
+    if vm.id:    
+      print "destroy", ec2.instanceName(vm.id, vm.name)
+      ec2.destroyVM(vm)
+    else:
+      print "VM not in Tango naming pattern:", vm.name
+      
 def pingVMs():
   vms = ec2.getVMs()
   print "number of Tango VMs:", len(vms)
   for vm in vms:
     if vm.id:
-      print "ping", vm.name, vm.id
+      print "ping", ec2.instanceName(vm.id, vm.name)
       # Note: following call needs the private key file for aws to be
       # at wherever SECURITY_KEY_PATH in config.py points to.
       # For example, if SECURITY_KEY_PATH = '/root/746-autograde.pem',
@@ -247,12 +252,25 @@ if argCreateVMs:
   listPools()
   exit()
 
-# For combination of ops not provided by the command line options:
+# ec2WithKey can be used to test the case that tango_cli uses
+# non-default aws access id and key
+if argAccessIdKeyUser:
+  if len(argAccessIdKeyUser.split()) != 3:
+    print "access id, key and user must be quoted and space separated"
+    exit()
+  (id, key, user) = argAccessIdKeyUser.split()
+  ec2WithKey = Ec2SSH(accessKeyId=id, accessKey=key, ec2User=user)
+  vm = TangoMachine(vmms="ec2SSH")
+  vm.id = int(2000)  # a high enough number to avoid collision
+  # to test non-default access id/key, the aws image must have the key manually
+  # installed or allows the key to be installed by the aws service.
+  # the following assumes we have such image with a "Name" tag "test01.img"
+  vm.name = "test01"
+  ec2WithKey.initializeVM(vm)
+  ec2WithKey.waitVM(vm, Config.WAITVM_TIMEOUT)
+  listInstances()
 
-listInstances()
-listPools()
-createVMs(1)
-listInstances()
-listPools()
-exit()
+# Write combination of ops not provided by the command line options here:
+
+
 

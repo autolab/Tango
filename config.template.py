@@ -165,10 +165,11 @@ class Config:
 
     EC2_REGION = ''
     EC2_USER_NAME = ''
+    KEEP_VM_AFTER_FAILURE = False
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''
-    DYNAMIC_SECURITY_KEY_PATH = ''
+    DYNAMIC_SECURITY_KEY_PATH = ''  # key file placed at root "/" by default
     SECURITY_KEY_NAME = ''
     TANGO_RESERVATION_ID = ''
     INSTANCE_RUNNING = 16  # Status code of a instance that is running
