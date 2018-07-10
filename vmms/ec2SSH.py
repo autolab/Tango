@@ -72,6 +72,7 @@ class Ec2SSH:
     _SSH_FLAGS = ["-i", config.Config.SECURITY_KEY_PATH,
                   "-o", "StrictHostKeyChecking no",
                   "-o", "GSSAPIAuthentication no"]
+    _SECURITY_KEY_PATH_INDEX_IN_SSH_FLAGS = 1
 
     def __init__(self, accessKeyId=None, accessKey=None, ec2User=None):
         """ log - logger for the instance
@@ -82,48 +83,49 @@ class Ec2SSH:
         """
 
         self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
-
         self.log.info("init Ec2SSH")
 
         self.ssh_flags = Ec2SSH._SSH_FLAGS
-
+        self.ec2User = ec2User if ec2User else config.Config.EC2_USER_NAME
         self.useDefaultKeyPair = False if accessKeyId else True
-        self.boto3connection = boto3.client("ec2", config.Config.EC2_REGION,
-                                            aws_access_key_id=accessKeyId,
-                                            aws_secret_access_key=accessKey)
+
+        self.boto3client = boto3.client("ec2", config.Config.EC2_REGION,
+                                        aws_access_key_id=accessKeyId,
+                                        aws_secret_access_key=accessKey)
         self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
-        self.ec2User = config.Config.EC2_USER_NAME if not ec2User else ec2User
 
-        # Use boto3 to read images.  Find the "Name" tag and use it as key to
-        # build a map from "Name tag" to boto3's image structure.
-        # The code is currently using boto 2 for most of the work and we don't
-        # have the energy to upgrade it yet.  So boto and boto3 are used together.
+        # Note: By convention, all usable images to Tango must have "Name" tag
+        # in the form of xyz.img which is the VM image in Autolab for an assignment.
+        # xyz is also the preallocator pool name for vms using this image.
 
-        images = self.boto3connection.describe_images(Owners=["self"])["Images"]
         self.img2ami = {}
+        images = self.boto3resource.images.filter(Owners=["self"])
         for image in images:
-            if "Tags" not in image:
-                continue
-            tags = image["Tags"]
-            for tag in tags:
-                if "Key" in tag and tag["Key"] == "Name":
-                    if not (tag["Value"] and tag["Value"].endswith(".img")):
-                        self.log.info("Ignore %s for ill-formed name tag %s" %
-                                      (image["ImageId"], tag["Value"]))
-                        continue
-                    if tag["Value"] in self.img2ami:
-                        self.log.info("Ignore %s for duplicate name tag %s" %
-                                      (image["ImageId"], tag["Value"]))
-                        continue
-
+          if image.tags:
+            for tag in image.tags:
+              if tag["Key"] == "Name":
+                if tag["Value"] and tag["Value"].endswith(".img"):
+                  if tag["Value"] in self.img2ami:
+                    self.log.info("Ignore %s for duplicate name tag %s" %
+                                  (image.id, tag["Value"]))
+                  else:
                     self.img2ami[tag["Value"]] = image
-                    self.log.info("Found image: %s %s %s" % (tag["Value"], image["ImageId"], image["Name"]))
+                    self.log.info("Found image: %s with name tag %s" %
+                                  (image.id, tag["Value"]))
+                elif tag["Value"]:
+                  self.log.info("Ignore %s with ill-formed name tag %s" %
+                                (image.id, tag["Value"]))
 
-        imageAmis = [item["ImageId"] for item in images]
-        taggedAmis = [self.img2ami[key]["ImageId"] for key in self.img2ami]
-        ignoredAmis = list(set(imageAmis) - set(taggedAmis))
-        if (len(ignoredAmis) > 0):
-            self.log.info("Ignored amis %s due to lack of proper name tag" % str(ignoredAmis))
+        imageAMIs = [item.id for item in images]
+        taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
+        ignoredAMIs = list(set(imageAMIs) - set(taggedAMIs))
+        if (len(ignoredAMIs) > 0):
+          self.log.info("Ignored images %s for lack of or ill-formed name tag" %
+                        str(ignoredAMIs))
+
+    #
+    # VMMS helper methods
+    #
 
     def instanceName(self, id, name):
         """ instanceName - Constructs a VM instance name. Always use
@@ -142,9 +144,6 @@ class Ec2SSH:
         instance.
         """
         return vm.domain_name
-    #
-    # VMMS helper methods
-    #
 
     def tangoMachineToEC2Instance(self, vm):
         """ tangoMachineToEC2Instance - returns an object with EC2 instance
@@ -171,7 +170,7 @@ class Ec2SSH:
         else:
             ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
 
-        ec2instance['ami'] = self.img2ami[vm.name + ".img"]["ImageId"]
+        ec2instance['ami'] = self.img2ami[vm.name + ".img"].id
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
 
         return ec2instance
@@ -182,18 +181,18 @@ class Ec2SSH:
                              (config.Config.DYNAMIC_SECURITY_KEY_PATH,
                               self.key_pair_name)
         self.deleteKeyPair()
-        response = self.boto3connection.create_key_pair(KeyName=self.key_pair_name)
+        response = self.boto3client.create_key_pair(KeyName=self.key_pair_name)
         keyFile = open(self.key_pair_path, "w+")
         keyFile.write(response["KeyMaterial"])
-        os.chmod(self.key_pair_path, 0o600)
+        os.chmod(self.key_pair_path, 0o600)  # read only by owner
         keyFile.close()
 
         # change the SSH_FLAG accordingly
-        self.ssh_flags[1] = self.key_pair_path
+        self.ssh_flags[Ec2SSH._SECURITY_KEY_PATH_INDEX_IN_SSH_FLAGS] = self.key_pair_path
         return self.key_pair_path
 
     def deleteKeyPair(self):
-        self.boto3connection.delete_key_pair(KeyName=self.key_pair_name)
+        self.boto3client.delete_key_pair(KeyName=self.key_pair_name)
         # try to delete may not exist key file
         try:
             os.remove(self.key_pair_path)
@@ -215,6 +214,7 @@ class Ec2SSH:
     #
     # VMMS API functions
     #
+
     def initializeVM(self, vm):
         """ initializeVM - Tell EC2 to create a new VM instance.  return None on failure
 
@@ -529,7 +529,7 @@ class Ec2SSH:
           if inst.public_ip_address:
             vm.domain_name = inst.public_ip_address
 
-          self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' % \
+          self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' %
                          (vm.ec2_id, vm.name, vm.id))
           vms.append(vm)
 
