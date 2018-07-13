@@ -40,12 +40,10 @@ class Worker(threading.Thread):
     #
     # Worker helper functions
     #
-    def detachVM(self, return_vm=False, replace_vm=False):
+    def detachVM(self, return_vm=False):
         """ detachVM - Detach the VM from this worker. The options are
         to return it to the pool's free list (return_vm), destroy it
-        (not return_vm), and if destroying it, whether to replace it
-        or not in the pool (replace_vm). The worker must always call
-        this function before returning.
+        (if not return_vm).
         """
         # job-owned instance, simply destroy after job is completed
         if self.job.accessKeyId:
@@ -55,13 +53,6 @@ class Worker(threading.Thread):
             self.preallocator.freeVM(self.job.vm)
         else:
             self.vmms.safeDestroyVM(self.job.vm)
-            if replace_vm:
-                self.preallocator.createVM(self.job.vm)
-
-            # Important: don't remove the VM from the pool until its
-            # replacement has been created. Otherwise there is a
-            # potential race where the job manager thinks that the
-            # pool is empty and creates a spurious vm.
             self.log.info("removeVM %s" % self.job.vm.id);
             self.preallocator.removeVM(self.job.vm)
 
@@ -77,7 +68,7 @@ class Worker(threading.Thread):
                 os.remove(hdrfile)
             except OSError:
                 pass
-            self.detachVM(return_vm=False, replace_vm=True)
+            self.detachVM(return_vm=False)
             self.jobQueue.unassignJob(self.job.id)
 
         # Here is where we give up
@@ -97,7 +88,7 @@ class Worker(threading.Thread):
                     ret["copyout"]))
 
             self.catFiles(hdrfile, self.job.outputFile)
-            self.detachVM(return_vm=False, replace_vm=True)
+            self.detachVM(return_vm=False)
             self.notifyServer(self.job)
 
     def appendMsg(self, filename, msg):
@@ -144,8 +135,7 @@ class Worker(threading.Thread):
         except Exception as e:
             self.log.debug("Error in notifyServer: %s" % str(e))
 
-    def afterJobExecution(self, hdrfile, msg, vmHandling):
-      (returnVM, replaceVM) = vmHandling
+    def afterJobExecution(self, hdrfile, msg, returnVM):
       self.jobQueue.makeDead(self.job.id, msg)
 
       # Update the text that users see in the autodriver output file
@@ -153,7 +143,7 @@ class Worker(threading.Thread):
       self.catFiles(hdrfile, self.job.outputFile)
 
       # Thread exit after termination
-      self.detachVM(return_vm=returnVM, replace_vm=replaceVM)
+      self.detachVM(return_vm=returnVM)
       self.notifyServer(self.job)
       return
 
@@ -206,7 +196,7 @@ class Worker(threading.Thread):
                 self.jobLogAndTrace("assigned VM (just initialized)", self.job.vm)
 
             vm = self.job.vm
-            (returnVM, replaceVM) = (True, False)
+            returnVM = True
 
             # Wait for the instance to be ready
             self.jobLogAndTrace("waiting for VM", vm)
@@ -235,7 +225,7 @@ class Worker(threading.Thread):
             if ret["copyin"] != 0:
                 Config.copyin_errors += 1
                 msg = "Error: Copy in to VM failed (status=%d)" % (ret["copyin"])
-                self.afterJobExecution(hdrfile, msg, (returnVM, replaceVM))
+                self.afterJobExecution(hdrfile, msg, returnVM)
                 return
 
             # Run the job on the virtual machine
@@ -265,9 +255,9 @@ class Worker(threading.Thread):
                     # and do not retry the job since the job may have damaged
                     # the VM.
                     msg = "Error: OS error while running job on VM"
-                    (returnVM, replaceVM) = (False, True)
-                    # doNotDestroy, combined with KEEP_VM_AFTER_FAILURE, will sent
-                    # the vm aside for further investigation after failure.
+                    returnVM = False
+                    # doNotDestroy, combined with KEEP_VM_AFTER_FAILURE, will
+                    # set the vm aside for further investigation after failure.
                     self.job.vm.keepForDebugging = True
                     self.job.vm.notes = str(self.job.id) + "_" + self.job.name
                 else:  # This should never happen
@@ -279,7 +269,7 @@ class Worker(threading.Thread):
             else:
                 msg = "Success: Autodriver returned normally"
 
-            self.afterJobExecution(hdrfile, msg, (returnVM, replaceVM))
+            self.afterJobExecution(hdrfile, msg, returnVM)
             return
 
         #
@@ -296,4 +286,4 @@ class Worker(threading.Thread):
             if self.preVM and not vm:
                vm = self.job.vm = self.preVM
             if vm:
-               self.detachVM(return_vm=False, replace_vm=True)
+               self.detachVM(return_vm=False)
