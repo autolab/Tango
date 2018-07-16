@@ -337,7 +337,8 @@ class TashiSSH:
         """ destroyVM - Removes a VM from the system
         """
         ret = self.tashiCall("destroyVm", [vm.instance_id])
-        return ret
+        self.log.debug("Destroying VM %s status %s" % (vm.instance_id, ret))
+        return
 
     def safeDestroyVM(self, vm):
         """ safeDestroyVM - More robust version of destroyVM.
