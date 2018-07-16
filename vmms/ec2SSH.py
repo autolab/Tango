@@ -89,17 +89,24 @@ class Ec2SSH:
         self.ec2User = ec2User if ec2User else config.Config.EC2_USER_NAME
         self.useDefaultKeyPair = False if accessKeyId else True
 
-        self.boto3client = boto3.client("ec2", config.Config.EC2_REGION,
-                                        aws_access_key_id=accessKeyId,
-                                        aws_secret_access_key=accessKey)
-        self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+        self.img2ami = {}
+        images = []
+
+        try:
+          self.boto3client = boto3.client("ec2", config.Config.EC2_REGION,
+                                          aws_access_key_id=accessKeyId,
+                                          aws_secret_access_key=accessKey)
+          self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+
+          images = self.boto3resource.images.filter(Owners=["self"])
+        except Exception as e:
+          self.log.error("Ec2SSH init Failed: %s"% e)
+          raise  # serious error
 
         # Note: By convention, all usable images to Tango must have "Name" tag
         # in the form of xyz.img which is the VM image in Autolab for an assignment.
         # xyz is also the preallocator pool name for vms using this image.
 
-        self.img2ami = {}
-        images = self.boto3resource.images.filter(Owners=["self"])
         for image in images:
           if image.tags:
             for tag in image.tags:
@@ -209,6 +216,7 @@ class Ec2SSH:
             self.boto3resource.authorize_security_group_ingress(
               GroupId=security_group_id)
         except ClientError as e:
+            # security group may have been created already
             pass
 
     #
@@ -299,7 +307,7 @@ class Ec2SSH:
             return vm
 
         except Exception as e:
-            self.log.debug("initializeVM Failed: %s" % e)
+            self.log.error("initializeVM Failed: %s" % e)
             if newInstance:
               self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
             return None
@@ -464,11 +472,13 @@ class Ec2SSH:
                        config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
-        """ destroyVM - Removes a VM from the system
-        """
+      """ destroyVM - Removes a VM from the system
+      """
 
-        self.log.info("destroyVM: %s %s %s %s" % (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
+      self.log.info("destroyVM: %s %s %s %s" %
+                    (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
 
+      try:
         # Keep the vm and mark with meaningful tags for debugging
         if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
            config.Config.KEEP_VM_AFTER_FAILURE and vm.keepForDebugging:
@@ -484,12 +494,14 @@ class Ec2SSH:
           instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
           return
 
-        ret = self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
+        self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
 
-        return ret
+      except Exception as e:
+        self.log.error("destroyVM init Failed: %s for vm %s" % (e, vm.ec2_id))
+        pass
 
     def safeDestroyVM(self, vm):
         return self.destroyVM(vm)
@@ -503,10 +515,11 @@ class Ec2SSH:
       return None
 
     def getVMs(self):
-        """ getVMs - Returns the running or pending VMs on this account. Each
-        list entry is a boto.ec2.instance.Instance object.
-        """
+      """ getVMs - Returns the running or pending VMs on this account. Each
+      list entry is a boto.ec2.instance.Instance object.
+      """
 
+      try:
         vms = list()
         filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
 
@@ -534,9 +547,11 @@ class Ec2SSH:
           vms.append(vm)
 
         return vms
+      except Exception as e:
+        self.log.debug("getVMs Failed: %s" % e)
 
     def existsVM(self, vm):
-        """ existsVM - Checks whether a VM exists in the vmms.
+        """ existsVM - Checks whether a VM exists in the vmms. Internal use.
         """
 
         filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
