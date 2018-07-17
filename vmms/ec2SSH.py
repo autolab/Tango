@@ -93,42 +93,42 @@ class Ec2SSH:
         images = []
 
         try:
-          self.boto3client = boto3.client("ec2", config.Config.EC2_REGION,
-                                          aws_access_key_id=accessKeyId,
-                                          aws_secret_access_key=accessKey)
-          self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
+            self.boto3client = boto3.client("ec2", config.Config.EC2_REGION,
+                                            aws_access_key_id=accessKeyId,
+                                            aws_secret_access_key=accessKey)
+            self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
 
-          images = self.boto3resource.images.filter(Owners=["self"])
+            images = self.boto3resource.images.filter(Owners=["self"])
         except Exception as e:
-          self.log.error("Ec2SSH init Failed: %s"% e)
-          raise  # serious error
+            self.log.error("Ec2SSH init Failed: %s"% e)
+            raise  # serious error
 
         # Note: By convention, all usable images to Tango must have "Name" tag
         # in the form of xyz.img which is the VM image in Autolab for an assignment.
         # xyz is also the preallocator pool name for vms using this image.
 
         for image in images:
-          if image.tags:
-            for tag in image.tags:
-              if tag["Key"] == "Name":
-                if tag["Value"] and tag["Value"].endswith(".img"):
-                  if tag["Value"] in self.img2ami:
-                    self.log.info("Ignore %s for duplicate name tag %s" %
-                                  (image.id, tag["Value"]))
-                  else:
-                    self.img2ami[tag["Value"]] = image
-                    self.log.info("Found image: %s with name tag %s" %
-                                  (image.id, tag["Value"]))
-                elif tag["Value"]:
-                  self.log.info("Ignore %s with ill-formed name tag %s" %
-                                (image.id, tag["Value"]))
+            if image.tags:
+                for tag in image.tags:
+                    if tag["Key"] == "Name":
+                        if tag["Value"] and tag["Value"].endswith(".img"):
+                            if tag["Value"] in self.img2ami:
+                                self.log.info("Ignore %s for duplicate name tag %s" %
+                                              (image.id, tag["Value"]))
+                            else:
+                                self.img2ami[tag["Value"]] = image
+                                self.log.info("Found image: %s with name tag %s" %
+                                              (image.id, tag["Value"]))
+                        elif tag["Value"]:
+                            self.log.info("Ignore %s with ill-formed name tag %s" %
+                                          (image.id, tag["Value"]))
 
         imageAMIs = [item.id for item in images]
         taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
         ignoredAMIs = list(set(imageAMIs) - set(taggedAMIs))
         if (len(ignoredAMIs) > 0):
-          self.log.info("Ignored images %s for lack of or ill-formed name tag" %
-                        str(ignoredAMIs))
+            self.log.info("Ignored images %s for lack of or ill-formed name tag" %
+                          str(ignoredAMIs))
 
     #
     # VMMS helper methods
@@ -268,28 +268,28 @@ class Ec2SSH:
             # Wait for instance to reach 'running' state
             start_time = time.time()
             while True:
-              # Note: You'd think we should be able to read the state from the
-              # instance but that turns out not working.  So we round up all
-              # running intances and find our instance by instance id
+                # Note: You'd think we should be able to read the state from the
+                # instance but that turns out not working.  So we round up all
+                # running intances and find our instance by instance id
+              
+                filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+                instances = self.boto3resource.instances.filter(Filters=filters)
+                instanceRunning = False
 
-              filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
-              instances = self.boto3resource.instances.filter(Filters=filters)
-              instanceRunning = False
+                newInstance.load()  # reload the state of the instance
+                for inst in instances.filter(InstanceIds=[newInstance.id]):
+                    self.log.debug("VM %s: is running %s" % (instanceName, newInstance.id))
+                    instanceRunning = True
 
-              newInstance.load()  # reload the state of the instance
-              for inst in instances.filter(InstanceIds=[newInstance.id]):
-                self.log.debug("VM %s: is running %s" % (instanceName, newInstance.id))
-                instanceRunning = True
+                if instanceRunning:
+                    break
 
-              if instanceRunning:
-                break
+                if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
+                    raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
+                                     (instanceName, config.Config.TIMER_POLL_INTERVAL))
 
-              if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
-                raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
-                                 (instanceName, config.Config.TIMER_POLL_INTERVAL))
-
-              self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
-              time.sleep(config.Config.TIMER_POLL_INTERVAL)
+                self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
             # end of while loop
 
             self.log.info(
@@ -309,7 +309,7 @@ class Ec2SSH:
         except Exception as e:
             self.log.error("initializeVM Failed: %s" % e)
             if newInstance:
-              self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
+                self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
             return None
 
     def waitVM(self, vm, max_secs):
@@ -417,10 +417,10 @@ class Ec2SSH:
           maxOutputFileSize)
         if hasattr(config.Config, 'AUTODRIVER_LOGGING_TIME_ZONE') and \
            config.Config.AUTODRIVER_LOGGING_TIME_ZONE:
-          runcmd = runcmd + ("-z %s " % config.Config.AUTODRIVER_LOGGING_TIME_ZONE)
+            runcmd = runcmd + ("-z %s " % config.Config.AUTODRIVER_LOGGING_TIME_ZONE)
         if hasattr(config.Config, 'AUTODRIVER_TIMESTAMP_INTERVAL') and \
            config.Config.AUTODRIVER_TIMESTAMP_INTERVAL:
-          runcmd = runcmd + ("-i %d " % config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
+            runcmd = runcmd + ("-i %d " % config.Config.AUTODRIVER_TIMESTAMP_INTERVAL)
         runcmd = runcmd + "autolab &> output"
 
         # runTimeout * 2 is a conservative estimate.
@@ -472,83 +472,83 @@ class Ec2SSH:
                        config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):
-      """ destroyVM - Removes a VM from the system
-      """
+        """ destroyVM - Removes a VM from the system
+        """
 
-      self.log.info("destroyVM: %s %s %s %s" %
-                    (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
+        self.log.info("destroyVM: %s %s %s %s" %
+                      (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
 
-      try:
-        # Keep the vm and mark with meaningful tags for debugging
-        if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
-           config.Config.KEEP_VM_AFTER_FAILURE and vm.keepForDebugging:
-          iName = self.instanceName(vm.id, vm.name)
-          self.log.info("Will keep VM %s for further debugging" % iName)
-          instance = self.boto3resource.Instance(vm.ec2_id)
-          # delete original name tag and replace it with "failed-xyz"
-          # add notes tag for test name
-          tag = self.boto3resource.Tag(vm.ec2_id, "Name", iName)
-          if tag:
-            tag.delete()
-          instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + iName}])
-          instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
-          return
+        try:
+            # Keep the vm and mark with meaningful tags for debugging
+            if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
+               config.Config.KEEP_VM_AFTER_FAILURE and vm.keepForDebugging:
+                iName = self.instanceName(vm.id, vm.name)
+                self.log.info("Will keep VM %s for further debugging" % iName)
+                instance = self.boto3resource.Instance(vm.ec2_id)
+                # delete original name tag and replace it with "failed-xyz"
+                # add notes tag for test name
+                tag = self.boto3resource.Tag(vm.ec2_id, "Name", iName)
+                if tag:
+                    tag.delete()
+                instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + iName}])
+                instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
+                return
 
-        self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
-        # delete dynamically created key
-        if not self.useDefaultKeyPair:
-            self.deleteKeyPair()
+            self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
+            # delete dynamically created key
+            if not self.useDefaultKeyPair:
+                self.deleteKeyPair()
 
-      except Exception as e:
-        self.log.error("destroyVM init Failed: %s for vm %s" % (e, vm.ec2_id))
-        pass
+        except Exception as e:
+            self.log.error("destroyVM init Failed: %s for vm %s" % (e, vm.ec2_id))
+            pass
 
     def safeDestroyVM(self, vm):
         return self.destroyVM(vm)
 
     # return None or tag value if key exists
     def getTag(self, tagList, tagKey):
-      if tagList:
-        for tag in tagList:
-          if tag["Key"] == tagKey:
-            return tag["Value"]
-      return None
+        if tagList:
+            for tag in tagList:
+                if tag["Key"] == tagKey:
+                    return tag["Value"]
+        return None
 
     def getVMs(self):
-      """ getVMs - Returns the running or pending VMs on this account. Each
-      list entry is a boto.ec2.instance.Instance object.
-      """
+        """ getVMs - Returns the running or pending VMs on this account. Each
+        list entry is a boto.ec2.instance.Instance object.
+        """
 
-      try:
-        vms = list()
-        filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
+        try:
+            vms = list()
+            filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
 
-        for inst in self.boto3resource.instances.filter(Filters=filters):
-          vm = TangoMachine()  # make a Tango internal vm structure
-          vm.ec2_id = inst.id
-          vm.id = None  # the serial number as in inst name PREFIX-serial-IMAGE
-          vm.domain_name = None
+            for inst in self.boto3resource.instances.filter(Filters=filters):
+                vm = TangoMachine()  # make a Tango internal vm structure
+                vm.ec2_id = inst.id
+                vm.id = None  # the serial number as in inst name PREFIX-serial-IMAGE
+                vm.domain_name = None
 
-          instName = self.getTag(inst.tags, "Name")
-          # Name tag is the standard form of prefix-serial-image
-          if instName and re.match("%s-" % config.Config.PREFIX, instName):
-            vm.id = int(instName.split("-")[1])
-            vm.name = instName.split("-")[2]
-          elif not instName:
-            vm.name = "Instance_id_" + inst.id + "_without_name_tag"
-          else:
-            vm.name = instName
+                instName = self.getTag(inst.tags, "Name")
+                # Name tag is the standard form of prefix-serial-image
+                if instName and re.match("%s-" % config.Config.PREFIX, instName):
+                    vm.id = int(instName.split("-")[1])
+                    vm.name = instName.split("-")[2]
+                elif not instName:
+                    vm.name = "Instance_id_" + inst.id + "_without_name_tag"
+                else:
+                    vm.name = instName
 
-          if inst.public_ip_address:
-            vm.domain_name = inst.public_ip_address
+                if inst.public_ip_address:
+                    vm.domain_name = inst.public_ip_address
 
-          self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' %
-                         (vm.ec2_id, vm.name, vm.id))
-          vms.append(vm)
+                self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' %
+                               (vm.ec2_id, vm.name, vm.id))
+                vms.append(vm)
 
-        return vms
-      except Exception as e:
-        self.log.debug("getVMs Failed: %s" % e)
+            return vms
+        except Exception as e:
+            self.log.debug("getVMs Failed: %s" % e)
 
     def existsVM(self, vm):
         """ existsVM - Checks whether a VM exists in the vmms. Internal use.
@@ -557,12 +557,12 @@ class Ec2SSH:
         filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
         instances = self.boto3resource.instances.filter(Filters=filters)
         for inst in instances.filter(InstanceIds=[vm.ec2_id]):
-          self.log.debug("VM %s: exists and running" % vm.ec2_id)
-          return True
+            self.log.debug("VM %s: exists and running" % vm.ec2_id)
+            return True
         return False
 
     def getImages(self):
-        """ getImages - return a constant; actually use the ami specified in config 
+        """ getImages - return a constant; actually use the ami specified in config
         """
         self.log.info("getImages: %s" % str(list(self.img2ami.keys())))
         return list(self.img2ami.keys())
