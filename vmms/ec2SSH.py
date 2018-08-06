@@ -162,7 +162,10 @@ class Ec2SSH:
         memory = vm.memory  # in Kbytes
         cores = vm.cores
 
-        if (cores == 1 and memory <= 613 * 1024):
+        if hasattr(config.Config, 'OVERRIDE_INST_TYPE') and \
+           config.Config.OVERRIDE_INST_TYPE:
+            ec2instance['instance_type'] = config.Config.OVERRIDE_INST_TYPE
+        elif (cores == 1 and memory <= 613 * 1024):
             ec2instance['instance_type'] = 't2.micro'
         elif (cores == 1 and memory <= 1.7 * 1024 * 1024):
             ec2instance['instance_type'] = 'm1.small'
