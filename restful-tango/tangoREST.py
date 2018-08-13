@@ -120,7 +120,6 @@ class TangoREST:
         """ createTangoMachine - Creates a tango machine object from image
         """
         return TangoMachine(
-            name=image,
             vmms=vmms,
             image="%s" % (image),
             cores=vmObj["cores"],
@@ -193,6 +192,7 @@ class TangoREST:
         vm['disk'] = tangoMachine.disk
         vm['id'] = tangoMachine.id
         vm['name'] = tangoMachine.name
+        vm['instance_type'] = tangoMachine.instance_type
         return vm
 
     def convertInputFileObj(self, inputFile):
@@ -428,7 +428,7 @@ class TangoREST:
                 self.log.error("Invalid prealloc size")
                 return self.status.invalid_prealloc_size
             if ret == -3:
-                self.log.error("Invalid image name")
+                self.log.error("Invalid image name: %s" % image)
                 return self.status.invalid_image
             self.log.info("Successfully preallocated VMs")
             return self.status.preallocated

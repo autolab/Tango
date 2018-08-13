@@ -139,8 +139,6 @@ class TangoServer:
             if vm.image not in vmms.getImages():
                 self.log.error("Invalid image name")
                 return -3
-            (name, ext) = os.path.splitext(vm.image)
-            vm.name = name
             self.preallocator.update(vm, num)
             return 0
         except Exception as err:
@@ -321,9 +319,6 @@ class TangoServer:
                                    
                     job.appendTrace("validateJob: Image not found: %s" % job.vm.image)
                     errors += 1
-                else:
-                    (name, ext) = os.path.splitext(job.vm.image)
-                    job.vm.name = name
 
             if not job.vm.vmms:
                 self.log.error("validateJob: Missing job.vm.vmms")

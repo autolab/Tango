@@ -166,7 +166,6 @@ class Config:
     EC2_REGION = ''
     EC2_USER_NAME = ''
     KEEP_VM_AFTER_FAILURE = False
-    OVERRIDE_INST_TYPE = ''  # force instance type, if defined
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''

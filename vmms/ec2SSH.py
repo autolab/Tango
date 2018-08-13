@@ -104,14 +104,15 @@ class Ec2SSH:
             raise  # serious error
 
         # Note: By convention, all usable images to Tango must have "Name" tag
-        # in the form of xyz.img which is the VM image in Autolab for an assignment.
-        # xyz is also the preallocator pool name for vms using this image.
+        # whose value is the image name, such as xyz or xyz.img (older form).
+        # xyz is also the preallocator pool name for vms using this image, if
+        # instance type is not specified.
 
         for image in images:
             if image.tags:
                 for tag in image.tags:
                     if tag["Key"] == "Name":
-                        if tag["Value"] and tag["Value"].endswith(".img"):
+                        if tag["Value"]:
                             if tag["Value"] in self.img2ami:
                                 self.log.info("Ignore %s for duplicate name tag %s" %
                                               (image.id, tag["Value"]))
@@ -119,9 +120,6 @@ class Ec2SSH:
                                 self.img2ami[tag["Value"]] = image
                                 self.log.info("Found image: %s with name tag %s" %
                                               (image.id, tag["Value"]))
-                        elif tag["Value"]:
-                            self.log.info("Ignore %s with ill-formed name tag %s" %
-                                          (image.id, tag["Value"]))
 
         imageAMIs = [item.id for item in images]
         taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
@@ -162,9 +160,8 @@ class Ec2SSH:
         memory = vm.memory  # in Kbytes
         cores = vm.cores
 
-        if hasattr(config.Config, 'OVERRIDE_INST_TYPE') and \
-           config.Config.OVERRIDE_INST_TYPE:
-            ec2instance['instance_type'] = config.Config.OVERRIDE_INST_TYPE
+        if vm.instance_type:
+            ec2instance['instance_type'] = vm.instance_type
         elif (cores == 1 and memory <= 613 * 1024):
             ec2instance['instance_type'] = 't2.micro'
         elif (cores == 1 and memory <= 1.7 * 1024 * 1024):
@@ -180,7 +177,7 @@ class Ec2SSH:
         else:
             ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
 
-        ec2instance['ami'] = self.img2ami[vm.name + ".img"].id
+        ec2instance['ami'] = self.img2ami[vm.image].id
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
 
         return ec2instance

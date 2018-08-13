@@ -23,7 +23,7 @@ class CommandLine():
     parser.add_argument('-a', '--accessIdKeyUser',
                         help="aws access id, key and user, space separated")
     parser.add_argument('-c', '--createVMs', action='store_true',
-                        dest='createVMs', help="create a VM for each pool")
+                        dest='createVMs', help="add a VM for each pool")
     parser.add_argument('-d', '--destroyVMs', action='store_true',
                         dest='destroyVMs', help="destroy VMs and empty pools")
     parser.add_argument('-D', '--instanceNameTags', nargs='+',
@@ -47,24 +47,24 @@ def destroyVMs():
   print "number of Tango VMs:", len(vms)
   for vm in vms:
     if vm.id:    
-      print "destroy", ec2.instanceName(vm.id, vm.name)
+      print "destroy", nameToPrint(ec2.instanceName(vm.id, vm.name))
       ec2.destroyVM(vm)
     else:
-      print "VM not in Tango naming pattern:", vm.name
+      print "VM not in Tango naming pattern:", nameToPrint(vm.name)
       
 def pingVMs():
   vms = ec2.getVMs()
   print "number of Tango VMs:", len(vms)
   for vm in vms:
     if vm.id:
-      print "ping", ec2.instanceName(vm.id, vm.name)
+      print "ping", nameToPrint(ec2.instanceName(vm.id, vm.name))
       # Note: following call needs the private key file for aws to be
       # at wherever SECURITY_KEY_PATH in config.py points to.
       # For example, if SECURITY_KEY_PATH = '/root/746-autograde.pem',
       # then the file should exist there.
       ec2.waitVM(vm, Config.WAITVM_TIMEOUT)
     else:
-      print "VM not in Tango naming pattern:", vm.name
+      print "VM not in Tango naming pattern:", nameToPrint(vm.name)
 
 local_tz = pytz.timezone("EST")
 def utc_to_local(utc_dt):
@@ -120,12 +120,12 @@ def listInstances(all=None):
     launchTime = utc_to_local(instance.launch_time)
     if instance.public_ip_address:
       print("%s: %s %s %s %s" %
-            (item["Name"], instance.id,
+            (nameToPrint(item["Name"]), instance.id,
              launchTime, instance.state["Name"],
              instance.public_ip_address))
     else:
       print("%s: %s %s %s" %
-            (item["Name"], instance.id,
+            (nameToPrint(item["Name"]), instance.id,
              launchTime, instance.state["Name"]))
 
     if instance.tags:
@@ -135,8 +135,8 @@ def listInstances(all=None):
     else:
       print("\t No tags")
 
-    """ useful sometimes
     print "\t InstanceType:", instance.instance_type
+    """ useful sometimes
     image = boto3resource.Image(instance.image_id)
     print "\t ImageId:", image.image_id
     for tag in image.tags:
@@ -146,22 +146,44 @@ def listInstances(all=None):
   return nameAndInstances
 
 def listPools():
-  print "Tango VM pools by AWS image", ec2.img2ami.keys()
-  for key in server.preallocator.machines.keys():
+  print "known AWS images:", ec2.img2ami.keys()
+  knownPools = server.preallocator.machines.keys()
+  print "Tango VM pools:", "" if knownPools else "None"
+
+  for key in knownPools:
     pool = server.preallocator.getPool(key)
     totalPool = pool["total"]
     freePool = pool["free"]
     totalPool.sort()
     freePool.sort()
-    print "pool", key, "total", len(totalPool), totalPool, freePool
+    print "pool", nameToPrint(key), "total", len(totalPool), totalPool, freePool
+
+def nameToPrint(name):
+    return "[" + name + "]" if name else "[None]"
 
 # allocate "num" vms for each and every pool (image)
-def createVMs(num):
-  for imageName in pools:
-    (poolName, ext) = os.path.splitext(imageName)
-    print "creating", num, "for pool", poolName
-    vm = TangoMachine(vmms="ec2SSH", image=imageName)
-    server.preallocVM(vm, num)
+def addVMs():
+  # Add a vm for each image and a vm for the first image plus instance type
+  instanceTypeTried = False
+  for key in ec2.img2ami.keys():
+    vm = TangoMachine(vmms="ec2SSH", image=key)
+    pool = server.preallocator.getPool(vm.name)
+    currentCount = len(pool["total"]) if pool else 0
+    print "adding a vm into pool", nameToPrint(vm.name)
+    print "pool", nameToPrint(vm.name), "current size", currentCount
+    server.preallocVM(vm, currentCount + 1)
+
+    if instanceTypeTried:
+      continue
+    else:
+      instanceTypeTried = True
+
+    vm = TangoMachine(vmms="ec2SSH", image=key+"+t2.small")
+    pool = server.preallocator.getPool(vm.name)
+    currentCount = len(pool["total"]) if pool else 0
+    print "pool", nameToPrint(vm.name), "current size", currentCount
+    print "adding a vm into pool", nameToPrint(vm.name)
+    server.preallocVM(vm, currentCount + 1)
 
 def destroyRedisPools():
   for key in server.preallocator.machines.keys():
@@ -247,7 +269,7 @@ if argDestroyVMs:
 if argCreateVMs:
   listInstances()
   listPools()
-  createVMs(1)
+  addVMs()  # add 1 vm for each image and each image plus instance type
   listInstances()
   listPools()
   exit()
