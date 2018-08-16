@@ -238,35 +238,26 @@ class TangoServer:
                 for key in self.preallocator.machines.keys():
                     freePool = self.preallocator.getPool(key)["free"]
                     for vmId in freePool:
-                        vmName = vobj.instanceName(vmId, key)
-                        allFreeVMs.append(vmName)
+                        allFreeVMs.append(vobj.instanceName(vmId, key))
                 self.log.info("vms in all free pools: %s" % allFreeVMs)
+
+                # allFreeVMs = []
 
                 # For each in Tango's name space, destroy the onces in free pool.
                 # AND remove it from Tango's internal bookkeeping.
                 vms = vobj.getVMs()
-                self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
+                self.log.debug("Pre-existing VMs: %s" %
+                               [vobj.instanceName(vm.id, vm.name) for vm in vms])
                 destroyedList = []
                 removedList = []
                 for vm in vms:
-                    if re.match("%s-" % Config.PREFIX, vm.name):
-
-                        # Todo: should have an one-call interface to destroy the
-                        # machine AND to keep the interval data consistent.
-                        if vm.name not in allFreeVMs:
-                            destroyedList.append(vm.name)
+                    vmName = vobj.instanceName(vm.id, vm.name)
+                    if re.match("%s-" % Config.PREFIX, vmName):
+                        if vmName not in allFreeVMs:
+                            destroyedList.append(vmName)
+                            if self.preallocator.removeVM(vm, mustFind=False):
+                                removedList.append(vmName)
                             vobj.destroyVM(vm)
-
-                            # also remove it from "total" set of the pool
-                            (prefix, vmId, poolName) = vm.name.split("-")
-                            machine = self.preallocator.machines.get(poolName)
-                            if not machine:  # the pool may not exist
-                                continue
-
-                            if int(vmId) in machine[0]:
-                                removedList.append(vm.name)
-                                machine[0].remove(int(vmId))
-                            self.preallocator.machines.set(poolName, machine)
 
                 if destroyedList:
                     self.log.warning("Killed these %s VMs on restart: %s" %

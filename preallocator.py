@@ -168,29 +168,32 @@ class Preallocator:
     # that.  To solve the problem cleanly, preallocator should provide ONE primitive
     # to add/remove a vm from both total and free pools, instead of two disjoint ones.
     def removeFromFreePool(self, vm):
-        dieVM = None
         self.lock.acquire()
         size = self.machines.get(vm.name)[1].qsize()
         self.log.info("removeFromFreePool: %s in pool %s" % (vm.id, vm.name))
         for i in range(size):  # go through free pool
-            vm = self.machines.get(vm.name)[1].get_nowait()
+            freeVM = self.machines.get(vm.name)[1].get_nowait()
             # put it back into free pool, if not our vm
-            if vm.id != id:
-                self.machines.get(vm.name)[1].put(vm)
+            if vm.id != freeVM.id:
+                self.machines.get(vm.name)[1].put(freeVM)
             else:
                 self.log.info("removeFromFreePool: found %s in pool %s" % (vm.id, vm.name))
                 # don't put this particular vm back to free pool, that is removal
         self.lock.release()
 
-    def removeVM(self, vm):
+    # return True if the vm is in the pool (and removed)
+    def removeVM(self, vm, mustFind=True):
         """ removeVM - remove a particular VM instance from the pool
         """
         self.lock.acquire()
         machine = self.machines.get(vm.name)
-        if vm.id not in machine[0]:
-            self.log.error("removeVM: %s NOT found in pool" % (vm.id, vm.name))
+        if not machine or vm.id not in machine[0]:
+            if mustFind:
+                self.log.error("removeVM: %s NOT found in pool" % vm.name)
+            else:
+                self.log.info("removeVM: %s NOT found in pool. This is OK" % vm.name)
             self.lock.release()
-            return
+            return False
 
         self.log.info("removeVM: %s" % vm.id)
         machine[0].remove(vm.id)
@@ -198,6 +201,7 @@ class Preallocator:
         self.lock.release()
 
         self.removeFromFreePool(vm)  # also remove from free pool, just in case
+        return True
 
     def _getNextID(self):
         """ _getNextID - returns next ID to be used for a preallocated
