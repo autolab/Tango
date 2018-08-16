@@ -534,10 +534,8 @@ class Ec2SSH:
                 if instName and re.match("%s-" % config.Config.PREFIX, instName):
                     vm.id = int(instName.split("-")[1])
                     vm.name = instName.split("-")[2]
-                elif not instName:
-                    vm.name = "Instance_id_" + inst.id + "_without_name_tag"
                 else:
-                    vm.name = instName
+                    continue  # instance not belong Tango.  Skip
 
                 if inst.public_ip_address:
                     vm.domain_name = inst.public_ip_address
