@@ -261,7 +261,7 @@ class TangoREST:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def upload(self, key, courselab, file, body):
+    def upload(self, key, courselab, file, tempfile, fileMD5):
         """ upload - Upload file as an input file in key-courselab if the
         same file doesn't exist already
         """
@@ -271,15 +271,12 @@ class TangoREST:
             labPath = self.getDirPath(key, courselab)
             try:
                 if os.path.exists(labPath):
-                    fileMD5 = hashlib.md5(body).hexdigest()
                     if self.checkFileExists(labPath, file, fileMD5):
                         self.log.info(
                             "File (%s, %s, %s) exists" % (key, courselab, file))
                         return self.status.file_exists
                     absPath = "%s/%s" % (labPath, file)
-                    fh = open(absPath, "wt")
-                    fh.write(body)
-                    fh.close()
+                    os.rename(tempfile, absPath)
                     self.log.info(
                         "Uploaded file to (%s, %s, %s)" %
                         (key, courselab, file))
@@ -287,12 +284,15 @@ class TangoREST:
                 else:
                     self.log.info(
                         "Courselab for (%s, %s) not found" % (key, courselab))
+                    os.unlink(tempfile)
                     return self.status.wrong_courselab
             except Exception as e:
                 self.log.error("upload request failed: %s" % str(e))
+                os.unlink(tempfile)
                 return self.status.create(-1, str(e))
         else:
             self.log.info("Key not recognized: %s" % key)
+            os.unlink(tempfile)
             return self.status.wrong_key
 
     def addJob(self, key, courselab, jobStr):

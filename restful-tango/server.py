@@ -1,6 +1,9 @@
 import tornado.web
 import urllib
 import sys
+import os
+from tempfile import NamedTemporaryFile
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
@@ -57,18 +60,35 @@ class OpenHandler(tornado.web.RequestHandler):
         """ get - Handles the get request to open."""
         return tangoREST.open(key, courselab)
 
-
+@tornado.web.stream_request_body
 class UploadHandler(tornado.web.RequestHandler):
 
+    def prepare(self):
+        """ set up the temporary file"""
+        tempdir="%s/tmp" % (Config.COURSELABS,)
+        if not os.path.exists(tempdir):
+           os.mkdir(tempdir, 0700)
+        if os.path.exists(tempdir) and not os.path.isdir(tempdir):
+           tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+           return self.send_error()
+        self.tempfile = NamedTemporaryFile(prefix='upload', dir=tempdir,
+                                           delete=False)
+        self.hasher = hashlib.md5()
+
+    def data_received(self, chunk):
+        self.hasher.update(chunk)
+        self.tempfile.write(chunk)
+        
     @unblock
     def post(self, key, courselab):
         """ post - Handles the post request to upload."""
+        name = self.tempfile.name
+        self.tempfile.close
         return tangoREST.upload(
             key,
             courselab,
             self.request.headers['Filename'],
-            self.request.body)
-
+            name, self.hasher.hexdigest())
 
 class AddJobHandler(tornado.web.RequestHandler):
 
