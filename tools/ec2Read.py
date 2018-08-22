@@ -47,7 +47,7 @@ def destroyVMs():
   print "number of Tango VMs:", len(vms)
   for vm in vms:
     if vm.id:    
-      print "destroy", nameToPrint(ec2.instanceName(vm.id, vm.name))
+      print "destroy", nameToPrint(vm.name)
       ec2.destroyVM(vm)
     else:
       print "VM not in Tango naming pattern:", nameToPrint(vm.name)
@@ -57,7 +57,7 @@ def pingVMs():
   print "number of Tango VMs:", len(vms)
   for vm in vms:
     if vm.id:
-      print "ping", nameToPrint(ec2.instanceName(vm.id, vm.name))
+      print "ping", nameToPrint(vm.name)
       # Note: following call needs the private key file for aws to be
       # at wherever SECURITY_KEY_PATH in config.py points to.
       # For example, if SECURITY_KEY_PATH = '/root/746-autograde.pem',
@@ -167,10 +167,9 @@ def addVMs():
   instanceTypeTried = False
   for key in ec2.img2ami.keys():
     vm = TangoMachine(vmms="ec2SSH", image=key)
-    pool = server.preallocator.getPool(vm.name)
+    pool = server.preallocator.getPool(vm.pool)
     currentCount = len(pool["total"]) if pool else 0
-    print "adding a vm into pool", nameToPrint(vm.name)
-    print "pool", nameToPrint(vm.name), "current size", currentCount
+    print "adding a vm into pool", nameToPrint(vm.pool), "current size", currentCount
     server.preallocVM(vm, currentCount + 1)
 
     if instanceTypeTried:
@@ -179,10 +178,9 @@ def addVMs():
       instanceTypeTried = True
 
     vm = TangoMachine(vmms="ec2SSH", image=key+"+t2.small")
-    pool = server.preallocator.getPool(vm.name)
+    pool = server.preallocator.getPool(vm.pool)
     currentCount = len(pool["total"]) if pool else 0
-    print "pool", nameToPrint(vm.name), "current size", currentCount
-    print "adding a vm into pool", nameToPrint(vm.name)
+    print "adding a vm into pool", nameToPrint(vm.pool), "current size", currentCount
     server.preallocVM(vm, currentCount + 1)
 
 def destroyRedisPools():
@@ -287,7 +285,7 @@ if argAccessIdKeyUser:
   # to test non-default access id/key, the aws image must have the key manually
   # installed or allows the key to be installed by the aws service.
   # the following assumes we have such image with a "Name" tag "test01.img"
-  vm.name = "test01"
+  vm.pool = "test01"
   ec2WithKey.initializeVM(vm)
   ec2WithKey.waitVM(vm, Config.WAITVM_TIMEOUT)
   listInstances()

@@ -59,7 +59,6 @@ class TangoMachine():
         self.disk = disk
         self.domain_name = domain_name
 
-        self.ec2_id = None
         self.resume = None
         self.id = None
         self.instance_id = None
@@ -70,10 +69,8 @@ class TangoMachine():
         # aside for further investigation.
         self.keepForDebugging = False
 
-        # The "name" property is vmms dependent.  It doesn't mean the name of
-        # vm.  It's derived from the image name and used as the vm pool name
-        # The actual vm name is constructed by the instanceName method in each vmms.
-        self.name = None
+        self.pool = None
+        self.name = None  # in the form of prefix-id-pool, constructed by the vmms
 
         # The image may contain instance type if vmms is ec2.  Example:
         # course101+t2.small.
@@ -82,8 +79,8 @@ class TangoMachine():
             if len(imageParts) == 2:
                 self.image = imageParts[0]
                 self.instance_type = imageParts[1]
-            (name, ext) = os.path.splitext(self.image)
-            self.name = name + ("+" + self.instance_type if self.instance_type else "")
+            (pool, ext) = os.path.splitext(self.image)
+            self.pool = pool + ("+" + self.instance_type if self.instance_type else "")
 
     def __repr__(self):
         return "TangoMachine(image: %s, vmms: %s, id: %s)" % (self.image, self.vmms, self.id)

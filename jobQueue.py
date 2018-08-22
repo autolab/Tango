@@ -209,8 +209,8 @@ class JobQueue:
 
             # Create or enlarge a pool if there is no free vm to use and
             # the limit for pool is not reached yet
-            if self.preallocator.freePoolSize(job.vm.name) == 0 and \
-                self.preallocator.poolSize(job.vm.name) < Config.POOL_SIZE:
+            if self.preallocator.freePoolSize(job.vm.pool) == 0 and \
+                self.preallocator.poolSize(job.vm.pool) < Config.POOL_SIZE:
                 increment = 1
                 if hasattr(Config, 'POOL_ALLOC_INCREMENT') and Config.POOL_ALLOC_INCREMENT:
                     increment = Config.POOL_ALLOC_INCREMENT
@@ -219,7 +219,7 @@ class JobQueue:
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
-                vm = self.preallocator.allocVM(job.vm.name)
+                vm = self.preallocator.allocVM(job.vm.pool)
                 if vm:
                     self.log.info("getNextPendingJobReuse alloc vm %s to job %s" % (vm, id))
                     self.queueLock.release()

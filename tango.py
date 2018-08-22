@@ -130,8 +130,8 @@ class TangoServer:
     def preallocVM(self, vm, num):
         """ preallocVM - Set the pool size for VMs of type vm to num
         """
-        self.log.debug("Received preallocVM(%s,%d)request"
-                       % (vm.name, num))
+        self.log.debug("Received preallocVM request: %d vms in pool %s"
+                       % (num, vm.pool))
         try:
             vmms = self.preallocator.vmms[vm.vmms]
             if not vm or num < 0:
@@ -159,6 +159,8 @@ class TangoServer:
             self.log.error("getVMs request failed: %s" % err)
             return []
 
+    # xxxXXX??? plan to remove
+    '''
     def delVM(self, vmName, id):
         """ delVM - delete a specific VM instance from a pool
         """
@@ -170,6 +172,7 @@ class TangoServer:
         except Exception as err:
             self.log.error("delVM request failed: %s" % err)
             return -1
+    '''
 
     def getPool(self, vmName):
         """ getPool - Return the current members of a pool and its free list
@@ -246,17 +249,16 @@ class TangoServer:
                 # For each in Tango's name space, destroy the onces in free pool.
                 # AND remove it from Tango's internal bookkeeping.
                 vms = vobj.getVMs()
-                self.log.debug("Pre-existing VMs: %s" %
-                               [vobj.instanceName(vm.id, vm.name) for vm in vms])
+                self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
+
                 destroyedList = []
                 removedList = []
                 for vm in vms:
-                    vmName = vobj.instanceName(vm.id, vm.name)
-                    if re.match("%s-" % Config.PREFIX, vmName):
-                        if vmName not in allFreeVMs:
-                            destroyedList.append(vmName)
+                    if re.match("%s-" % Config.PREFIX, vm.name):
+                        if vm.name not in allFreeVMs:
+                            destroyedList.append(vm.name)
                             if self.preallocator.removeVM(vm, mustFind=False):
-                                removedList.append(vmName)
+                                removedList.append(vm.name)
                             vobj.destroyVM(vm)
 
                 if destroyedList:

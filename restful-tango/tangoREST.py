@@ -192,6 +192,7 @@ class TangoREST:
         vm['disk'] = tangoMachine.disk
         vm['id'] = tangoMachine.id
         vm['name'] = tangoMachine.name
+        vm['pool'] = tangoMachine.pool
         vm['instance_type'] = tangoMachine.instance_type
         return vm
 

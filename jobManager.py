@@ -52,7 +52,7 @@ class JobManager:
         """
         id = self.nextId
         self.nextId += 1
-        # xxx simply wrap the id without guarding condition is bad. disable for now.
+        # xxxXXX??? simply wrap the id without guarding condition is bad. disable for now.
         # if self.nextId > 99999:
         #    self.nextId = 10000
         return id
@@ -87,7 +87,7 @@ class JobManager:
                         from vmms.ec2SSH import Ec2SSH
                         vmms = Ec2SSH(job.accessKeyId, job.accessKey)
                         newVM = copy.deepcopy(job.vm)
-                        newVM.id = self._getNextID()
+                        newVM.id = self._getNextID()  # xxxXXX??? try this path
                         preVM = vmms.initializeVM(newVM)
                         self.log.info("_manage init new vm %s" % preVM.id)
                     else:
@@ -97,17 +97,17 @@ class JobManager:
                             preVM = vm
                             self.log.info("_manage use vm %s" % preVM.id)
                         else:
-                            # xxxXXX??? strongly suspect this code path not work.
+                            # xxxXXX??? strongly suspect this code path doesn't work.
                             # After setting REUSE_VMS to False, job submissions don't run.
-                            preVM = self.preallocator.allocVM(job.vm.name)
+                            preVM = self.preallocator.allocVM(job.vm.pool)
                             self.log.info("_manage allocate vm %s" % preVM.id)
                         vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
                     # Now dispatch the job to a worker
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                   (job.name, job.id, preVM.name, job.retries))
-                    job.appendTrace("Dispatched job %s:%d [try %d]" %
-                                    (job.name, job.id, job.retries))
+                    job.appendTrace("Dispatched job %s:%d to %s [try %d]" %
+                                    (job.name, job.id, preVM.name, job.retries))
 
                     Worker(
                         job,

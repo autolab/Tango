@@ -148,8 +148,8 @@ class Worker(threading.Thread):
       return
 
     def jobLogAndTrace(self, stageMsg, vm, status=None):
-      msg = stageMsg + " %s for job %s:%d" % (self.vmms.instanceName(vm.id, vm.name),
-                                              self.job.name, self.job.id)
+      msg = stageMsg + " %s for job %s:%d" % (vm.name, self.job.name, self.job.id)
+
       if (status != None):
         if (status == 0):
           msg = "done " + msg
@@ -188,7 +188,7 @@ class Worker(threading.Thread):
 
             # Assigning job to a new VM
             else:
-                self.job.vm.id = self.job.id
+                self.job.vm.id = self.job.id  # xxxXXX??? don't know how this works
                 self.job.updateRemote()
 
                 # Host name returned from EC2 is stored in the vm object

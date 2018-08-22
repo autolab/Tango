@@ -132,12 +132,11 @@ class Ec2SSH:
     # VMMS helper methods
     #
 
-    def instanceName(self, id, name):
+    def instanceName(self, id, pool):
         """ instanceName - Constructs a VM instance name. Always use
-        this function when you need a VM instance name. Never generate
-        instance names manually.
+        this function when you need a VM instance name, or use vm.name
         """
-        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+        return "%s-%d-%s" % (config.Config.PREFIX, id, pool)
 
     def keyPairName(self, id, name):
         """ keyPairName - Constructs a unique key pair name.
@@ -231,9 +230,9 @@ class Ec2SSH:
         # Create the instance and obtain the reservation
         newInstance = None
         try:
-            instanceName = self.instanceName(vm.id, vm.name)
+            vm.name = self.instanceName(vm.id, vm.pool)
             ec2instance = self.tangoMachineToEC2Instance(vm)
-            self.log.info("initializeVM: %s %s" % (instanceName, str(ec2instance)))
+            self.log.info("initializeVM: %s %s" % (vm.name, str(ec2instance)))
             # ensure that security group exists
             self.createSecurityGroup()
             if self.useDefaultKeyPair:
@@ -259,11 +258,11 @@ class Ec2SSH:
             if newInstance:
                 # Assign name to EC2 instance
                 self.boto3resource.create_tags(Resources=[newInstance.id],
-                                            Tags=[{"Key": "Name", "Value": instanceName}])
+                                            Tags=[{"Key": "Name", "Value": vm.name}])
                 self.log.info("new instance %s created with name tag %s" %
-                              (newInstance.id, instanceName))
+                              (newInstance.id, vm.name))
             else:
-                raise ValueError("cannot find new instance for %s" % instanceName)
+                raise ValueError("cannot find new instance for %s" % vm.name)
 
             # Wait for instance to reach 'running' state
             start_time = time.time()
@@ -278,7 +277,7 @@ class Ec2SSH:
 
                 newInstance.load()  # reload the state of the instance
                 for inst in instances.filter(InstanceIds=[newInstance.id]):
-                    self.log.debug("VM %s: is running %s" % (instanceName, newInstance.id))
+                    self.log.debug("VM %s: is running %s" % (vm.name, newInstance.id))
                     instanceRunning = True
 
                 if instanceRunning:
@@ -286,15 +285,15 @@ class Ec2SSH:
 
                 if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
                     raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
-                                     (instanceName, config.Config.TIMER_POLL_INTERVAL))
+                                     (vm.name, config.Config.TIMER_POLL_INTERVAL))
 
-                self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % instanceName)
+                self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % vm.name)
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
             # end of while loop
 
             self.log.info(
                 "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
-                (instanceName,
+                (vm.name,
                  newInstance.state,
                  reservation,
                  newInstance.public_dns_name,
@@ -302,8 +301,8 @@ class Ec2SSH:
 
             # Save domain and id ssigned by EC2 in vm object
             vm.domain_name = newInstance.public_ip_address
-            vm.ec2_id = newInstance.id
-            self.log.debug("VM %s: %s" % (instanceName, newInstance))
+            vm.instance_id = newInstance.id
+            self.log.debug("VM %s: %s" % (vm.name, newInstance))
             return vm
 
         except Exception as e:
@@ -319,19 +318,18 @@ class Ec2SSH:
         VM is a boto.ec2.instance.Instance object.
         """
 
-        self.log.info("WaitVM: %s, ec2_id: %s" % (vm.id, vm.ec2_id))
+        self.log.info("WaitVM: %s %s" % (vm.name, vm.instance_id))
 
         # test if the vm is still an instance
         if not self.existsVM(vm):
-            self.log.info("VM %s: no longer an instance" % vm.id)
+            self.log.info("VM %s: no longer an instance" % vm.name)
             return -1
 
         # First, wait for ping to the vm instance to work
         instance_down = 1
-        instanceName = self.instanceName(vm.id, vm.name)
         start_time = time.time()
         domain_name = self.domainName(vm)
-        self.log.info("WaitVM: pinging %s" % domain_name)
+        self.log.info("WaitVM: pinging %s %s" % (domain_name, vm.name))
         while instance_down:
             instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
                                             shell=True,
@@ -349,7 +347,7 @@ class Ec2SSH:
 
         # The ping worked, so now wait for SSH to work before
         # declaring that the VM is ready
-        self.log.debug("VM %s: ping completed" % (vm.id))
+        self.log.debug("VM %s: ping completed" % (vm.name))
         while(True):
 
             elapsed_secs = time.time() - start_time
@@ -357,8 +355,7 @@ class Ec2SSH:
             # Give up if the elapsed time exceeds the allowable time
             if elapsed_secs > max_secs:
                 self.log.info(
-                    "VM %s: SSH timeout after %d secs" %
-                    (instanceName, elapsed_secs))
+                    "VM %s: SSH timeout after %d secs" % (vm.name, elapsed_secs))
                 return -1
 
             # If the call to ssh returns timeout (-1) or ssh error
@@ -369,8 +366,7 @@ class Ec2SSH:
                           ["%s@%s" % (self.ec2User, domain_name),
                            "(:)"], max_secs - elapsed_secs)
 
-            self.log.debug("VM %s: ssh returned with %d" %
-                           (instanceName, ret))
+            self.log.debug("VM %s: ssh returned with %d" % (vm.name, ret))
 
             if (ret != -1) and (ret != 255):
                 return 0
@@ -405,8 +401,7 @@ class Ec2SSH:
         redirect output to file "output".
         """
         domain_name = self.domainName(vm)
-        self.log.debug("runJob: Running job on VM %s" %
-                       self.instanceName(vm.id, vm.name))
+        self.log.debug("runJob: Running job on VM %s" % vm.name)
 
         # Setting arguments for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver \
@@ -476,31 +471,30 @@ class Ec2SSH:
         """
 
         self.log.info("destroyVM: %s %s %s %s" %
-                      (vm.ec2_id, vm.name, vm.keepForDebugging, vm.notes))
+                      (vm.instance_id, vm.name, vm.keepForDebugging, vm.notes))
 
         try:
             # Keep the vm and mark with meaningful tags for debugging
             if hasattr(config.Config, 'KEEP_VM_AFTER_FAILURE') and \
                config.Config.KEEP_VM_AFTER_FAILURE and vm.keepForDebugging:
-                iName = self.instanceName(vm.id, vm.name)
-                self.log.info("Will keep VM %s for further debugging" % iName)
-                instance = self.boto3resource.Instance(vm.ec2_id)
+                self.log.info("Will keep VM %s for further debugging" % vm.name)
+                instance = self.boto3resource.Instance(vm.instance_id)
                 # delete original name tag and replace it with "failed-xyz"
                 # add notes tag for test name
-                tag = self.boto3resource.Tag(vm.ec2_id, "Name", iName)
+                tag = self.boto3resource.Tag(vm.instance_id, "Name", vm.name)
                 if tag:
                     tag.delete()
-                instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + iName}])
+                instance.create_tags(Tags=[{"Key": "Name", "Value": "failed-" + vm.name}])
                 instance.create_tags(Tags=[{"Key": "Notes", "Value": vm.notes}])
                 return
 
-            self.boto3resource.instances.filter(InstanceIds=[vm.ec2_id]).terminate()
+            self.boto3resource.instances.filter(InstanceIds=[vm.instance_id]).terminate()
             # delete dynamically created key
             if not self.useDefaultKeyPair:
                 self.deleteKeyPair()
 
         except Exception as e:
-            self.log.error("destroyVM init Failed: %s for vm %s" % (e, vm.ec2_id))
+            self.log.error("destroyVM init Failed: %s for vm %s" % (e, vm.instance_id))
             pass
 
     def safeDestroyVM(self, vm):
@@ -525,26 +519,27 @@ class Ec2SSH:
 
             for inst in self.boto3resource.instances.filter(Filters=filters):
                 vm = TangoMachine()  # make a Tango internal vm structure
-                vm.ec2_id = inst.id
+                vm.instance_id = inst.id
                 vm.id = None  # the serial number as in inst name PREFIX-serial-IMAGE
                 vm.domain_name = None
 
                 instName = self.getTag(inst.tags, "Name")
                 # Name tag is the standard form of prefix-serial-image
-                if instName and re.match("%s-" % config.Config.PREFIX, instName):
-                    vm.id = int(instName.split("-")[1])
-                    vm.name = instName.split("-")[2]
-                else:
-                    continue  # instance not belong Tango.  Skip
+                if not (instName and re.match("%s-" % config.Config.PREFIX, instName)):
+                    self.log.debug('getVMs: Instance id %s skipped' % vm.instance_id)
+                    continue  # instance without name tag or proper prefix
 
+                vm.id = int(instName.split("-")[1])
+                vm.pool = instName.split("-")[2]
+                vm.name = instName
                 if inst.public_ip_address:
                     vm.domain_name = inst.public_ip_address
-
-                self.log.debug('getVMs: Instance id %s, pool %s, vm id %s' %
-                               (vm.ec2_id, vm.name, vm.id))
                 vms.append(vm)
 
+                self.log.debug('getVMs: Instance id %s, name %s' %
+                               (vm.instance_id, vm.name))
             return vms
+
         except Exception as e:
             self.log.debug("getVMs Failed: %s" % e)
 
@@ -554,8 +549,8 @@ class Ec2SSH:
 
         filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
         instances = self.boto3resource.instances.filter(Filters=filters)
-        for inst in instances.filter(InstanceIds=[vm.ec2_id]):
-            self.log.debug("VM %s: exists and running" % vm.ec2_id)
+        for inst in instances.filter(InstanceIds=[vm.instance_id]):
+            self.log.debug("VM %s %s: exists and running" % (vm.instance_id, vm.name))
             return True
         return False
 
