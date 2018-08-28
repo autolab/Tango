@@ -13,8 +13,6 @@ class Config:
   course = "czang-exp"
   
   # YOUR root dir for course/lab definitions and handin (student submissions)
-  courseRoot = "/n/scratch/czang/f16/"
-  #courseRoot = "/n/scratch/czang/f17/"
   courseRoot = "/mnt/data/f16/"
 
   # YOUR lab definitions. The index of the lab is given to run_job.py
