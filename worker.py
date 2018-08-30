@@ -141,6 +141,7 @@ class Worker(threading.Thread):
       # Update the text that users see in the autodriver output file
       self.appendMsg(hdrfile, msg)
       self.catFiles(hdrfile, self.job.outputFile)
+      os.chmod(self.job.outputFile, 0o644)
 
       # Thread exit after termination
       self.detachVM(return_vm=returnVM)
