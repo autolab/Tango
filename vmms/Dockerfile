@@ -48,8 +48,12 @@ RUN apt-get install -y bison
 RUN apt-get install -y unzip
 
 #NodeJS setup
+RUN apt-get update --fix-missing
 RUN apt-get install -y nodejs
 RUN apt-get install -y npm
+
+#OCaml Setup
+RUN apt-get install -y ocaml
 
 # Install autodriver
 WORKDIR /home
