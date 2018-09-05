@@ -16,7 +16,7 @@ RUN mkdir volumes
 
 WORKDIR /opt
 # Install dependancies
-RUN apt-get update && apt-get dist-upgrade -y && DEBIAN_FRONTEND=nointeractive apt-get install -y \
+RUN apt-get update --fix-missing && DEBIAN_FRONTEND=nointeractive apt-get install -y \
 	nginx \
 	curl \
 	git \
@@ -63,9 +63,6 @@ RUN mkdir -p /var/log/docker /var/log/supervisor
 RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.conf
 RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
 RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
-
-# Add user
-RUN useradd -ms /bin/bash autolab
 
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
