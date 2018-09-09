@@ -1,6 +1,6 @@
 # Autolab - autograding docker image
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER David Dobmeier <daviddob@buffalo.edu>
 
 #C++ Setup
@@ -11,8 +11,8 @@ RUN apt-get install -y build-essential
 RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
 
 #Python Setup
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt-get update --fix-missing && \
+    DEBIAN_FRONTEND=nointeractive apt-get install -y \
     python3 python3-numpy python3-nose python3-pandas \
     python python-numpy python-nose python-pandas \
     pep8 python-pip python3-pip python-wheel \
