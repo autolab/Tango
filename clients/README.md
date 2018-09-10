@@ -1,7 +1,7 @@
 This directory contains the Tango client program and some example jobs
 that are useful for testing.
 
-tango-cli.py - Tango client program
+tango-rest.py - Tango client program
 
 Example jobs:
 job1 	  - simple hello job
