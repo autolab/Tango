@@ -6,6 +6,7 @@
 scripts/*.sh
 # exclude
 vmms/id_rsa*
+courselabs/*
 # config
 config.py
 
