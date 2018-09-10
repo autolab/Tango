@@ -179,7 +179,11 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        if vm.use_ssh_master:
+        if not hasattr(vm, 'ssh_flags'):
+            vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
+            vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
+
+        if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
              ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                            DistDocker._SSH_MASTER_CHECK_FLAG +
                            ["%s@%s" % (self.hostUser, vm.domain_name)])
@@ -225,7 +229,7 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        if vm.use_ssh_master:
+        if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                           DistDocker._SSH_MASTER_CHECK_FLAG +
                           ["%s@%s" % (self.hostUser, vm.domain_name)])
@@ -267,7 +271,11 @@ class DistDocker:
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
 
-        if vm.use_ssh_master:
+        if not hasattr(vm, 'ssh_flags'):
+            vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
+            vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
+
+        if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                           DistDocker._SSH_MASTER_CHECK_FLAG +
                           ["%s@%s" % (self.hostUser, vm.domain_name)])
@@ -291,8 +299,14 @@ class DistDocker:
     def destroyVM(self, vm):
         """ destroyVM - Delete the docker container.
         """
+
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
+
+        if not hasattr(vm, 'ssh_flags'):
+            vm.ssh_control_dir = tempfile.mkdtemp(prefix="tango-docker-ssh")
+            vm.ssh_flags = ['-o', 'ControlPath=' + os.path.join(vm.ssh_control_dir, "control")]
+
         if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
             ret = timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                           DistDocker._SSH_MASTER_CHECK_FLAG +
@@ -317,7 +331,7 @@ class DistDocker:
                 "(rm -rf %s)" % (volumePath)],
                 config.Config.DOCKER_RM_TIMEOUT)
         self.log.debug('Deleted volume %s' % instanceName)
-        if vm.use_ssh_master:
+        if hasattr(vm, 'use_ssh_master') and vm.use_ssh_master:
             timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                     DistDocker._SSH_MASTER_EXIT_FLAG +
                     ["%s@%s" % (self.hostUser, vm.domain_name)])
