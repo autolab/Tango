@@ -528,6 +528,16 @@ static void run_job(void) {
         exit(EXIT_OSERROR);
     }
 
+    // Fix up the environment
+    if (setenv("HOME", args.user_info.pw_dir, 1) < 0) {
+        ERROR_ERRNO("Error setting $HOME");
+        exit(EXIT_OSERROR);
+    }
+    if (setenv("USER", args.user_info.pw_name, 1) < 0) {
+        ERROR_ERRNO("Error setting $USER");
+        exit(EXIT_OSERROR);
+    }
+
     // Finally exec job
     execl("/usr/bin/make", "make", NULL);
     ERROR_ERRNO("Error executing make");
