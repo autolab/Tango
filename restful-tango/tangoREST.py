@@ -274,6 +274,7 @@ class TangoREST:
                     if self.checkFileExists(labPath, file, fileMD5):
                         self.log.info(
                             "File (%s, %s, %s) exists" % (key, courselab, file))
+                        os.unlink(tempfile)
                         return self.status.file_exists
                     absPath = "%s/%s" % (labPath, file)
                     os.rename(tempfile, absPath)
