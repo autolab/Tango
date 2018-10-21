@@ -7,4 +7,4 @@ redis==2.10.3
 requests==2.2.1
 rpyc==3.3.0
 wsgiref==0.1.2
-tornado==3.2
+tornado==4.1
