@@ -18,6 +18,9 @@ import util
 
 cfg = Config()
 cmd = Cmd(cfg, None)
+
+REPORTED_JOBS_PATH = "/var/run/tango/check_jobs.json"
+
 jsonResult = {}
 reportedJobs = []
 mailbodyP1 = ""
@@ -43,8 +46,8 @@ def sendmail():
                 mailbodyP1 + mailbodyP2
                 ), "\r\n")
     server = smtplib.SMTP(HOST)
-    # server.sendmail(FROM, ["czang@cmu.edu", "jboles@cmu.edu"], BODY)
-    server.sendmail(FROM, ["czang@cmu.edu"], BODY)    
+    server.sendmail(FROM, ["czang@cmu.edu", "jboles@cmu.edu"], BODY)
+    # server.sendmail(FROM, ["czang@cmu.edu"], BODY)
     server.quit()
 
 def report(jobId, msg):
@@ -54,46 +57,52 @@ def report(jobId, msg):
     if jobId in reportedJobs:
         return
 
+    reportedJobs.append(jobId)
     for job in jsonResult["jobs"]:    
         if job["id"] == jobId:
             mailbodyP2 += json.dumps(job, indent=2, sort_keys=True)
             matchObj = re.match(r'(.*)_[0-9]+_(.*)', job["name"], re.M|re.I)
             email = matchObj.group(2)
     mailbodyP1 += "job " + str(jobId) + ", student " + email + ": "  + msg + "\n"
-    
+
 # use a dump file for testing
-with open('./testData') as jsonData:
-    jsonResult = json.load(jsonData)
+if 0:
+    with open('./testData') as jsonData:
+        jsonResult = json.load(jsonData)
 
-while 1:
-    # jsonResult = cmd.returnLiveJobs()  # comment out this line to use test data
+# read the jobs that have been reported
+try:
+    with open(REPORTED_JOBS_PATH) as jsonData:
+        reportedJobs = json.load(jsonData)
+except:
+    reportedJobs = []
     
-    for job in jsonResult["jobs"]:
-        jobId = job["id"]
-        if "trace" not in job:
-            report(jobId, "Can't find trace for the job")
-            continue
+jsonResult = cmd.returnLiveJobs()  # comment out this line to use test data
     
-        lastLineOfTrace = job["trace"][-1]
-        (timeStr, msg) = lastLineOfTrace.split("|")
-        timestamp = parser.parse(timeStr)    
-        action = msg.split()[0]
-        jobTimeout = job["timeout"]
+for job in jsonResult["jobs"]:
+    jobId = job["id"]
+    if "trace" not in job:
+        report(jobId, "Can't find trace for the job")
+        continue
 
-        now = datetime.datetime.now()
-        elapsed = (now - timestamp).total_seconds()
-        if action == "running" and elapsed > (jobTimeout + 120):
+    lastLineOfTrace = job["trace"][-1]
+    (timeStr, msg) = lastLineOfTrace.split("|")
+    timestamp = parser.parse(timeStr)
+    action = msg.split()[0]
+    jobTimeout = job["timeout"]
+
+    now = datetime.datetime.now()
+    elapsed = (now - timestamp).total_seconds()
+    if action == "running":
+        if elapsed > (jobTimeout + 120):
             report(jobId, "Job should be timed out")
-        elif elapsed > 120:
-            report(jobId, "It's been too long since last trace")
-    # end of for loop
+    elif elapsed > 120:
+        report(jobId, "It's been too long since last trace")
+# end of for loop
 
-    sendmail()
-
-    print "sleep for a while..."
-    break
-    time.sleep(60)
-# end of while loop
+sendmail()
+with open(REPORTED_JOBS_PATH, 'w') as outfile:
+    json.dump(reportedJobs, outfile)
 
 exit()
 

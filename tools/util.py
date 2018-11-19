@@ -119,6 +119,9 @@ class Cmd:
     myCmd = " --poll -l " + lab.courseLab
     self.run(myCmd + " --outputFile " + studentFile["output"])
 
+  def returnLiveJobs(self):
+    return json.loads(self.runAndOutput(" --jobs ").splitlines()[1])
+
   def jobs(self):
     result = json.loads(self.runAndOutput(" --jobs ").splitlines()[1])
     nJobs = len(result["jobs"])
