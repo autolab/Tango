@@ -156,25 +156,13 @@ class Ec2SSH:
         """
         ec2instance = dict()
 
-        memory = vm.memory  # in Kbytes
-        cores = vm.cores
+        # Note: Unlike other vmms backend, instance type is chosen from
+        # the optional instance type attached to image name as
+        # "image+instance_type", such as my_course_mage+t2.small.
 
+        ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
         if vm.instance_type:
             ec2instance['instance_type'] = vm.instance_type
-        elif (cores == 1 and memory <= 613 * 1024):
-            ec2instance['instance_type'] = 't2.micro'
-        elif (cores == 1 and memory <= 1.7 * 1024 * 1024):
-            ec2instance['instance_type'] = 'm1.small'
-        elif (cores == 1 and memory <= 3.75 * 1024 * 1024):
-            ec2instance['instance_type'] = 'm3.medium'
-        elif (cores == 2):
-            ec2instance['instance_type'] = 'm3.large'
-        elif (cores == 4):
-            ec2instance['instance_type'] = 'm3.xlarge'
-        elif (cores == 8):
-            ec2instance['instance_type'] = 'm3.2xlarge'
-        else:
-            ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
 
         ec2instance['ami'] = self.img2ami[vm.image].id
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))

@@ -175,6 +175,7 @@ class Worker(threading.Thread):
 
             self.log.debug("Run worker")
             vm = None
+            msg = ""
 
             # Header message for user
             hdrfile = tempfile.mktemp()

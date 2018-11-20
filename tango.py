@@ -204,7 +204,8 @@ class TangoServer:
         stats['runjob_errors'] = Config.runjob_errors
         stats['copyout_errors'] = Config.copyout_errors
         stats['num_threads'] = threading.activeCount()
-        stats['timezone_offset'] = time.altzone
+        isdst = (time.struct_time.tm_isdst == 1)
+        stats['timezone_offset'] = time.altzone if isdst else time.timezone
         (zone, daylight) = time.tzname
         stats['timezone_name'] = zone + ("" if not daylight else ("/" + daylight))
         
