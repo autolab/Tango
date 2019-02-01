@@ -18,7 +18,7 @@ RUN apt-get update --fix-missing && \
     pep8 python-pip python3-pip python-wheel \
     python-sphinx && \
     pip install --upgrade setuptools
-	
+
 #Java Setup
 RUN apt-get update --fix-missing
 RUN apt-get install -y default-jdk
@@ -38,22 +38,26 @@ RUN ln -s /usr/local/bin/sml/bin/sml /usr/local/sbin/sml
 RUN ln -s /usr/local/bin/sml/bin/ml-lex /usr/local/sbin/ml-lex
 RUN ln -s /usr/local/bin/sml/bin/ml-yacc /usr/local/sbin/ml-yacc
 
-#Flex setup
+#Flex Setup
 RUN apt-get install -y flex
 
 #Bison Setup
 RUN apt-get install -y bison
 
-#Utility setup
+#Utility Setup
 RUN apt-get install -y unzip
 
-#NodeJS setup
+#NodeJS Setup
 RUN apt-get update --fix-missing
 RUN apt-get install -y nodejs
 RUN apt-get install -y npm
 
 #OCaml Setup
 RUN apt-get install -y ocaml
+
+#Clojure Setup
+RUN apt-get install -y clojure
+RUN apt-get install -y leiningen
 
 # Install autodriver
 WORKDIR /home
