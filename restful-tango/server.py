@@ -83,7 +83,7 @@ class UploadHandler(tornado.web.RequestHandler):
     def post(self, key, courselab):
         """ post - Handles the post request to upload."""
         name = self.tempfile.name
-        self.tempfile.close
+        self.tempfile.close()
         return tangoREST.upload(
             key,
             courselab,
