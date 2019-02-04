@@ -12,7 +12,7 @@ WORKDIR /opt
 # Move all code into Tango directory
 ADD . TangoService/Tango/
 WORKDIR /opt/TangoService/Tango
-RUN mkdir volumes
+RUN mkdir -p volumes
 
 WORKDIR /opt
 
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     tcl8.5 \
     wget \
-    libgcrypt11-dev \ 
+    libgcrypt11-dev \
     zlib1g-dev \
 	apt-transport-https \
     ca-certificates \
@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y \
 # Install Redis
 RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
 WORKDIR /opt/redis-stable
-RUN make && make install 
+RUN make && make install
 WORKDIR /opt/TangoService/Tango/
 
 # Install Docker from Docker Inc. repositories.
@@ -53,9 +53,9 @@ RUN chmod +x /usr/local/bin/wrapdocker
 # Define additional metadata for our image.
 VOLUME /var/lib/docker
 
-# Create virtualenv to link dependancies 
+# Create virtualenv to link dependancies
 RUN pip install virtualenv && virtualenv .
-# Install python dependancies 
+# Install python dependancies
 RUN pip install -r requirements.txt
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
@@ -69,7 +69,7 @@ RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 
-# TODO: 
+# TODO:
 # volumes dir in root dir, supervisor only starts after calling start once , nginx also needs to be started
 # Different log numbers for two different tangos
 # what from nginx forwards requests to tango
