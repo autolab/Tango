@@ -1,0 +1,8 @@
+How to test autodriver: First create a user "autograde" on the test machine.
+
+cd Tango/autodriver
+make
+cp -r test tmp
+autodriver tmp
+
+

@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -W -Wall -Wextra
+LDFLAGS =  -pthread
 
 OBJS = autodriver.o
 

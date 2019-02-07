@@ -35,32 +35,25 @@ class Worker(threading.Thread):
         self.preallocator = preallocator
         self.preVM = preVM
         threading.Thread.__init__(self)
-        self.log = logging.getLogger("Worker")
+        self.log = logging.getLogger("Worker-" + str(os.getpid()))
 
     #
     # Worker helper functions
     #
-    def detachVM(self, return_vm=False, replace_vm=False):
+    def detachVM(self, return_vm=False):
         """ detachVM - Detach the VM from this worker. The options are
         to return it to the pool's free list (return_vm), destroy it
-        (not return_vm), and if destroying it, whether to replace it
-        or not in the pool (replace_vm). The worker must always call
-        this function before returning.
+        (if not return_vm).
         """
         # job-owned instance, simply destroy after job is completed
         if self.job.accessKeyId:
             self.vmms.safeDestroyVM(self.job.vm)
         elif return_vm:
+            # put vm into free pool.  may destroy it if free pool is over low water mark
             self.preallocator.freeVM(self.job.vm)
         else:
             self.vmms.safeDestroyVM(self.job.vm)
-            if replace_vm:
-                self.preallocator.createVM(self.job.vm)
-
-            # Important: don't remove the VM from the pool until its
-            # replacement has been created. Otherwise there is a
-            # potential race where the job manager thinks that the
-            # pool is empty and creates a spurious vm.
+            self.log.info("removeVM %s" % self.job.vm.id);
             self.preallocator.removeVM(self.job.vm)
 
     def rescheduleJob(self, hdrfile, ret, err):
@@ -68,14 +61,6 @@ class Worker(threading.Thread):
         of a system error, such as a VM timing out or a connection
         failure.
         """
-        self.log.error("Job %s:%d failed: %s" %
-                       (self.job.name, self.job.id, err))
-        self.job.appendTrace(
-            "%s|Job %s:%d failed: %s" %
-            (datetime.now().ctime(),
-             self.job.name,
-             self.job.id,
-             err))
 
         # Try a few times before giving up
         if self.job.retries < Config.JOB_RETRIES:
@@ -83,7 +68,7 @@ class Worker(threading.Thread):
                 os.remove(hdrfile)
             except OSError:
                 pass
-            self.detachVM(return_vm=False, replace_vm=True)
+            self.detachVM(return_vm=False)
             self.jobQueue.unassignJob(self.job.id)
 
         # Here is where we give up
@@ -103,31 +88,32 @@ class Worker(threading.Thread):
                     ret["copyout"]))
 
             self.catFiles(hdrfile, self.job.outputFile)
-            self.detachVM(return_vm=False, replace_vm=True)
+            self.detachVM(return_vm=False)
             self.notifyServer(self.job)
 
     def appendMsg(self, filename, msg):
         """ appendMsg - Append a timestamped Tango message to a file
         """
         f = open(filename, "a")
-        f.write("Autograder [%s]: %s\n" % (datetime.now().ctime(), msg))
+        f.write("Autolab [%s]: %s\n" % (datetime.now().ctime(), msg))
         f.close()
 
     def catFiles(self, f1, f2):
         """ catFiles - cat f1 f2 > f2, where f1 is the Tango header
         and f2 is the output from the Autodriver
         """
-        self.appendMsg(f1, "Here is the output from the autograder:\n---")
+        self.appendMsg(f1, "Output of autodriver from grading VM:\n")
         (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
         wf=os.fdopen(wfd, "a")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
-        # f2 may not exist if autograder failed
+        # f2 may not exist if autodriver failed
         try:
             with open(f2, "rb") as f2fd:
                 shutil.copyfileobj(f2fd, wf)
-        except OSError:
-            pass
+        except IOError:
+            wf.write("NO OUTPUT FILE\n")
+
         wf.close()
         os.rename(tmpname, f2)
         os.remove(f1)
@@ -149,6 +135,30 @@ class Worker(threading.Thread):
         except Exception as e:
             self.log.debug("Error in notifyServer: %s" % str(e))
 
+    def afterJobExecution(self, hdrfile, msg, returnVM):
+      self.jobQueue.makeDead(self.job.id, msg)
+
+      # Update the text that users see in the autodriver output file
+      self.appendMsg(hdrfile, msg)
+      self.catFiles(hdrfile, self.job.outputFile)
+      os.chmod(self.job.outputFile, 0o644)
+
+      # Thread exit after termination
+      self.detachVM(return_vm=returnVM)
+      self.notifyServer(self.job)
+      return
+
+    def jobLogAndTrace(self, stageMsg, vm, status=None):
+      msg = stageMsg + " %s for job %s:%d" % (vm.name, self.job.name, self.job.id)
+
+      if (status != None):
+        if (status == 0):
+          msg = "done " + msg
+        else:
+          msg = "failed " + msg + " (status=%d)" % status
+      self.log.info(msg)
+      self.job.appendTrace(msg)
+
     #
     # Main worker function
     #
@@ -165,6 +175,7 @@ class Worker(threading.Thread):
 
             self.log.debug("Run worker")
             vm = None
+            msg = ""
 
             # Header message for user
             hdrfile = tempfile.mktemp()
@@ -173,57 +184,27 @@ class Worker(threading.Thread):
 
             # Assigning job to a preallocated VM
             if self.preVM:  # self.preVM:
-                self.log.debug("Assigning job to preallocated VM")
                 self.job.vm = self.preVM
                 self.job.updateRemote()
-                self.log.info("Assigned job %s:%d existing VM %s" %
-                              (self.job.name, self.job.id,
-                               self.vmms.instanceName(self.preVM.id,
-                                                      self.preVM.name)))
-                self.job.appendTrace("%s|Assigned job %s:%d existing VM %s" %
-                                     (datetime.now().ctime(),
-                                      self.job.name, self.job.id,
-                                      self.vmms.instanceName(self.preVM.id,
-                                                             self.preVM.name)))
-                self.log.debug("Assigned job to preallocated VM")
+                self.jobLogAndTrace("assigned VM (preallocated)", self.preVM)
+
             # Assigning job to a new VM
             else:
-                self.log.debug("Assigning job to a new VM")
-                self.job.vm.id = self.job.id
+                self.job.vm.id = self.job.id  # xxxXXX??? don't know how this works
                 self.job.updateRemote()
-
-                self.log.info("Assigned job %s:%d new VM %s" %
-                              (self.job.name, self.job.id,
-                               self.vmms.instanceName(self.job.vm.id,
-                                                      self.job.vm.name)))
-                self.job.appendTrace(
-                    "%s|Assigned job %s:%d new VM %s" %
-                    (datetime.now().ctime(),
-                     self.job.name,
-                     self.job.id,
-                     self.vmms.instanceName(
-                        self.job.vm.id,
-                        self.job.vm.name)))
 
                 # Host name returned from EC2 is stored in the vm object
                 self.vmms.initializeVM(self.job.vm)
-                self.log.debug("Asigned job to a new VM")
+                self.jobLogAndTrace("assigned VM (just initialized)", self.job.vm)
 
             vm = self.job.vm
+            returnVM = True
 
             # Wait for the instance to be ready
-            self.log.debug("Job %s:%d waiting for VM %s" %
-                           (self.job.name, self.job.id,
-                            self.vmms.instanceName(vm.id, vm.name)))
-            self.job.appendTrace("%s|Job %s:%d waiting for VM %s" %
-                                 (datetime.now().ctime(),
-                                  self.job.name, self.job.id,
-                                  self.vmms.instanceName(vm.id, vm.name)))
-            self.log.debug("Waiting for VM")
+            self.jobLogAndTrace("waiting for VM", vm)
             ret["waitvm"] = self.vmms.waitVM(vm,
                                              Config.WAITVM_TIMEOUT)
-
-            self.log.debug("Waited for VM")
+            self.jobLogAndTrace("waiting for VM", vm, ret["waitvm"])
 
             # If the instance did not become ready in a reasonable
             # amount of time, then reschedule the job, detach the VM,
@@ -239,94 +220,58 @@ class Worker(threading.Thread):
                 # Thread Exit after waitVM timeout
                 return
 
-            self.log.info("VM %s ready for job %s:%d" %
-                          (self.vmms.instanceName(vm.id, vm.name),
-                           self.job.name, self.job.id))
-            self.job.appendTrace("%s|VM %s ready for job %s:%d" %
-                                 (datetime.now().ctime(),
-                                  self.vmms.instanceName(vm.id, vm.name),
-                                  self.job.name, self.job.id))
-
             # Copy input files to VM
+            self.jobLogAndTrace("copying to VM", vm)
             ret["copyin"] = self.vmms.copyIn(vm, self.job.input)
+            self.jobLogAndTrace("copying to VM", vm, ret["copyin"])
             if ret["copyin"] != 0:
                 Config.copyin_errors += 1
-            self.log.info("Input copied for job %s:%d [status=%d]" %
-                          (self.job.name, self.job.id, ret["copyin"]))
-            self.job.appendTrace("%s|Input copied for job %s:%d [status=%d]" %
-                                 (datetime.now().ctime(),
-                                  self.job.name,
-                                  self.job.id, ret["copyin"]))
+                msg = "Error: Copy in to VM failed (status=%d)" % (ret["copyin"])
+                self.afterJobExecution(hdrfile, msg, returnVM)
+                return
 
             # Run the job on the virtual machine
+            self.jobLogAndTrace("running on VM", vm)
             ret["runjob"] = self.vmms.runJob(
                 vm, self.job.timeout, self.job.maxOutputFileSize)
+            self.jobLogAndTrace("running on VM", vm, ret["runjob"])
+            # runjob may have failed. but go on with copyout to get the output if any
+
+            # Copy the output back, even if runjob has failed
+            self.jobLogAndTrace("copying from VM", vm)
+            ret["copyout"] = self.vmms.copyOut(vm, self.job.outputFile)
+            self.jobLogAndTrace("copying from VM", vm, ret["copyout"])
+
+            # handle failure(s) of runjob and/or copyout.  runjob error takes priority.
             if ret["runjob"] != 0:
                 Config.runjob_errors += 1
-                if ret["runjob"] == -1:
-                    Config.runjob_timeouts += 1
-            self.log.info("Job %s:%d executed [status=%s]" %
-                          (self.job.name, self.job.id, ret["runjob"]))
-            self.job.appendTrace("%s|Job %s:%d executed [status=%s]" %
-                                 (datetime.now().ctime(),
-                                  self.job.name, self.job.id,
-                                  ret["runjob"]))
-
-            # Copy the output back.
-            ret["copyout"] = self.vmms.copyOut(vm, self.job.outputFile)
-            if ret["copyout"] != 0:
-                Config.copyout_errors += 1
-            self.log.info("Output copied for job %s:%d [status=%d]" %
-                          (self.job.name, self.job.id, ret["copyout"]))
-            self.job.appendTrace("%s|Output copied for job %s:%d [status=%d]"
-                                 % (datetime.now().ctime(),
-                                     self.job.name,
-                                     self.job.id, ret["copyout"]))
-
-            # Job termination. Notice that Tango considers
-            # things like runjob timeouts and makefile errors to be
-            # normal termination and doesn't reschedule the job.
-            self.log.info("Success: job %s:%d finished" %
-                          (self.job.name, self.job.id))
-
-            # Move the job from the live queue to the dead queue
-            # with an explanatory message
-            msg = "Success: Autodriver returned normally"
-            (returnVM, replaceVM) = (True, False)
-            if ret["copyin"] != 0:
-                msg = "Error: Copy in to VM failed (status=%d)" % (
-                    ret["copyin"])
-            elif ret["runjob"] != 0:
                 if ret["runjob"] == 1:  # This should never happen
-                    msg = "Error: Autodriver usage error (status=%d)" % (
-                        ret["runjob"])
-                elif ret["runjob"] == 2:
-                    msg = "Error: Job timed out after %d seconds" % (
+                    msg = "Error: Autodriver usage error"
+                elif ret["runjob"] == -1 or ret["runjob"] == 2:  # both are timeouts
+                    Config.runjob_timeouts += 1
+                    msg = "Error: Job timed out. timeout setting: %d seconds" % (
                         self.job.timeout)
-                elif (ret["runjob"] == 3):  # EXIT_OSERROR in Autodriver
+                elif ret["runjob"] == 3:  # EXIT_OSERROR in Autodriver
                     # Abnormal job termination (Autodriver encountered an OS
                     # error).  Assume that the VM is damaged. Destroy this VM
                     # and do not retry the job since the job may have damaged
                     # the VM.
                     msg = "Error: OS error while running job on VM"
-                    (returnVM, replaceVM) = (False, True)
+                    returnVM = False
+                    # doNotDestroy, combined with KEEP_VM_AFTER_FAILURE, will
+                    # set the vm aside for further investigation after failure.
+                    self.job.vm.keepForDebugging = True
+                    self.job.vm.notes = str(self.job.id) + "_" + self.job.name
                 else:  # This should never happen
                     msg = "Error: Unknown autodriver error (status=%d)" % (
                         ret["runjob"])
-
             elif ret["copyout"] != 0:
-                msg += "Error: Copy out from VM failed (status=%d)" % (
-                    ret["copyout"])
+                Config.copyout_errors += 1
+                msg += "Error: Copy out from VM failed (status=%d)" % (ret["copyout"])
+            else:
+                msg = "Success: Autodriver returned normally"
 
-            self.jobQueue.makeDead(self.job.id, msg)
-
-            # Update the text that users see in the autograder output file
-            self.appendMsg(hdrfile, msg)
-            self.catFiles(hdrfile, self.job.outputFile)
-
-            # Thread exit after termination
-            self.detachVM(return_vm=returnVM, replace_vm=replaceVM)
-            self.notifyServer(self.job)
+            self.afterJobExecution(hdrfile, msg, returnVM)
             return
 
         #
@@ -343,4 +288,4 @@ class Worker(threading.Thread):
             if self.preVM and not vm:
                vm = self.job.vm = self.preVM
             if vm:
-               self.detachVM(return_vm=False, replace_vm=True)
+               self.detachVM(return_vm=False)

@@ -9,6 +9,9 @@ vmms/id_rsa*
 courselabs/*
 # config
 config.py
+output_gen
+.gitignore
+
 
 # Virtualenv
 .Python

@@ -2,17 +2,24 @@
 #
 # Implements objects used to pass state within Tango.
 #
+import os
 import redis
 import pickle
 import Queue
+import logging
+from datetime import datetime
 from config import Config
 
 redisConnection = None
 
-
-def getRedisConnection():
+# Pass in an existing connection to redis, sometimes necessary for testing.
+def getRedisConnection(connection=None):
     global redisConnection
     if redisConnection is None:
+        if connection:
+            redisConnection = connection
+            return redisConnection
+
         redisConnection = redis.StrictRedis(
             host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
 
@@ -41,25 +48,42 @@ class TangoMachine():
         TangoMachine - A description of the Autograding Virtual Machine
     """
 
-    def __init__(self, name="DefaultTestVM", image=None, vmms=None,
+    def __init__(self, image=None, vmms=None,
                  network=None, cores=None, memory=None, disk=None,
-                 domain_name=None, ec2_id=None, resume=None, id=None,
-                 instance_id=None):
-        self.name = name
+                 domain_name=None):
         self.image = image
+        self.vmms = vmms
         self.network = network
         self.cores = cores
         self.memory = memory
         self.disk = disk
-        self.vmms = vmms
         self.domain_name = domain_name
-        self.ec2_id = ec2_id
-        self.resume = resume
-        self.id = id
-        self.instance_id = id
+
+        self.resume = None
+        self.id = None
+        self.instance_id = None
+        self.instance_type = None
+        self.notes = None
+
+        # The following attributes can instruct vmms to set the test machine
+        # aside for further investigation.
+        self.keepForDebugging = False
+
+        self.pool = None
+        self.name = None  # in the form of prefix-id-pool, constructed by the vmms
+
+        # The image may contain instance type if vmms is ec2.  Example:
+        # course101+t2.small.
+        if image:
+            imageParts = image.split('+')
+            if len(imageParts) == 2:
+                self.image = imageParts[0]
+                self.instance_type = imageParts[1]
+            (pool, ext) = os.path.splitext(self.image)
+            self.pool = pool + ("+" + self.instance_type if self.instance_type else "")
 
     def __repr__(self):
-        return "TangoMachine(image: %s, vmms: %s)" % (self.image, self.vmms)
+        return "TangoMachine(image: %s, vmms: %s, id: %s)" % (self.image, self.vmms, self.id)
 
 
 class TangoJob():
@@ -91,6 +115,7 @@ class TangoJob():
         self._remoteLocation = None
         self.accessKeyId = accessKeyId
         self.accessKey = accessKey
+        self.tm = datetime.now()
 
     def makeAssigned(self):
         self.syncRemote()
@@ -107,8 +132,9 @@ class TangoJob():
         return not self.assigned
 
     def appendTrace(self, trace_str):
+        # trace attached to the object can be retrived and sent to rest api caller
         self.syncRemote()
-        self.trace.append(trace_str)
+        self.trace.append("%s|%s" % (datetime.now().ctime(), trace_str))
         self.updateRemote()
 
     def setId(self, new_id):
@@ -210,6 +236,14 @@ class TangoRemoteQueue():
         self.__db = getRedisConnection()
         self.key = '%s:%s' % (namespace, name)
 
+    # for debugging.  return a readable string representation
+    def dump(self):
+        unpickled_obj = self.__db.lrange(self.key, 0, -1)
+        objs = []
+        for obj in unpickled_obj:
+            objs.append(pickle.loads(obj))
+        return objs
+
     def qsize(self):
         """Return the approximate size of the queue."""
         return self.__db.llen(self.key)
@@ -238,6 +272,12 @@ class TangoRemoteQueue():
 
         item = pickle.loads(item)
         return item
+
+    def make_empty(self):
+        while True:
+            item = self.__db.lpop(self.key)
+            if item is None:
+                break
 
     def get_nowait(self):
         """Equivalent to get(False)."""
@@ -268,6 +308,7 @@ class TangoRemoteDictionary():
     def __init__(self, object_name):
         self.r = getRedisConnection()
         self.hash_name = object_name
+        self.log = logging.getLogger("TangoRemoteDictionary")
 
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
@@ -305,8 +346,12 @@ class TangoRemoteDictionary():
         self.r.delete(self.hash_name)
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
-                if self.get(i) != None])
+        # find all non-empty spots in the job id spectrum (actual jobs) and sort
+        # by the time of creation to prevent starvation of jobs with larger ids
+
+        return iter(sorted([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                            if self.get(i) != None], key=lambda x: x[1].tm))
+
 
 class TangoNativeDictionary():
 
@@ -333,8 +378,8 @@ class TangoNativeDictionary():
             del self.dict[str(id)]
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
-                if self.get(i) != None])
+        return iter(sorted([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+                            if self.get(i) != None], key=lambda x: x[1].tm))
 
     def _clean(self):
         # only for testing

@@ -250,7 +250,7 @@ class DistDocker:
 
 
     def copyOut(self, vm, destFile):
-        """ copyOut - Copy the autograder feedback from container to
+        """ copyOut - Copy the autodriver feedback from container to
         destFile on the Tango host. Then, destroy that container.
         Containers are never reused.
         """

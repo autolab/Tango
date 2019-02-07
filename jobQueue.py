@@ -90,8 +90,7 @@ class JobQueue:
         self.log.debug("add| Acquired lock to job queue.")
 
         self.liveJobs.set(job.id, job)
-        job.appendTrace("%s|Added job %s:%d to queue" %
-                        (datetime.utcnow().ctime(), job.name, job.id))
+        job.appendTrace("Added job %s:%d to queue" % (job.name, job.id))
 
         self.log.debug("Ref: " + str(job._remoteLocation))
         self.log.debug("job_id: " + str(job.id))
@@ -207,15 +206,22 @@ class JobQueue:
             # if target_id is set, only interested in this id
             if target_id and target_id != id:
                 continue
-            # Create a pool if necessary
-            if self.preallocator.poolSize(job.vm.name) == 0:
-                self.preallocator.update(job.vm, Config.POOL_SIZE)
+
+            # Create or enlarge a pool if there is no free vm to use and
+            # the limit for pool is not reached yet
+            if self.preallocator.freePoolSize(job.vm.pool) == 0 and \
+                self.preallocator.poolSize(job.vm.pool) < Config.POOL_SIZE:
+                increment = 1
+                if hasattr(Config, 'POOL_ALLOC_INCREMENT') and Config.POOL_ALLOC_INCREMENT:
+                    increment = Config.POOL_ALLOC_INCREMENT
+                self.preallocator.incrementPoolSize(job.vm, increment)
 
             # If the job hasn't been assigned to a worker yet, see if there
             # is a free VM
             if (job.isNotAssigned()):
-                vm = self.preallocator.allocVM(job.vm.name)
+                vm = self.preallocator.allocVM(job.vm.pool)
                 if vm:
+                    self.log.info("getNextPendingJobReuse alloc vm %s to job %s" % (vm, id))
                     self.queueLock.release()
                     return (id, vm)
 
@@ -256,7 +262,7 @@ class JobQueue:
     def makeDead(self, id, reason):
         """ makeDead - move a job from live queue to dead queue
         """
-        self.log.info("makeDead| Making dead job ID: " + str(id))
+        self.log.info("makeDead| Making dead job ID: " + str(id) + " " + reason)
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
@@ -268,7 +274,7 @@ class JobQueue:
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)           
             self.liveJobs.delete(id)
-            job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
+            job.appendTrace(reason)
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status

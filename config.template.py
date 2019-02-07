@@ -23,6 +23,7 @@ class Config:
     PORT = 3000
 
     # Log file. Setting this to None sends the server output to stdout
+    # Strongly suggest setting up a log file
     LOGFILE = None
 
     # Logging level
@@ -57,6 +58,8 @@ class Config:
     NUM_THREADS = 20
 
     # We have the option to reuse VMs or discard them after each use
+    # xxxXXX??? strongly suspect the code path for the False case
+    # not working, after a failed experiment. -- czang@cmu.edu
     REUSE_VMS = True
 
     # Worker waits this many seconds for functions waitvm, copyin (per
@@ -66,6 +69,11 @@ class Config:
     COPYIN_TIMEOUT = 30
     RUNJOB_TIMEOUT = 60
     COPYOUT_TIMEOUT = 30
+
+    # time zone and timestamp report interval for autodriver execution
+    # both are optional.
+    AUTODRIVER_LOGGING_TIME_ZONE = "UTC"  # e.g. "America/New_York".
+    AUTODRIVER_TIMESTAMP_INTERVAL = 0  # in seconds. 0 => no timestamp insersion
 
     # Docker constants
     BOOT2DOCKER_INIT_TIMEOUT = 5
@@ -100,11 +108,20 @@ class Config:
     # Give VMMS this many seconds to destroy a VM before giving up
     DESTROY_SECS = 5
 
+    # When set to True, put the vm aside for debugging after OS ERROR by autodriver
+    KEEP_VM_AFTER_FAILURE = None
+
     # Time to wait between creating VM instances to give DNS time to cool down
     CREATEVM_SECS = 1
 
     # Default vm pool size
-    POOL_SIZE = 2
+    POOL_SIZE = 10
+
+    # vm pool reserve size.  If set, free pool size is maintained at the level.
+    POOL_SIZE_LOW_WATER_MARK = 5  # optional, can be None
+
+    # Increment step when enlarging vm pool
+    POOL_ALLOC_INCREMENT = 2  # can be None, which is treated as 1, the default
 
     # Optionally log finer-grained timing information
     LOG_TIMING = False
@@ -134,13 +151,25 @@ class Config:
     ######
     # Part 5: EC2 Constants
     #
+
+    # Special instructions to admin: Tango finds usable images from aws
+    # in the following fashion:
+    # It examines every ami (Amazon Image) owned by the EC2_USER_NAME,
+    # looks for a tag with the key "Name" (case sensitive), and use the value
+    # of the tag as the image name for the ami, for example, ubuntu.img or
+    # myImage.img.  If an ami doesn't have such tag, it is ignored (watch
+    # for a log message).
+    #
+    # The lab author, when specifying an image to use, should specify one
+    # of those image names available.
+
     EC2_REGION = ''
     EC2_USER_NAME = ''
-    DEFAULT_AMI = ''
+    KEEP_VM_AFTER_FAILURE = False
     DEFAULT_INST_TYPE = ''
     DEFAULT_SECURITY_GROUP = ''
     SECURITY_KEY_PATH = ''
-    DYNAMIC_SECURITY_KEY_PATH = ''
+    DYNAMIC_SECURITY_KEY_PATH = ''  # key file placed at root "/" by default
     SECURITY_KEY_NAME = ''
     TANGO_RESERVATION_ID = ''
     INSTANCE_RUNNING = 16  # Status code of a instance that is running

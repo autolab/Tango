@@ -52,6 +52,13 @@ class TangoServer:
 
     def __init__(self):
         self.daemon = True
+
+        # init logging early, or some logging will be lost
+        logging.basicConfig(
+            filename=Config.LOGFILE,
+            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+            level=Config.LOGLEVEL,
+        )
         
         vmms = None
         if Config.VMMS_NAME == "tashiSSH":
@@ -75,11 +82,6 @@ class TangoServer:
             # be initiated separately
             JobManager(self.jobQueue).start()
         
-        logging.basicConfig(
-            filename=Config.LOGFILE,
-            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-            level=Config.LOGLEVEL,
-        )
         self.start_time = time.time()
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
@@ -128,8 +130,8 @@ class TangoServer:
     def preallocVM(self, vm, num):
         """ preallocVM - Set the pool size for VMs of type vm to num
         """
-        self.log.debug("Received preallocVM(%s,%d)request"
-                       % (vm.name, num))
+        self.log.debug("Received preallocVM request: %d vms in pool %s"
+                       % (num, vm.pool))
         try:
             vmms = self.preallocator.vmms[vm.vmms]
             if not vm or num < 0:
@@ -137,8 +139,6 @@ class TangoServer:
             if vm.image not in vmms.getImages():
                 self.log.error("Invalid image name")
                 return -3
-            (name, ext) = os.path.splitext(vm.image)
-            vm.name = name
             self.preallocator.update(vm, num)
             return 0
         except Exception as err:
@@ -159,6 +159,8 @@ class TangoServer:
             self.log.error("getVMs request failed: %s" % err)
             return []
 
+    # xxxXXX??? plan to remove
+    '''
     def delVM(self, vmName, id):
         """ delVM - delete a specific VM instance from a pool
         """
@@ -170,6 +172,7 @@ class TangoServer:
         except Exception as err:
             self.log.error("delVM request failed: %s" % err)
             return -1
+    '''
 
     def getPool(self, vmName):
         """ getPool - Return the current members of a pool and its free list
@@ -201,37 +204,70 @@ class TangoServer:
         stats['runjob_errors'] = Config.runjob_errors
         stats['copyout_errors'] = Config.copyout_errors
         stats['num_threads'] = threading.activeCount()
+        isdst = (time.struct_time.tm_isdst == 1)
+        stats['timezone_offset'] = time.altzone if isdst else time.timezone
+        (zone, daylight) = time.tzname
+        stats['timezone_name'] = zone + ("" if not daylight else ("/" + daylight))
         
         return stats
 
     #
     # Helper functions
     #
+
+    # NOTE: This function should be called by ONLY jobManager.  The rest servers
+    # shouldn't call this function.
     def resetTango(self, vmms):
         """ resetTango - resets Tango to a clean predictable state and
         ensures that it has a working virtualization environment. A side
         effect is that also checks that each supported VMMS is actually
         running.
         """
+
+        # There are two cases this function is called: 1. Tango has a fresh start.
+        # Then we want to destroy all instances in Tango's name space.  2. Job
+        # Manager is restarted after a previous crash.  Then we want to destroy
+        # the "busy" instances prior to the crash and leave the "free" onces intact.
+
         self.log.debug("Received resetTango request.")
 
         try:
-            # For each supported VMM system, get the instances it knows about,
-            # and kill those in the current Tango name space.
+            # For each supported VMM system, get the instances it knows about
+            # in the current Tango name space and kill those not in free pools.
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
+
+                # Round up all instances in the free pools.
+                allFreeVMs = []
+                for key in self.preallocator.machines.keys():
+                    freePool = self.preallocator.getPool(key)["free"]
+                    for vmId in freePool:
+                        allFreeVMs.append(vobj.instanceName(vmId, key))
+                self.log.info("vms in all free pools: %s" % allFreeVMs)
+
+                # allFreeVMs = []
+
+                # For each in Tango's name space, destroy the onces in free pool.
+                # AND remove it from Tango's internal bookkeeping.
                 vms = vobj.getVMs()
                 self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
-                namelist = []
+
+                destroyedList = []
+                removedList = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
-                        vobj.destroyVM(vm)
-                        # Need a consistent abstraction for a vm between
-                        # interfaces
-                        namelist.append(vm.name)
-                if namelist:
+                        if vm.name not in allFreeVMs:
+                            destroyedList.append(vm.name)
+                            if self.preallocator.removeVM(vm, mustFind=False):
+                                removedList.append(vm.name)
+                            vobj.destroyVM(vm)
+
+                if destroyedList:
                     self.log.warning("Killed these %s VMs on restart: %s" %
-                                (vmms_name, namelist))
+                                     (vmms_name, destroyedList))
+                if removedList:
+                    self.log.warning("Removed these %s VMs from their pools" %
+                                     (removedList))
 
             for _, job in self.jobQueue.liveJobs.iteritems():
                 if not job.isNotAssigned():
@@ -256,57 +292,47 @@ class TangoServer:
         # Every job must have a name
         if not job.name:
             self.log.error("validateJob: Missing job.name")
-            job.appendTrace("%s|validateJob: Missing job.name" %
-                            (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing job.name")
             errors += 1
 
         # Check the virtual machine field
         if not job.vm:
             self.log.error("validateJob: Missing job.vm")
-            job.appendTrace("%s|validateJob: Missing job.vm" %
-                            (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing job.vm")
             errors += 1
         else:
             if not job.vm.image:
                 self.log.error("validateJob: Missing job.vm.image")
-                job.appendTrace("%s|validateJob: Missing job.vm.image" %
-                                (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing job.vm.image")
                 errors += 1
             else:
                 vobj = vmms[Config.VMMS_NAME]
                 imgList = vobj.getImages()
                 if job.vm.image not in imgList:
-                    self.log.error("validateJob: Image not found: %s" %
-                              job.vm.image)
-                    job.appendTrace("%s|validateJob: Image not found: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.image))
+                    self.log.error("validateJob: Image not found: %s" % job.vm.image)
+                                   
+                    job.appendTrace("validateJob: Image not found: %s" % job.vm.image)
                     errors += 1
-                else:
-                    (name, ext) = os.path.splitext(job.vm.image)
-                    job.vm.name = name
 
             if not job.vm.vmms:
                 self.log.error("validateJob: Missing job.vm.vmms")
-                job.appendTrace("%s|validateJob: Missing job.vm.vmms" %
-                                (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing job.vm.vmms")
                 errors += 1
             else:
                 if job.vm.vmms not in vmms:
                     self.log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
-                    job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
-                                    (datetime.utcnow().ctime(), job.vm.vmms))
+                    job.appendTrace("validateJob: Invalid vmms name: %s" % job.vm.vmms)
                     errors += 1
 
         # Check the output file
         if not job.outputFile:
             self.log.error("validateJob: Missing job.outputFile")
-            job.appendTrace("%s|validateJob: Missing job.outputFile" % (datetime.utcnow().ctime()))           
+            job.appendTrace("validateJob: Missing job.outputFile")
             errors += 1
         else:
             if not os.path.exists(os.path.dirname(job.outputFile)):
-                self.log.error("validateJob: Bad output path: %s", job.outputFile)
-                job.appendTrace("%s|validateJob: Bad output path: %s" %
-                                (datetime.utcnow().ctime(), job.outputFile))
+                self.log.error("validateJob: Bad output path: %s" % job.outputFile)
+                job.appendTrace("validateJob: Bad output path: %s" % job.outputFile)
                 errors += 1
 
         # Check for max output file size parameter
@@ -320,14 +346,12 @@ class TangoServer:
         for inputFile in job.input:
             if not inputFile.localFile:
                 self.log.error("validateJob: Missing inputFile.localFile")
-                job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
-                            (datetime.utcnow().ctime()))
+                job.appendTrace("validateJob: Missing inputFile.localFile")
                 errors += 1
             else:
                 if not os.path.exists(os.path.dirname(job.outputFile)):
-                    self.log.error("validateJob: Bad output path: %s", job.outputFile)
-                    job.appendTrace("%s|validateJob: Bad output path: %s" %
-                                    (datetime.utcnow().ctime(), job.outputFile))
+                    self.log.error("validateJob: Bad output path: %s" % job.outputFile)
+                    job.appendTrace("validateJob: Bad output path: %s" % job.outputFile)
                     errors += 1
 
             if inputFile.destFile == 'Makefile':
@@ -336,7 +360,7 @@ class TangoServer:
         # Check if input files include a Makefile
         if not hasMakefile:
             self.log.error("validateJob: Missing Makefile in input files.")
-            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (datetime.utcnow().ctime()))
+            job.appendTrace("validateJob: Missing Makefile in input files.")
             errors+=1    
 
         # Check if job timeout has been set; If not set timeout to default
@@ -348,8 +372,7 @@ class TangoServer:
         # Any problems, return an error status
         if errors > 0:
             self.log.error("validateJob: Job rejected: %d errors" % errors)
-            job.appendTrace("%s|validateJob: Job rejected: %d errors" %
-                                (datetime.utcnow().ctime(), errors))
+            job.appendTrace("validateJob: Job rejected: %d errors" % errors)
             return -1
         else:
             return 0

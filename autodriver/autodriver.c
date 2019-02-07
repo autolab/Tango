@@ -36,16 +36,52 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
+#include <pthread.h>
+
+// How autodriver works:
+//
+// The parent process creates an output file and starts a child process run_job().
+// The child process assumes under the home directory of the user "autograde"
+// there is a directory specified on the command line of this program.
+// Under that directory, there is a Makefile.
+// The child will run the Makefile to start the tests and redirects all output
+// to the output file created by the parent process.
+//
+// After the child process terminates, the parent parses the output file and
+// sends the content to stdout, in dump_output() and dump_file().  If the
+// output file is too large, it's elided in the middle.  If timestamp
+// option (-i) is specified, timestamps are inserted into the output stream.
+//
+// If timestamp option is set: The parent starts a thread timestampFunc() after
+// starting the child process.  The thread records at the given interval the
+// timestamps (output file size AND time).  While parsing the output file
+// after the child process, the recorded timestamps are inserted at the offsets
+// by insertTimestamp().
 
 #define min(x, y)       ((x) < (y) ? (x) : (y))
 
-#define OUTPUT_HEADER   "Autodriver: "
+char timestampStr[100];
+char * getTimestamp(time_t t) {
+  time_t ltime = t ? t : time(NULL);
+  struct tm* tmInfo = localtime(&ltime);
+  strftime(timestampStr, 100, "%Y%m%d-%H:%M:%S", tmInfo);
+  return timestampStr;  // return global variable for conveniece
+}
 
-#define ERROR_ERRNO(msg)                                                      \
-    printf(OUTPUT_HEADER "%s at line %d: %s\n", msg, __LINE__, strerror(errno))
+#define ERROR_ERRNO(format, ...)  \
+  printf("Autodriver@%s: ERROR " format " at line %d: %s\n", \
+         getTimestamp(0), ##__VA_ARGS__, __LINE__, strerror(errno))
 
-#define ERROR(msg)                                                            \
-    printf(OUTPUT_HEADER "%s at line %d\n", msg, __LINE__)
+#define ERROR(format, ...)  \
+  printf("Autodriver@%s: ERROR " format " at line %d\n", \
+         getTimestamp(0), ##__VA_ARGS__, __LINE__)
+
+#define MESSAGE(format, ...)  \
+  printf("Autodriver@%s: " format "\n", getTimestamp(0), ##__VA_ARGS__)
+
+#define NL_MESSAGE(format, ...)  \
+  printf("\nAutodriver@%s: " format "\n", getTimestamp(0), ##__VA_ARGS__)
 
 #define EXIT__BASE     1
 
@@ -69,8 +105,6 @@
 /* Number of seconds to wait in between pkills */
 #define SHUTDOWN_GRACE_TIME 3
 
-error_t argp_err_exit_status = EXIT_USAGE;
-
 /**
  * @brief A structure containing all of the user-configurable settings
  */
@@ -82,7 +116,26 @@ struct arguments {
     struct passwd user_info;
     char *passwd_buf;
     char *directory;
+    char *timezone;
+    unsigned timestamp_interval;
 } args;
+
+unsigned long startTime = 0;
+int childTimedOut = 0;
+
+typedef struct {
+  time_t time;
+  size_t offset;
+} timestamp_map_t;
+
+#define TIMESTAMP_MAP_CHUNK_SIZE 1024
+
+timestamp_map_t *timestampMap = NULL;  // remember time@offset of output file
+unsigned timestampCount = 0;
+int childFinished = 0;
+
+size_t outputFileSize = 0;
+int child_output_fd;  // OUTPUT_FILE created/opened by main process, used by child
 
 /**
  * @brief Parses a string into an unsigned integer.
@@ -154,6 +207,151 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
     return 0;
 }
 
+// pthread function, keep a map of timestamp and user's output file offset.
+// The thread is not started unless timestamp interval option is specified.
+void *timestampFunc() {
+  time_t lastStamp = 0;
+  int lastJumpIndex = -1;
+  int output_fd;
+
+  // open output file read only to build timestamp:offset map
+  if ((output_fd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
+    ERROR_ERRNO("Opening output file by parent process");
+    // don't quit for this type of error
+  }
+
+  while (1) {
+    if (childFinished) {
+      break;
+    }
+
+    sleep(1);
+
+    // allocate/reallocate space to create/grow the map
+    if (timestampCount % TIMESTAMP_MAP_CHUNK_SIZE == 0) {
+      timestamp_map_t *newBuffer =
+        realloc(timestampMap,
+                sizeof(timestamp_map_t) * (TIMESTAMP_MAP_CHUNK_SIZE + timestampCount));
+      if (!newBuffer){
+        ERROR_ERRNO("Failed to allocate timestamp map. Current map size %d",
+                    timestampCount);
+        continue;  // continue without allocation
+      }
+      timestampMap = newBuffer;
+      newBuffer += timestampCount;
+      memset(newBuffer, 0, sizeof(timestamp_map_t) * TIMESTAMP_MAP_CHUNK_SIZE);
+    }
+
+    struct stat buf;
+    if (output_fd <= 0 || fstat(output_fd, &buf) < 0) {
+      ERROR_ERRNO("Statting output file to read offset");
+      continue;  // simply skip this time
+    }
+
+    size_t currentOffset = buf.st_size;
+    time_t currentTime = time(NULL);
+
+    // record following timestamps:
+    // 1. enough time has passed since last timestamp or
+    // 2. output has grown and enough time has passed since last offset change
+
+    if (timestampCount == 0 ||
+        timestampMap[timestampCount - 1].offset != currentOffset) {
+      if (lastJumpIndex >= 0 &&
+          currentTime - timestampMap[lastJumpIndex].time < args.timestamp_interval) {
+        continue;
+      }
+      lastJumpIndex = timestampCount;
+    } else if (currentTime - lastStamp < args.timestamp_interval) {
+      continue;
+    }
+
+    lastStamp = currentTime;
+    timestampMap[timestampCount].time = currentTime;
+    timestampMap[timestampCount].offset = currentOffset;
+    timestampCount++;
+  }
+
+  if (output_fd <= 0 || close(output_fd) < 0) {
+    ERROR_ERRNO("Closing output file before cleanup");
+  }
+  return NULL;
+}
+
+int writeBuffer(char *buffer, size_t nBytes) {  // nBytes can be zero (no-op)
+  ssize_t nwritten = 0;
+  size_t  write_rem = nBytes;
+  char *write_base = buffer;
+
+  while (write_rem > 0) {
+    if ((nwritten = write(STDOUT_FILENO, write_base, write_rem)) < 0) {
+      ERROR_ERRNO("Writing output");
+      ERROR("Failure details: write_base %p write_rem %lu", write_base, write_rem);
+      return -1;
+    }
+    write_rem -= nwritten;
+    write_base += nwritten;
+  }
+  return 0;
+}
+
+// Insert the timestamp at the appropriate places.
+// When failing to write to the output file, return with updated scanCursor,
+void insertTimestamp(char *buffer,
+                     size_t bufferOffset,
+                     size_t bufferLength,
+                     char **scanCursorInOut,
+                     unsigned *currentStampInOut) {
+  char *scanCursor = *scanCursorInOut;
+  unsigned currentStamp = *currentStampInOut;
+  size_t nextOffset = bufferOffset + bufferLength;
+  size_t eolOffset = 0;
+
+  // pace through timestamps that fall into the buffer
+  while (currentStamp < timestampCount &&
+         timestampMap[currentStamp].offset < nextOffset) {
+
+    // there might be unused timestamps from last read buffer or before last eol.
+    // skip over them.
+    if (timestampMap[currentStamp].offset < bufferOffset ||
+        timestampMap[currentStamp].offset <= eolOffset) {
+      currentStamp++;
+      continue;
+    }
+
+    char *eolSearchStart = buffer + (timestampMap[currentStamp].offset - bufferOffset);
+    char *nextEol = strchr(eolSearchStart, '\n');
+    if (!nextEol) {  // no line break found in read buffer to insert timestamp
+      break;
+    }
+
+    // write the stuff up to the line break
+    if (writeBuffer(scanCursor, (nextEol + 1) - scanCursor)) {
+      ERROR("Write failed: buffer %p cursor %p nextEol %p", buffer, scanCursor, nextEol);
+      break;
+    }
+    scanCursor = nextEol + 1;
+
+    // no timestamp at EOF, because the test scores are on the last line
+    eolOffset = bufferOffset + (nextEol - buffer);
+    if (eolOffset + 1 >= outputFileSize) {
+      break;
+    }
+
+    // write the timestamp
+    char stampInsert[300];
+    sprintf(stampInsert,
+            "...[timestamp %s inserted by autodriver at offset ~%lu. Maybe out of sync with output's own timestamps.]...\n",
+            getTimestamp(timestampMap[currentStamp].time),
+            timestampMap[currentStamp].offset);
+    if (writeBuffer(stampInsert, strlen(stampInsert))) {break;}
+    currentStamp++;
+  }  // while loop through the stamps falling into read buffer's range
+
+  *scanCursorInOut = scanCursor;
+  *currentStampInOut = currentStamp;
+}
+
 /**
  * @brief Dumps a specified number of bytes from a file to standard out
  *
@@ -164,40 +362,50 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
  * @return 0 on success, -1 on failure
  */
 static int dump_file(int fd, size_t bytes, off_t offset) {
-    char buffer[BUFSIZE];
-    char *write_base;
-    ssize_t nread, nwritten;
-    size_t read_rem, write_rem;
+    static unsigned currentStamp = 0;
+    size_t read_rem = bytes;
+    size_t nextOffset = offset;
+
+    if (offset) {  // second part of output file, after truncating in the middle
+      // insert a message, indicating file truncation
+      char *msg = "\n...[excess bytes elided by autodriver]...\n";
+      if (writeBuffer(msg, strlen(msg))) {return -1;}
+    }
 
     // Flush stdout so our writes here don't race with buffer flushes
     if (fflush(stdout) != 0) {
-        ERROR_ERRNO("Error flushing standard out");
+        ERROR_ERRNO("Flushing standard out");
         return -1;
     }
 
     if (lseek(fd, offset, SEEK_SET) < 0) {
-        ERROR_ERRNO("Error seeking in output file");
+        ERROR_ERRNO("Seeking in output file");
         return -1;
     }
 
-    read_rem = bytes;
     while (read_rem > 0) {
-        if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
-            ERROR_ERRNO("Error reading from output file");
-            return -1;
-        }
-        write_rem = nread;
-        write_base = buffer;
-        while (write_rem > 0) {
-            if ((nwritten = write(STDOUT_FILENO, write_base, write_rem)) < 0) {
-                ERROR_ERRNO("Error writing output");
-                return -1;
-            }
-            write_rem -= nwritten;
-            write_base += nwritten;
-        }
-        read_rem -= nread;
-    }
+      char buffer[BUFSIZE + 1];  // keep the last byte as string terminator
+      ssize_t nread;
+
+      memset(buffer, 0, BUFSIZE + 1);
+      if ((nread = read(fd, buffer, min(read_rem, BUFSIZE))) < 0) {
+        ERROR_ERRNO("Reading from output file");
+        return -1;
+      }
+      read_rem -= nread;
+      char *scanCursor = buffer;
+
+      if (timestampCount) {  // If inserting timestamp
+        insertTimestamp(buffer, nextOffset, nread, &scanCursor, &currentStamp);
+      }
+
+      if (writeBuffer(scanCursor, nread - (scanCursor - buffer))) {
+        ERROR("Write failed: buffer %p cursor %p nread %lu", buffer, scanCursor, nread);
+        return -1;
+      }
+
+      nextOffset += nread;  // offset of next read buffer in the file
+    }  // while loop finish reading
 
     return 0;
 }
@@ -232,6 +440,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             argp_failure(state, EXIT_USAGE, 0, 
                 "The argument to osize must be a nonnegative integer");
         }
+        break;
+    case 'i':
+        if (parse_uint(arg, &arguments->timestamp_interval) < 0) {
+            argp_failure(state, EXIT_USAGE, 0,
+                "The argument to timestamp-interval must be a nonnegative integer");
+        }
+        break;
+    case 'z':
+        args.timezone = arg;
         break;
     case ARGP_KEY_ARG:
         switch (state->arg_num) {
@@ -290,13 +507,13 @@ static void setup_dir(void) {
     char *mv_args[] = {"/bin/mv", "-f", args.directory, 
         args.user_info.pw_dir, NULL};
     if (call_program("/bin/mv", mv_args) != 0) {
-        ERROR("Error moving directory");
+        ERROR("Moving directory");
         exit(EXIT_OSERROR);
     }
 
     // And switch over to that directory
     if (chdir(args.user_info.pw_dir) < 0) {
-        ERROR_ERRNO("Error changing directories");
+        ERROR_ERRNO("Changing directories");
         exit(EXIT_OSERROR);
     }
 
@@ -305,7 +522,7 @@ static void setup_dir(void) {
     sprintf(owner, "%d:%d", args.user_info.pw_uid, args.user_info.pw_gid);
     char *chown_args[] = {"/bin/chown", "-R", owner, args.directory, NULL};
     if (call_program("/bin/chown", chown_args) != 0) {
-        ERROR("Error chowining directory");
+        ERROR("Chowning directory");
         exit(EXIT_OSERROR);
     }
 }
@@ -316,23 +533,25 @@ static void setup_dir(void) {
 static void dump_output(void) {
     int outfd;
     if ((outfd = open(OUTPUT_FILE, O_RDONLY)) < 0) {
-        ERROR_ERRNO("Error opening output file");
+        ERROR_ERRNO("Opening output file at the end of test");
         exit(EXIT_OSERROR);
     }
 
     struct stat stat;
     if (fstat(outfd, &stat) < 0) {
-        ERROR_ERRNO("Error stating output file");
+        ERROR_ERRNO("Statting output file");
         exit(EXIT_OSERROR);
     }
+    outputFileSize = stat.st_size;
 
     // Truncate output if we have to
     if (args.osize > 0 && stat.st_size > args.osize) {
+        MESSAGE("Output size %lu > limit %u -- will elide in the middle",
+                stat.st_size, args.osize);
         unsigned part_size = args.osize / 2;
         if (dump_file(outfd, part_size, 0) < 0) {
             exit(EXIT_OSERROR);
         }
-        printf("\n...[excess bytes elided]...\n");
         if (dump_file(outfd, part_size, stat.st_size - part_size) < 0) {
             exit(EXIT_OSERROR);
         }
@@ -342,7 +561,7 @@ static void dump_output(void) {
         }
     }
     if (close(outfd) < 0) {
-        ERROR_ERRNO("Error closing output file");
+        ERROR_ERRNO("Closing output file at the end of test");
         exit(EXIT_OSERROR);
     }
 }
@@ -360,8 +579,8 @@ static int kill_processes(char *sig) {
         GRADING_USER, NULL};
 
     if ((ret = call_program("/usr/bin/pkill", pkill_args)) > 1) {
-        ERROR("Error killing user processes");
-        exit(EXIT_OSERROR);
+        ERROR("Killing user processes");
+        // don't quit.  Let the caller decide
     }
     return ret;
 }
@@ -381,7 +600,7 @@ static void cleanup(void) {
         sleep(SHUTDOWN_GRACE_TIME);
         if (try > MAX_KILL_ATTEMPTS) {
             ERROR("Gave up killing user processes");
-            exit(EXIT_OSERROR);
+            break;  // continue to cleanup with best effort
         }
         ret = kill_processes("-KILL");
         try++;
@@ -394,7 +613,7 @@ static void cleanup(void) {
     char *find_args[] = {"find", "/usr/bin/find", ".", "/tmp", "/var/tmp", "-user", 
         args.user_info.pw_name, "-delete", NULL};
     if (call_program("/usr/bin/env", find_args) != 0) {
-        ERROR("Error deleting user's files");
+        ERROR("Deleting user's files");
         exit(EXIT_OSERROR);
     }
 }
@@ -413,6 +632,15 @@ static int monitor_child(pid_t child) {
     int killed = 0;
     int status;
 
+    // create a thread to track the file size at given time interval
+    pthread_t timestampThread = 0;  // this thread needs no cancellation
+    if (args.timestamp_interval > 0) {
+      if (pthread_create(&timestampThread, NULL, timestampFunc, NULL)) {
+        ERROR_ERRNO("Failed to create timestamp thread");
+        exit(EXIT_OSERROR);
+      }
+    }
+
     // Handle the timeout if we have to
     if (args.timeout != 0) {
         struct timespec timeout;
@@ -425,25 +653,37 @@ static int monitor_child(pid_t child) {
 
         if (sigtimedwait(&sigset, NULL, &timeout) < 0) {
             // Child timed out
+            ERROR("Job timed out after %d seconds", args.timeout);
             assert(errno == EAGAIN);
             kill(child, SIGKILL);
             killed = 1;
+            childTimedOut = 1;
         }
     }
 
     if (waitpid(child, &status, 0) < 0) {
-        ERROR_ERRNO("Error reaping child");
+        ERROR_ERRNO("Reaping child");
         exit(EXIT_OSERROR);
     }
 
-    if (killed) {
-        printf(OUTPUT_HEADER "Job timed out after %d seconds\n", args.timeout);
-    } else {
-        printf(OUTPUT_HEADER "Job exited with status %d\n", 
-            WEXITSTATUS(status));
+    MESSAGE("Test terminates. Duration: %lu seconds", time(NULL) - startTime);
+
+    if (!killed) {
+        MESSAGE("Job exited with status %d", WEXITSTATUS(status));
     }
 
+    if (args.timestamp_interval > 0) {
+      MESSAGE("Timestamps inserted at %d-second or larger intervals, depending on output rates",
+              args.timestamp_interval);
+    }
+    MESSAGE("Also check end of output for potential errors");
+
+    childFinished = 1;
     dump_output();
+    if (childTimedOut) {
+      NL_MESSAGE("ERROR Job timed out");  // print error again at the end of output
+    }
+
     cleanup();
     exit(killed ? EXIT_TIMEOUT : EXIT_SUCCESS);
 }
@@ -468,7 +708,7 @@ static void run_job(void) {
     if (args.nproc != 0) {
         struct rlimit rlimit = {args.nproc, args.nproc};
         if (setrlimit(RLIMIT_NPROC, &rlimit) < 0) {
-            perror("Error setting process limit");
+            perror("Setting process limit");
             exit(EXIT_OSERROR);
         }
     }
@@ -476,61 +716,56 @@ static void run_job(void) {
     if (args.fsize != 0) {
         struct rlimit rlimit = {args.fsize, args.fsize};
         if (setrlimit(RLIMIT_FSIZE, &rlimit) < 0) {
-            ERROR_ERRNO("Error setting filesize limit");
+            ERROR_ERRNO("Setting filesize limit");
             exit(EXIT_OSERROR);
         }
     }
 
     // Drop permissions
     if (initgroups(args.user_info.pw_name, args.user_info.pw_gid) < 0) {
-        ERROR_ERRNO("Error setting supplementary group IDs");
+        ERROR_ERRNO("Setting supplementary group IDs");
         exit(EXIT_OSERROR);
     }
 
     if (setresgid(args.user_info.pw_gid, args.user_info.pw_gid,
             args.user_info.pw_gid) < 0) {
-        ERROR_ERRNO("Error setting group ID");
+        ERROR_ERRNO("Setting group ID");
         exit(EXIT_OSERROR);
     }
 
     if (setresuid(args.user_info.pw_uid, args.user_info.pw_uid,
             args.user_info.pw_uid) < 0) {
-        ERROR_ERRNO("Error setting user ID");
+        ERROR_ERRNO("Setting user ID");
         exit(EXIT_OSERROR);
     }
 
     // Redirect output
-    int fd;
-    if ((fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC,
-                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-        ERROR_ERRNO("Error opening output file");
-        exit(EXIT_OSERROR);
-    }
+    int fd = child_output_fd;
 
     if (dup2(fd, STDOUT_FILENO) < 0) {
-        ERROR_ERRNO("Error redirecting standard output");
+        ERROR_ERRNO("Redirecting standard output");
         exit(EXIT_OSERROR);
     }
 
     if (dup2(fd, STDERR_FILENO) < 0) {
-        ERROR_ERRNO("Error redirecting standard error");
+        ERROR_ERRNO("Redirecting standard error");
         exit(EXIT_OSERROR);
     }
 
     if (close(fd) < 0) {
-        ERROR_ERRNO("Error closing output file");
+        ERROR_ERRNO("Closing output file by child process");
         exit(EXIT_OSERROR);
     }
 
     // Switch into the folder
     if (chdir(args.directory) < 0) {
-        ERROR_ERRNO("Error changing directory");
+        ERROR_ERRNO("Changing directory");
         exit(EXIT_OSERROR);
     }
 
     // Finally exec job
     execl("/usr/bin/make", "make", NULL);
-    ERROR_ERRNO("Error executing make");
+    ERROR_ERRNO("Eexecuting make");
     exit(EXIT_OSERROR);
 }
 
@@ -540,10 +775,13 @@ int main(int argc, char **argv) {
     args.fsize = 0;
     args.timeout = 0;
     args.osize = 0;
+    args.timestamp_interval = 0;
+    args.timezone = NULL;
+    startTime = time(NULL);
 
     // Make sure this isn't being run as root
     if (getuid() == 0) {
-        printf(OUTPUT_HEADER "Autodriver should not be run as root.\n");
+        ERROR("Autodriver should not be run as root");
         exit(EXIT_USAGE);
     }
 
@@ -566,6 +804,10 @@ int main(int argc, char **argv) {
             "Limit the amount of time a job is allowed to run (seconds)", 0},
         {"osize", 'o', "size", 0,
             "Limit the amount of output returned (bytes)", 0},
+        {"timestamp-interval", 'i', "interval", 0,
+            "Interval (seconds) for placing timestamps in user output file", 0},
+        {"timezone", 'z', "timezone", 0,
+            "Timezone setting. Default is UTC", 0},
         {0, 0, 0, 0, 0, 0}
     };
 
@@ -573,6 +815,16 @@ int main(int argc, char **argv) {
         "Manages autograding jobs", NULL, NULL, NULL};
 
     argp_parse(&parser, argc, argv, 0, NULL, &args);
+
+    // set time zone preference: -z argument, TZ environment variable, system wide
+    if (args.timezone) {
+      char tz[100];
+      strcpy(tz, "TZ=");
+      strcat(tz, args.timezone);
+      putenv(tz);
+    }
+    tzset();
+    MESSAGE("Test Starts. Time zone %s:%s", tzname[0], tzname[1]);
 
     setup_dir();
 
@@ -582,6 +834,20 @@ int main(int argc, char **argv) {
     sigaddset(&sigset, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigset, NULL);
 
+    // output file is written by the child process while running the test.
+    // It's created here before forking, because the timestamp thread needs
+    // read access to it.
+    if ((child_output_fd = open(OUTPUT_FILE, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
+                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+        ERROR_ERRNO("Creating output file");
+        exit(EXIT_OSERROR);
+    }
+    // chown output file to user "autograde"
+    if (fchown(child_output_fd, args.user_info.pw_uid, args.user_info.pw_gid) < 0) {
+        ERROR_ERRNO("Error chowning output file");
+        exit(EXIT_OSERROR);
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
         ERROR_ERRNO("Unable to fork");
@@ -589,9 +855,13 @@ int main(int argc, char **argv) {
     } else if (pid == 0) {
         run_job();
     } else {
+        if (close(child_output_fd) < 0) {
+            ERROR_ERRNO("Closing output file by parent process");
+            // don't quit for this type of error
+        }
+
         monitor_child(pid);
     }
 
     return 0;
 }
-
