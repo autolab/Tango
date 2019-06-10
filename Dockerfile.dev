@@ -18,3 +18,5 @@ RUN source $APP_PATH/bin/activate
 RUN pip install -r requirements.txt
 
 ADD config.template.py $APP_PATH/config.py
+
+EXPOSE 3000
