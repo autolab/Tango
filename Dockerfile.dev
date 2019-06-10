@@ -2,13 +2,15 @@ FROM python:2.7-alpine
 
 LABEL maintainer="autolab-dev@andrew.cmu.edu"
 
-# RUN apk add --no-cache --update build-base \
+RUN apk add --no-cache --update docker
 RUN pip install virtualenv
 
 ENV APP_PATH /home/app/tango
 WORKDIR $APP_PATH
 
 RUN mkdir -p volumes
+RUN mkdir -p courselabs
+
 
 # Add dependencies in separate layer
 ADD requirements.txt $APP_PATH
