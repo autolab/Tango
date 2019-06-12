@@ -11,14 +11,16 @@ WORKDIR $APP_PATH
 RUN mkdir -p volumes
 RUN mkdir -p courselabs
 
-
 # Add dependencies in separate layer
 ADD requirements.txt $APP_PATH
 
 RUN virtualenv .
-RUN source $APP_PATH/bin/activate
+RUN source bin/activate
 RUN pip install -r requirements.txt
 
-ADD config.template.py $APP_PATH/config.py
+ADD config.docker-dev.py config.py
+
+ADD . .
 
 EXPOSE 3000
+CMD ["start/start-docker-dev.sh"]
