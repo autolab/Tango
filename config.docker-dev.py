@@ -20,7 +20,7 @@ class Config:
     PREFIX = "local"
 
     # Default port for the RESTful server to listen on.
-    PORT = 3000
+    PORT = 3001
 
     # Log file. Setting this to None sends the server output to stdout
     LOGFILE = None
