@@ -6,6 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
+      - "3001:3001"
   redis:
     image: 'redis:latest'
