@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
 dockerd &
-docker build -t autograding_image $APP_PATH/vmms
+docker pull autolabproject/autograding_image
 python restful-tango/server.py 3001 &
 python jobManager.py
