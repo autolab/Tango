@@ -6,8 +6,9 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
-    volumes:
-      - ./:/home/app/tango
+      - "3001:3001"
+    depends_on:
+      - redis
+
   redis:
     image: 'redis:latest'
