@@ -22,5 +22,5 @@ ADD config.docker-dev.py config.py
 
 ADD . .
 
-EXPOSE 3000
+EXPOSE 3001
 CMD ["start/start-docker-dev.sh"]
