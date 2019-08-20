@@ -1,0 +1,25 @@
+To build a grading vm image for Autolab jobs:
+
+Create a vm with a stock linux image
+Copy autodriver.c and Makefile to the vm and compile it to autodriver
+Copy autodriver to any common path, make it owned by root wtih setuid bits.
+For example: -rwsr-sr-x 1 root root /usr/bin/autodriver
+
+Create the following users
+autolab: The ssh/scp user tied with selected key pair of you cloud account
+autograde: The user to run TA's grader starting from the top Makefile (see autodriver.c)
+student: For student to use the exact image for coding/testing
+
+The sequence of grading using the above image is such:
+
+The grading engine: scp top level Makefile, autograde.tar (both made by course staff)
+and student's submission to the grading vm.
+
+The grading engine: ssh to run autodriver program.
+
+The greating vm: autodriver program (running as root because of the setuid bit) starts
+a child process (running as user autograde) to run "make" with top level Makefile.
+
+The grading engine: scp the output file from the grading vm.
+
+
