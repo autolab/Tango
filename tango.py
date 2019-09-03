@@ -59,7 +59,7 @@ class TangoServer:
             format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
             level=Config.LOGLEVEL,
         )
-        
+
         vmms = None
         if Config.VMMS_NAME == "tashiSSH":
             from vmms.tashiSSH import TashiSSH
@@ -81,7 +81,7 @@ class TangoServer:
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
             JobManager(self.jobQueue).start()
-        
+
         self.start_time = time.time()
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
@@ -204,11 +204,11 @@ class TangoServer:
         stats['runjob_errors'] = Config.runjob_errors
         stats['copyout_errors'] = Config.copyout_errors
         stats['num_threads'] = threading.activeCount()
-        isdst = (time.struct_time.tm_isdst == 1)
+        isdst = (time.localtime().tm_isdst > 0)
         stats['timezone_offset'] = time.altzone if isdst else time.timezone
         (zone, daylight) = time.tzname
         stats['timezone_name'] = zone + ("" if not daylight else ("/" + daylight))
-        
+
         return stats
 
     #
@@ -310,7 +310,7 @@ class TangoServer:
                 imgList = vobj.getImages()
                 if job.vm.image not in imgList:
                     self.log.error("validateJob: Image not found: %s" % job.vm.image)
-                                   
+
                     job.appendTrace("validateJob: Image not found: %s" % job.vm.image)
                     errors += 1
 
@@ -361,7 +361,7 @@ class TangoServer:
         if not hasMakefile:
             self.log.error("validateJob: Missing Makefile in input files.")
             job.appendTrace("validateJob: Missing Makefile in input files.")
-            errors+=1    
+            errors+=1
 
         # Check if job timeout has been set; If not set timeout to default
         if not job.timeout or job.timeout <= 0:
