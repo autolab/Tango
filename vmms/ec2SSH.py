@@ -294,9 +294,13 @@ class Ec2SSH:
             return vm
 
         except Exception as e:
-            self.log.error("initializeVM Failed: %s" % e)
+            self.log.error("initializeVM Failed for vm %s: %s" % (vm.name, e))
             if newInstance:
-                self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
+                try:
+                    self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
+                except Exception as e:
+                    self.log.error("Exception handling failed for %s: %s" % (vm.name, e))
+                    return None
             return None
 
     def waitVM(self, vm, max_secs):
