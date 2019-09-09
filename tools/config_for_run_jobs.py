@@ -11,7 +11,7 @@ class Config:
   # YOUR course name
   course = "your-name-experiment"
   course = "czang-exp"
-  
+
   # YOUR root dir for course/lab definitions and handin (student submissions)
   courseRoot = "/mnt/data/f16/"
 
@@ -32,7 +32,7 @@ class Config:
   totalStudents = 1 # number of students to submit
 
   firstStudentNum = None # set to None for all students
-  
+
   # YOUR Tango container's root dir for submissions and output
   tangoFileRoot = "/root/autolab-oneclick/server/tango_courselabs"
 
@@ -64,6 +64,5 @@ class Config:
 
   # Note: This variable is used by tools/ec2Read.py only so far.
   redisHostPort = 6379  # default
-  redisHostPort = 6380  
 
 # end of class Config
