@@ -243,13 +243,7 @@ class Ec2SSH:
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
             newInstance = reservation[0]
-            if newInstance:
-                # Assign name to EC2 instance
-                self.boto3resource.create_tags(Resources=[newInstance.id],
-                                            Tags=[{"Key": "Name", "Value": vm.name}])
-                self.log.info("new instance %s created with name tag %s" %
-                              (newInstance.id, vm.name))
-            else:
+            if not newInstance:
                 raise ValueError("cannot find new instance for %s" % vm.name)
 
             # Wait for instance to reach 'running' state
@@ -258,26 +252,32 @@ class Ec2SSH:
                 # Note: You'd think we should be able to read the state from the
                 # instance but that turns out not working.  So we round up all
                 # running intances and find our instance by instance id
-              
+
                 filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
                 instances = self.boto3resource.instances.filter(Filters=filters)
                 instanceRunning = False
 
                 newInstance.load()  # reload the state of the instance
                 for inst in instances.filter(InstanceIds=[newInstance.id]):
-                    self.log.debug("VM %s: is running %s" % (vm.name, newInstance.id))
+                    self.log.debug("VM %s %s: is running" % (vm.name, newInstance.id))
                     instanceRunning = True
 
                 if instanceRunning:
                     break
 
                 if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
-                    raise ValueError("VM %s: timeout (%d seconds) before reaching 'running' state" %
-                                     (vm.name, config.Config.TIMER_POLL_INTERVAL))
+                    raise ValueError("VM %s %s: timeout (%d seconds) before reaching 'running' state" %
+                                     (vm.name, newInstance.id, config.Config.TIMER_POLL_INTERVAL))
 
-                self.log.debug("VM %s: Waiting to reach 'running' from 'pending'" % vm.name)
+                self.log.debug("VM %s %s: Waiting to reach 'running' from 'pending'" % (vm.name, newInstance.id))
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
             # end of while loop
+
+            # tag the instance
+            self.boto3resource.create_tags(Resources=[newInstance.id],
+                                           Tags=[{"Key": "Name", "Value": vm.name}])
+            self.log.info("new instance %s created with name tag %s" %
+                          (newInstance.id, vm.name))
 
             self.log.info(
                 "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
