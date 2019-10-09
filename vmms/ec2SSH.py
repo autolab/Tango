@@ -8,6 +8,9 @@ import os
 import re
 import time
 import logging
+import datetime
+from threading import Timer
+import pytz
 
 import config
 from tangoObjects import TangoMachine
@@ -127,6 +130,12 @@ class Ec2SSH:
         if (len(ignoredAMIs) > 0):
             self.log.info("Ignored images %s for lack of or ill-formed name tag" %
                           str(ignoredAMIs))
+
+        # start a timer to cleanup stale vms
+        t = Timer(60, self.cleanupUntaggedStaleVMs)
+        t.daemon = True  # timer thread will not hold off process termination
+        t.start()
+    # end of __init__
 
     #
     # VMMS helper methods
@@ -551,3 +560,65 @@ class Ec2SSH:
         """
         self.log.info("getImages: %s" % str(list(self.img2ami.keys())))
         return list(self.img2ami.keys())
+
+    def cleanupUntaggedStaleVMs(self):
+        self.log.info("cleanupUntaggedStaleVMs")
+
+        nameAndInstances = []
+        filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
+        instanceType = 'running or pending'
+
+        instances = self.boto3resource.instances.filter(Filters=filters)
+        for instance in self.boto3resource.instances.filter(Filters=filters):
+            launchTime = instance.launch_time.ctime()
+            tmp = instance.launch_time
+            tmp1 = datetime.datetime.utcnow()
+            age = int((tmp1.replace(tzinfo=pytz.utc) - tmp.replace(tzinfo=pytz.utc)).total_seconds())
+            nameAndInstances.append({"Name": self.getTag(instance.tags, "Name"),
+                                     "launchTime": launchTime,
+                                     "age": age,
+                                     "Instance": instance})
+        self.log.info("number of running/pending instances: %d" % len(nameAndInstances))
+
+        nameNone = []
+        named = []
+        for item in nameAndInstances:
+            if item["Name"]:
+                named.append(item)
+            else:
+                nameNone.append(item)
+
+        staleSet = []
+        nameNone.sort(key=lambda x: x["age"], reverse=True)  # oldest first
+        for item in nameNone:
+            instance = item["Instance"]
+            stale = ""
+            if item["age"] > config.Config.INITIALIZEVM_TIMEOUT * 2:  # multiply 2 to be conservative
+                staleSet.append(item)
+                stale = "(STALE)"
+            self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s %s"  %
+                          (item["Name"], instance.id, item["age"],
+                           item["launchTime"], instance.state["Name"], stale))
+
+        named.sort(key=lambda x: x["Name"])
+        for item in named:
+            instance = item["Instance"]
+            self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s"  %
+                          (item["Name"], instance.id, item["age"],
+                           item["launchTime"], instance.state["Name"]))
+
+        # Delete VMs.  Note that we don't do anything to the pools because
+        # untagged VMs can't enter a pool
+        for item in staleSet:
+            instance = item["Instance"]
+            vm = TangoMachine(vmms="ec2SSH")
+            vm.instance_id = instance.id
+            vm.name = None
+            self.log.info("cleanup untagged stale instance %s, age: %s, launch time: %s" %
+                          (instance.id, item["age"], item["launchTime"]))
+            self.destroyVM(vm)
+
+        t = Timer(60, self.cleanupUntaggedStaleVMs)
+        t.daemon = True  # timer thread will not hold off process termination
+        t.start()
+    # end of cleanupUntaggedStaleVMs()

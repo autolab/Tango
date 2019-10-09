@@ -24,6 +24,8 @@ class CommandLine():
                         help="aws access id, key and user, space separated")
     parser.add_argument('-c', '--createVMs', action='store_true',
                         dest='createVMs', help="add a VM for each pool")
+    parser.add_argument('-C', '--createInstance', action='store_true',
+                        dest='createInstance', help="create an instance without adding to a pool")
     parser.add_argument('-d', '--destroyVMs', action='store_true',
                         dest='destroyVMs', help="destroy VMs and empty pools")
     parser.add_argument('-D', '--instanceNameTags', nargs='+',
@@ -40,18 +42,19 @@ argListVMs = cmdLine.args.listVMs
 argListAllInstances = cmdLine.args.listInstances
 argDestroyVMs = cmdLine.args.destroyVMs
 argCreateVMs = cmdLine.args.createVMs
+argCreateInstance = cmdLine.args.createInstance
 argAccessIdKeyUser = cmdLine.args.accessIdKeyUser
 
 def destroyVMs():
   vms = ec2.getVMs()
   print "number of Tango VMs:", len(vms)
   for vm in vms:
-    if vm.id:    
+    if vm.id:
       print "destroy", nameToPrint(vm.name)
       ec2.destroyVM(vm)
     else:
       print "VM not in Tango naming pattern:", nameToPrint(vm.name)
-      
+
 def pingVMs():
   vms = ec2.getVMs()
   print "number of Tango VMs:", len(vms)
@@ -66,7 +69,7 @@ def pingVMs():
     else:
       print "VM not in Tango naming pattern:", nameToPrint(vm.name)
 
-local_tz = pytz.timezone("EST")
+local_tz = pytz.timezone(Config.AUTODRIVER_LOGGING_TIME_ZONE)
 def utc_to_local(utc_dt):
   local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
   return local_dt.strftime("%Y%m%d-%H:%M:%S")
@@ -272,6 +275,37 @@ if argCreateVMs:
   listPools()
   exit()
 
+# Create number of instances (no pool), some of them without name tag
+# to test untagged stale machine cleanup ability in Tango.
+# watch tango.log for the cleanup actions.
+if argCreateInstance:
+    i = 0
+    while True:
+        vm = TangoMachine(vmms="ec2SSH")
+        vm.id = int(datetime.datetime.utcnow().strftime('%s'))
+        vm.image = '746'
+        vm.pool = '746'
+        vm.name = ec2.instanceName(vm.id, vm.pool)
+        result = ec2.initializeVM(vm)
+        if result:
+            print "created: ", result.name, result.instance_id
+        else:
+            print "failed to create"
+            break
+
+        # delete name tage for half of instances
+        if i % 2 == 0:
+            boto3connection.delete_tags(Resources=[result.instance_id],
+                                        Tags=[{"Key": "Name"}])
+        i += 1
+        time.sleep(30)
+
+        if i > 20:
+            break
+
+    time.sleep(10000)
+    exit()
+
 # ec2WithKey can be used to test the case that tango_cli uses
 # non-default aws access id and key
 if argAccessIdKeyUser:
@@ -291,6 +325,3 @@ if argAccessIdKeyUser:
   listInstances()
 
 # Write combination of ops not provided by the command line options here:
-
-
-
