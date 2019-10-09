@@ -85,6 +85,7 @@ class Ec2SSH:
         VM created
         """
 
+        self.local_tz = pytz.timezone(config.Config.AUTODRIVER_LOGGING_TIME_ZONE)
         self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
         self.log.info("init Ec2SSH")
 
@@ -570,10 +571,11 @@ class Ec2SSH:
 
         instances = self.boto3resource.instances.filter(Filters=filters)
         for instance in self.boto3resource.instances.filter(Filters=filters):
-            launchTime = instance.launch_time.ctime()
-            tmp = instance.launch_time
-            tmp1 = datetime.datetime.utcnow()
-            age = int((tmp1.replace(tzinfo=pytz.utc) - tmp.replace(tzinfo=pytz.utc)).total_seconds())
+            creationTime = instance.launch_time
+            localCreationTime = creationTime.replace(tzinfo=pytz.utc).astimezone(self.local_tz)
+            launchTime = localCreationTime.strftime("%Y%m%d-%H:%M:%S")
+            nowTime = datetime.datetime.utcnow()
+            age = int((nowTime.replace(tzinfo=pytz.utc) - creationTime.replace(tzinfo=pytz.utc)).total_seconds())
             nameAndInstances.append({"Name": self.getTag(instance.tags, "Name"),
                                      "launchTime": launchTime,
                                      "age": age,
