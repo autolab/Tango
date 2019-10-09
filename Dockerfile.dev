@@ -23,4 +23,8 @@ ADD config.docker-dev.py config.py
 ADD . .
 
 EXPOSE 3001
-CMD ["start/start-docker-dev.sh"]
+
+ENTRYPOINT ["start/start-docker-dev.sh"]
+
+# CMD ["python", "jobManager.py"]
+# CMD ["./start/start-docker-dev.sh"]
