@@ -48,6 +48,7 @@ ADD ./requirements.txt /opt/TangoFiles/requirements.txt
 WORKDIR /opt/TangoFiles
 RUN pip install virtualenv && virtualenv .
 RUN pip install -r requirements.txt
+RUN pip install pytz
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
 
