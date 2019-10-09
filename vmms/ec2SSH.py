@@ -3,6 +3,7 @@
 #
 # ssh and scp to access them.
 
+import __main__
 import subprocess
 import os
 import re
@@ -85,9 +86,10 @@ class Ec2SSH:
         VM created
         """
 
+        self.appName = os.path.basename(__main__.__file__).strip(".py")
         self.local_tz = pytz.timezone(config.Config.AUTODRIVER_LOGGING_TIME_ZONE)
         self.log = logging.getLogger("Ec2SSH-" + str(os.getpid()))
-        self.log.info("init Ec2SSH")
+        self.log.info("init Ec2SSH in program %s" % self.appName)
 
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         self.ec2User = ec2User if ec2User else config.Config.EC2_USER_NAME
@@ -132,10 +134,8 @@ class Ec2SSH:
             self.log.info("Ignored images %s for lack of or ill-formed name tag" %
                           str(ignoredAMIs))
 
-        # start a timer to cleanup stale vms
-        t = Timer(60, self.cleanupUntaggedStaleVMs)
-        t.daemon = True  # timer thread will not hold off process termination
-        t.start()
+        if self.appName == "jobManager":
+            self.setTimer4cleanup()
     # end of __init__
 
     #
@@ -562,6 +562,12 @@ class Ec2SSH:
         self.log.info("getImages: %s" % str(list(self.img2ami.keys())))
         return list(self.img2ami.keys())
 
+    def setTimer4cleanup(self):
+        # start a timer to cleanup stale vms
+        t = Timer(60, self.cleanupUntaggedStaleVMs)
+        t.daemon = True  # timer thread will not hold off process termination
+        t.start()
+
     def cleanupUntaggedStaleVMs(self):
         self.log.info("cleanupUntaggedStaleVMs")
 
@@ -624,8 +630,5 @@ class Ec2SSH:
         except Exception as e:
             self.log.debug("cleanupUntaggedStaleVMs exception: %s" % e)
 
-        # set the next time interval
-        t = Timer(60, self.cleanupUntaggedStaleVMs)
-        t.daemon = True  # timer thread will not hold off process termination
-        t.start()
+        self.setTimer4cleanup()  # set the next timer interval
     # end of cleanupUntaggedStaleVMs()
