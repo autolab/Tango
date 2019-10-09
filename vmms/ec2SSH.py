@@ -569,57 +569,62 @@ class Ec2SSH:
         filters=[{'Name': 'instance-state-name', 'Values': ['running', 'pending']}]
         instanceType = 'running or pending'
 
-        instances = self.boto3resource.instances.filter(Filters=filters)
-        for instance in self.boto3resource.instances.filter(Filters=filters):
-            creationTime = instance.launch_time
-            localCreationTime = creationTime.replace(tzinfo=pytz.utc).astimezone(self.local_tz)
-            launchTime = localCreationTime.strftime("%Y%m%d-%H:%M:%S")
-            nowTime = datetime.datetime.utcnow()
-            age = int((nowTime.replace(tzinfo=pytz.utc) - creationTime.replace(tzinfo=pytz.utc)).total_seconds())
-            nameAndInstances.append({"Name": self.getTag(instance.tags, "Name"),
-                                     "launchTime": launchTime,
-                                     "age": age,
-                                     "Instance": instance})
-        self.log.info("number of running/pending instances: %d" % len(nameAndInstances))
+        try:
+            instances = self.boto3resource.instances.filter(Filters=filters)
+            for instance in self.boto3resource.instances.filter(Filters=filters):
+                creationTime = instance.launch_time
+                localCreationTime = creationTime.replace(tzinfo=pytz.utc).astimezone(self.local_tz)
+                launchTime = localCreationTime.strftime("%Y%m%d-%H:%M:%S")
+                nowTime = datetime.datetime.utcnow()
+                age = int((nowTime.replace(tzinfo=pytz.utc) - creationTime.replace(tzinfo=pytz.utc)).total_seconds())
+                nameAndInstances.append({"Name": self.getTag(instance.tags, "Name"),
+                                         "launchTime": launchTime,
+                                         "age": age,
+                                         "Instance": instance})
+            self.log.info("number of running/pending instances: %d" % len(nameAndInstances))
 
-        nameNone = []
-        named = []
-        for item in nameAndInstances:
-            if item["Name"]:
-                named.append(item)
-            else:
-                nameNone.append(item)
+            nameNone = []
+            named = []
+            for item in nameAndInstances:
+                if item["Name"]:
+                    named.append(item)
+                else:
+                    nameNone.append(item)
 
-        staleSet = []
-        nameNone.sort(key=lambda x: x["age"], reverse=True)  # oldest first
-        for item in nameNone:
-            instance = item["Instance"]
-            stale = ""
-            if item["age"] > config.Config.INITIALIZEVM_TIMEOUT * 2:  # multiply 2 to be conservative
-                staleSet.append(item)
-                stale = "(STALE)"
-            self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s %s"  %
-                          (item["Name"], instance.id, item["age"],
-                           item["launchTime"], instance.state["Name"], stale))
+            staleSet = []
+            nameNone.sort(key=lambda x: x["age"], reverse=True)  # oldest first
+            for item in nameNone:
+                instance = item["Instance"]
+                stale = ""
+                if item["age"] > config.Config.INITIALIZEVM_TIMEOUT * 2:  # multiply 2 to be conservative
+                    staleSet.append(item)
+                    stale = "(STALE)"
+                self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s %s"  %
+                              (item["Name"], instance.id, item["age"],
+                               item["launchTime"], instance.state["Name"], stale))
 
-        named.sort(key=lambda x: x["Name"])
-        for item in named:
-            instance = item["Instance"]
-            self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s"  %
-                          (item["Name"], instance.id, item["age"],
-                           item["launchTime"], instance.state["Name"]))
+            named.sort(key=lambda x: x["Name"])
+            for item in named:
+                instance = item["Instance"]
+                self.log.info("[%s]: %s, age: %s, launch time: %s, state: %s"  %
+                              (item["Name"], instance.id, item["age"],
+                               item["launchTime"], instance.state["Name"]))
 
-        # Delete VMs.  Note that we don't do anything to the pools because
-        # untagged VMs can't enter a pool
-        for item in staleSet:
-            instance = item["Instance"]
-            vm = TangoMachine(vmms="ec2SSH")
-            vm.instance_id = instance.id
-            vm.name = None
-            self.log.info("cleanup untagged stale instance %s, age: %s, launch time: %s" %
-                          (instance.id, item["age"], item["launchTime"]))
-            self.destroyVM(vm)
+            # Delete VMs.  Note that we do nothing to the pools because
+            # untagged VMs can't enter a pool
+            for item in staleSet:
+                instance = item["Instance"]
+                vm = TangoMachine(vmms="ec2SSH")
+                vm.instance_id = instance.id
+                vm.name = None
+                self.log.info("cleanup untagged stale instance %s, age: %s, launch time: %s" %
+                              (instance.id, item["age"], item["launchTime"]))
+                self.destroyVM(vm)
 
+        except Exception as e:
+            self.log.debug("cleanupUntaggedStaleVMs exception: %s" % e)
+
+        # set the next time interval
         t = Timer(60, self.cleanupUntaggedStaleVMs)
         t.daemon = True  # timer thread will not hold off process termination
         t.start()
