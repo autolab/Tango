@@ -279,6 +279,12 @@ if argCreateVMs:
 # to test untagged stale machine cleanup ability in Tango.
 # watch tango.log for the cleanup actions.
 if argCreateInstance:
+    # The cleanup function is not active unless the application is
+    # jobManager.  Therefore we start it manually here.
+    if hasattr(ec2, 'setTimer4cleanup'):
+        print "start setTimer4cleanup function in vmms"
+        ec2.setTimer4cleanup()
+
     i = 0
     while True:
         vm = TangoMachine(vmms="ec2SSH")

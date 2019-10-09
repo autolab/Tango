@@ -17,13 +17,8 @@ class Config:
 
   # YOUR lab definitions. The index of the lab is given to run_job.py
   labs = [
-    {"name": "cloudfscheckpoint2dedup", "handinSuffix": ".tar", "image": "penndot.img"},
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "penndot.img"},
-    {"name": "myftlcheckpoint2", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "746.img"},
-    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "xyz.img"},
-    {"name": "myftlcheckpoint3", "handinSuffix": ".cpp", "image": "xyz.img"},
-    {"name": "cloudfscheckpoint1fuse", "handinSuffix": ".tar", "image": "xyz.img"}]
+    {"name": "cloudfscheckpoint2dedup", "handinSuffix": ".tar", "image": "746"},
+    {"name": "myftlcheckpoint1", "handinSuffix": ".cpp", "image": "746"}]
 
   # Range of student submissions to run (sorted by student emails)
   # If either is None, all student submissions are run, unless
