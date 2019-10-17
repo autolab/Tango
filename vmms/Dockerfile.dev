@@ -1,0 +1,21 @@
+# Broken Alpine Linux Dockerfile - see comment below
+FROM alpine
+
+LABEL maintainer="autolab-dev@andrew.cmu.edu"
+
+RUN apk add --no-cache --update build-base argp-standalone gcc make git
+
+WORKDIR /home
+RUN adduser -h ./autolab -D autolab && adduser -h ./autograde -D autograde && mkdir output && chown autolab:autolab output
+
+RUN git clone https://github.com/autolab/Tango.git
+
+WORKDIR Tango/autodriver
+
+# Build fails here (at make) as linker can't link the function argp_parse() on a musl-libc system
+RUN make clean && make && cp autodriver /usr/bin/autodriver && chmod +s /usr/bin/autodriver
+
+WORKDIR /home
+RUN apk del make gcc git && rm -rf Tango
+
+RUN ls -l /home && which autodriver

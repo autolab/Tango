@@ -1,0 +1,20 @@
+# Working Arch Linux Dockerfile, however the built image is ~800MB (BIG!)
+FROM archlinux
+
+LABEL maintainer="autolab-dev@andrew.cmu.edu"
+
+RUN pacman -Sy gcc make git sudo which --noconfirm
+
+WORKDIR /home
+RUN useradd -m autolab && useradd -m autograde && mkdir output && chown autolab:autolab output
+
+RUN git clone https://github.com/autolab/Tango.git
+
+WORKDIR Tango/autodriver
+
+RUN make clean && make && cp autodriver /usr/bin/autodriver && chmod +s /usr/bin/autodriver
+
+WORKDIR /home
+RUN pacman -Rns gcc make git --noconfirm && rm -rf Tango
+
+RUN ls -l /home && which autodriver

@@ -1,0 +1,20 @@
+# Working Ubuntu Dockerfile - ~350MB
+FROM ubuntu
+
+LABEL maintainer="autolab-dev@andrew.cmu.edu"
+
+RUN apt-get update && apt-get install -y sudo gcc make build-essential git
+
+WORKDIR /home
+RUN useradd -m autolab && useradd -m autograde && mkdir output && chown autolab:autolab output
+
+RUN git clone https://github.com/autolab/Tango.git
+
+WORKDIR Tango/autodriver
+
+RUN make clean && make && cp autodriver /usr/bin/autodriver && chmod +s /usr/bin/autodriver
+
+WORKDIR /home
+RUN apt-get remove --purge --auto-remove -y gcc make build-essential git && rm -rf Tango
+
+RUN ls -l /home && which autodriver
