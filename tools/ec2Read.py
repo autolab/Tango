@@ -6,9 +6,7 @@ from tangoObjects import TangoQueue
 from tangoObjects import TangoMachine
 from tango import TangoServer
 from config import Config
-import tangoObjects
 import config_for_run_jobs
-import redis
 import boto3
 import pytz
 import argparse
@@ -194,13 +192,6 @@ def destroyRedisPools():
 
 # END of function definitions #
 
-# When a host has two Tango containers (for experiment), there are two
-# redis servers, too.  They differ by the forwarding port number, which
-# is defined in config_for_run_jobs.py.  To select the redis server,
-# We get the connection here and pass it into tangoObjects
-redisConnection = redis.StrictRedis(
-  host=Config.REDIS_HOSTNAME, port=config_for_run_jobs.Config.redisHostPort, db=0)
-tangoObjects.getRedisConnection(connection=redisConnection)
 boto3connection = boto3.client("ec2", Config.EC2_REGION)
 boto3resource = boto3.resource("ec2", Config.EC2_REGION)
 
