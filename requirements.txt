@@ -4,7 +4,7 @@ futures==2.2.0
 plumbum==1.4.2
 pyflakes==0.8.1
 redis==2.10.3
-requests==2.2.1
+requests==2.20.0
 rpyc==3.3.0
 wsgiref==0.1.2
 tornado==4.1
