@@ -1,0 +1,89 @@
+Part 1 is a list of the major bugs fixes and improvements (some with
+relevant commits), followed by Part 2, a list of new configuration
+variables. Note that the commits may not be self-contained because
+themselves may be buggy and have follow-up commits.  They are here to
+help understand the nature of the bugs and enhancements.
+
+Part 1.  Bug fixes and enhancements
+
+The follow two bugs, combined, prevent pending jobs from being executed:
+* When number of jobs is larger than number of vms in free pool,
+jobManager dies.
+* When jobManager restarts, free pool is not emptied whilst total pool
+is, causing inconsistency.
+https://github.com/xyzisinus/Tango/commit/4dcbbb4dfef096f3e64ef91f3eff4bf9d82b66b6
+
+https://github.com/xyzisinus/Tango/commit/e2afe8a7d73bbd633282a35ec71ea690d2bb1db0
+
+
+* Add ability to specify image name for ec2 using "Name" tag on AMI
+(used to allow only one image specified as DEFAULT_AMI):
+https://github.com/xyzisinus/Tango/commit/97c22e39bcadf37b784cc2a0db5ea6202a5634ab
+
+https://github.com/xyzisinus/Tango/commit/e66551a53223b31c3baef74860eb845e4c2adac1
+
+
+* When job id reaches the max and wraps around, the jobs with larger ids
+starve.
+https://github.com/xyzisinus/Tango/commit/9565275dab5d0fa614b96b33bad642559f7714a4
+
+
+* Improve the worker's run() function to report errors on the
+copy-in/exec/copy-out path more precisely.
+https://github.com/xyzisinus/Tango/commit/caac9b46733716ed30feb62646d750a7accdd4f7
+
+https://github.com/xyzisinus/Tango/commit/c47d8891a54f8cccef3ba4abd2938fa49c906dd1
+
+
+* In the original code, Tango allocates all vm instances allowed by
+POOL_SIZE at once.  It shouldn't be an issue because once a vm is made
+ready a pending job should start using it.  However, due to well-known
+Python thread scheduling problems, the pending jobs will not run until
+all vms are allocated.  As we observed, vm allocations are almost
+sequential although each allocation runs in a separate thread, again due
+to Python's threading.  That results in a long delay for the first job
+to start running.  To get around the problem, POOL_ALLOC_INCREMENT is
+added to incrementally allocate vms and allow jobs to start running sooner.
+https://github.com/xyzisinus/Tango/commit/93e60ada803514d4164237f5043bee95671259aa
+
+
+* With POOL_SIZE_LOW_WATER_MARK, add the ability to shrink pool size
+when there are extra vms in free pool.  When low water mark is set to
+zero, no vms are kept in free pool and a fresh vm is allocated for every
+job and destroyed afterward.  It is used to maintain desired number of
+ec2 machines as standbys in the pool while terminating extra vms to save
+money.
+https://github.com/xyzisinus/Tango/commit/d896b360f6c8111a6be81df89bd43917519dd581
+
+https://github.com/xyzisinus/Tango/commit/780557749cd14c272aad6a7ea4d5e04ff2ac18ed
+
+
+* Improve autodriver with accurate error reporting and optional time
+stamp insertion into job output.
+Tango/autodriver/autodriver.c
+
+* When Tango restarts, vms in free pool are preserved (used to be all
+destroyed).
+https://github.com/xyzisinus/Tango/commit/e2afe8a7d73bbd633282a35ec71ea690d2bb1db0
+
+
+* Add run_jobs script to submit existing student handins in large numbers:
+Tango/tools/run_jobs.py
+
+* Improve general logging by adding pid in logs and messages at critical
+execution points.
+
+Part 2. New configuration variables (all optional)
+
+* Passed to autodriver to enhance readability of the output file.
+Currently only integrated in ec2 vmms.
+AUTODRIVER_LOGGING_TIME_ZONE
+AUTODRIVER_TIMESTAMP_INTERVAL
+
+* Control of the preallocator pool as explained in Part 1.
+POOL_SIZE_LOW_WATER_MARK
+POOL_ALLOC_INCREMENT
+
+* Instead of destroying it, set the vm aside for further investigation
+after autodriver returns OS ERROR.  Currently only integrated in ec2 vmms.
+KEEP_VM_AFTER_FAILURE
