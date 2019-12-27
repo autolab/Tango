@@ -67,7 +67,7 @@ class UploadHandler(tornado.web.RequestHandler):
         """ set up the temporary file"""
         tempdir="%s/tmp" % (Config.COURSELABS,)
         if not os.path.exists(tempdir):
-           os.mkdir(tempdir, 0o700)
+           os.mkdir(tempdir, 0700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
            return self.send_error()
