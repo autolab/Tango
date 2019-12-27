@@ -34,6 +34,8 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
+from builtins import str
+from builtins import object
 import threading, logging, time, stat, re, os
 
 from datetime import datetime
@@ -45,7 +47,7 @@ from tangoObjects import TangoJob
 from config import Config
 
 
-class TangoServer:
+class TangoServer(object):
 
     """ TangoServer - Implements the API functions that the server accepts
     """
@@ -115,10 +117,10 @@ class TangoServer:
             self.log.debug("Received getJobs(%s) request" % (item))
 
             if item == -1:  # return the list of dead jobs
-                return self.jobQueue.deadJobs.values()
+                return list(self.jobQueue.deadJobs.values())
 
             elif item == 0:  # return the list of live jobs
-                return self.jobQueue.liveJobs.values()
+                return list(self.jobQueue.liveJobs.values())
 
             else:  # invalid parameter
                 return []
@@ -233,7 +235,7 @@ class TangoServer:
                     self.log.warning("Killed these %s VMs on restart: %s" %
                                 (vmms_name, namelist))
 
-            for _, job in self.jobQueue.liveJobs.iteritems():
+            for _, job in self.jobQueue.liveJobs.items():
                 if not job.isNotAssigned():
                     job.makeUnassigned()
                 self.log.debug("job: %s, assigned: %s" %

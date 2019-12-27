@@ -10,6 +10,10 @@ from __future__ import print_function
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 import threading, logging, time, copy
 
 from datetime import datetime
@@ -21,7 +25,7 @@ from worker import Worker
 from tangoObjects import TangoQueue
 from config import Config
 
-class JobManager:
+class JobManager(object):
 
     def __init__(self, queue):
         self.daemon = True
@@ -118,7 +122,7 @@ if __name__ == "__main__":
         tango = TangoServer()
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(tango.preallocator.vmms)
-        for key in tango.preallocator.machines.keys():
+        for key in list(tango.preallocator.machines.keys()):
             tango.preallocator.machines.set(key, [[], TangoQueue(key)])
         jobs = JobManager(tango.jobQueue)
 
