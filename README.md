@@ -35,6 +35,9 @@ Please feel free to use Tango at your school/organization. If you run into any p
 3. [Read the documentation for the VMMS API](https://github.com/autolab/Tango/wiki/Tango-VMMS-API).
 4. [Test whether Tango is set up properly and can process jobs](https://github.com/autolab/Tango/wiki/Testing-Tango).
 
+## Python 3 Upgrade
+We are in the process of porting Tango from Python 2 to Python 3. The current working branch for the update is `python3-upgrade`.
+
 ## Contributing to Tango
 
 1. [Fork the Tango repository](https://github.com/autolab/Tango).
