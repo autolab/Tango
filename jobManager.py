@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
