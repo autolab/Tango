@@ -1,5 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
 import tornado.web
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import sys
 import os
 from tempfile import NamedTemporaryFile
@@ -104,7 +106,7 @@ class PollHandler(tornado.web.RequestHandler):
     def get(self, key, courselab, outputFile):
         """ get - Handles the get request to poll."""
         self.set_header('Content-Type', 'application/octet-stream')
-        return tangoREST.poll(key, courselab, urllib.unquote(outputFile))
+        return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
 
 
 class InfoHandler(tornado.web.RequestHandler):
