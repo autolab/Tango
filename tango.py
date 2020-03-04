@@ -34,6 +34,7 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
+from builtins import str
 import threading, logging, time, stat, re, os
 
 from datetime import datetime

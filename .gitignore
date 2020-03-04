@@ -22,3 +22,6 @@ pip-selfcheck.json
 
 # ide
 .idea
+
+# Backup files
+*.bak

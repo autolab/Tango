@@ -8,6 +8,7 @@
 #   Ec2Exception - EC2 raises this if it encounters any problem
 #   ec2CallError - raised by ec2Call() function
 #
+from builtins import str
 import subprocess
 import os
 import re
