@@ -5,6 +5,8 @@
 #
 
 from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from builtins import map
 from builtins import str
 import os
@@ -15,7 +17,7 @@ sys.path.append('/usr/lib/python2.7/site-packages/')
 import argparse
 import requests
 import json
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 #
 #
@@ -234,13 +236,13 @@ def tango_poll():
              args.port,
              args.key,
              args.courselab,
-             urllib.quote(
+             urllib.parse.quote(
                  args.outputFile)))
-        print("Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile)))
+        print("Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
         print(response.content)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.quote(args.outputFile)))
+        print("Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
         print (str(err))
         sys.exit(0)
 

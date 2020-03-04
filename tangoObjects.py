@@ -2,10 +2,12 @@
 #
 # Implements objects used to pass state within Tango.
 #
+from future import standard_library
+standard_library.install_aliases()
 from builtins import str
 import redis
 import pickle
-import Queue
+import queue
 from config import Config
 
 redisConnection = None
@@ -199,7 +201,7 @@ def TangoQueue(object_name):
     if Config.USE_REDIS:
         return TangoRemoteQueue(object_name)
     else:
-        return Queue.Queue()
+        return queue.Queue()
 
 
 class TangoRemoteQueue():
