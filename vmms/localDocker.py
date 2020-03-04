@@ -2,6 +2,7 @@
 # localDocker.py - Implements the Tango VMMS interface to run Tango jobs in 
 #                docker containers. In this context, VMs are docker containers.
 #
+from builtins import object
 from builtins import str
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import config
@@ -61,7 +62,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
 # User defined exceptions
 #
 
-class LocalDocker:
+class LocalDocker(object):
 
     def __init__(self):
         """ Checks if the machine is ready to run docker containers.

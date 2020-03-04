@@ -5,6 +5,7 @@ from __future__ import print_function
 # interface of Tango.
 #
 
+from builtins import object
 from builtins import str
 import sys
 import os
@@ -24,7 +25,7 @@ from tangoObjects import TangoJob, TangoMachine, InputFile
 from config import Config
 
 
-class Status:
+class Status(object):
 
     def __init__(self):
         self.found_dir = self.create(0, "Found directory")
@@ -55,7 +56,7 @@ class Status:
         return result
 
 
-class TangoREST:
+class TangoREST(object):
 
     COURSELABS = Config.COURSELABS
     OUTPUT_FOLDER = Config.OUTPUT_FOLDER

@@ -10,6 +10,7 @@ from __future__ import print_function
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+from builtins import object
 from future import standard_library
 standard_library.install_aliases()
 from builtins import str
@@ -24,7 +25,7 @@ from worker import Worker
 from tangoObjects import TangoQueue
 from config import Config
 
-class JobManager:
+class JobManager(object):
 
     def __init__(self, queue):
         self.daemon = True

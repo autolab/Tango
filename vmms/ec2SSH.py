@@ -8,6 +8,7 @@
 #   Ec2Exception - EC2 raises this if it encounters any problem
 #   ec2CallError - raised by ec2Call() function
 #
+from builtins import object
 from builtins import str
 import subprocess
 import os
@@ -82,7 +83,7 @@ class ec2CallError(Exception):
     pass
 
 
-class Ec2SSH:
+class Ec2SSH(object):
     _SSH_FLAGS = ["-i", config.Config.SECURITY_KEY_PATH,
                   "-o", "StrictHostKeyChecking no",
                   "-o", "GSSAPIAuthentication no"]
