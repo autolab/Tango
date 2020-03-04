@@ -317,19 +317,19 @@ class TangoNativeDictionary():
         self.dict[str(id)] = obj
 
     def get(self, id):
-        if str(id) in self.dict.keys():
+        if str(id) in list(self.dict.keys()):
             return self.dict[str(id)]
         else:
             return None
 
     def keys(self):
-        return self.dict.keys()
+        return list(self.dict.keys())
 
     def values(self):
-        return self.dict.values()
+        return list(self.dict.values())
 
     def delete(self, id):
-        if str(id) in self.dict.keys():
+        if str(id) in list(self.dict.keys()):
             del self.dict[str(id)]
 
     def iteritems(self):

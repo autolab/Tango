@@ -115,10 +115,10 @@ class TangoServer:
             self.log.debug("Received getJobs(%s) request" % (item))
 
             if item == -1:  # return the list of dead jobs
-                return self.jobQueue.deadJobs.values()
+                return list(self.jobQueue.deadJobs.values())
 
             elif item == 0:  # return the list of live jobs
-                return self.jobQueue.liveJobs.values()
+                return list(self.jobQueue.liveJobs.values())
 
             else:  # invalid parameter
                 return []
@@ -233,7 +233,7 @@ class TangoServer:
                     self.log.warning("Killed these %s VMs on restart: %s" %
                                 (vmms_name, namelist))
 
-            for _, job in self.jobQueue.liveJobs.iteritems():
+            for _, job in self.jobQueue.liveJobs.items():
                 if not job.isNotAssigned():
                     job.makeUnassigned()
                 self.log.debug("job: %s, assigned: %s" %
