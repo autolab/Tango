@@ -118,7 +118,7 @@ if __name__ == "__main__":
         tango = TangoServer()
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(tango.preallocator.vmms)
-        for key in tango.preallocator.machines.keys():
+        for key in list(tango.preallocator.machines.keys()):
             tango.preallocator.machines.set(key, [[], TangoQueue(key)])
         jobs = JobManager(tango.jobQueue)
 
