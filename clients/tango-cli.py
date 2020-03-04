@@ -351,7 +351,7 @@ def tango_runJob():
     infiles = [file for file in os.listdir(
         dir) if os.path.isfile(os.path.join(dir, file))]
     files = [os.path.join(dir, file) for file in infiles]
-    args.infiles = map(file_to_dict, infiles)
+    args.infiles = list(map(file_to_dict, infiles))
 
     args.jobname += "-0"
     args.outputFile += "-0"
