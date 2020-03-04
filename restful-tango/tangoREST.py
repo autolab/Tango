@@ -5,6 +5,7 @@ from __future__ import print_function
 # interface of Tango.
 #
 
+from builtins import str
 import sys
 import os
 import inspect

@@ -8,6 +8,7 @@
 #   TashiException - Tashi raises this if it encounters any problem
 #   tashiCallError - raised by tashiCall() function
 #
+from builtins import str
 import random
 import subprocess
 import os

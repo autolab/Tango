@@ -2,6 +2,7 @@
 #
 # Implements objects used to pass state within Tango.
 #
+from builtins import str
 import redis
 import pickle
 import Queue

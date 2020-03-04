@@ -8,6 +8,7 @@
 # `domain_name` attribtue of TangoMachine.
 #
 
+from builtins import str
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import tempfile
 import socket
