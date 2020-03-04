@@ -10,6 +10,7 @@ from __future__ import print_function
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+from builtins import str
 import threading, logging, time, copy
 
 from datetime import datetime

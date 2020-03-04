@@ -1,6 +1,7 @@
 #
 # preallocator.py - maintains a pool of active virtual machines
 #
+from builtins import range
 import threading, logging, time, copy
 
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue

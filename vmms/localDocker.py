@@ -2,6 +2,7 @@
 # localDocker.py - Implements the Tango VMMS interface to run Tango jobs in 
 #                docker containers. In this context, VMs are docker containers.
 #
+from builtins import str
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import config
 from tangoObjects import TangoMachine
