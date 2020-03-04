@@ -8,6 +8,7 @@
 #   TashiException - Tashi raises this if it encounters any problem
 #   tashiCallError - raised by tashiCall() function
 #
+from builtins import object
 from builtins import str
 import random
 import subprocess
@@ -94,7 +95,7 @@ class tashiCallError(Exception):
     pass
 
 
-class TashiSSH:
+class TashiSSH(object):
     _SSH_FLAGS = ["-q", "-i", os.path.dirname(__file__) + "/id_rsa",
                   "-o", "StrictHostKeyChecking=no",
                   "-o", "GSSAPIAuthentication=no"]

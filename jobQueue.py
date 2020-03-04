@@ -7,6 +7,7 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
+from builtins import object
 from builtins import str
 import threading, logging, time
 
@@ -29,7 +30,7 @@ from config import Config
 #
 
 
-class JobQueue:
+class JobQueue(object):
 
     def __init__(self, preallocator):
         self.liveJobs = TangoDictionary("liveJobs")

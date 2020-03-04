@@ -8,6 +8,7 @@
 # `domain_name` attribtue of TangoMachine.
 #
 
+from builtins import object
 from builtins import str
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import tempfile
@@ -65,7 +66,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
                             stderr=subprocess.STDOUT)
     return ret
 
-class DistDocker:
+class DistDocker(object):
 
     _SSH_FLAGS = ["-q", "-o", "BatchMode=yes" ]
     _SSH_AUTH_FLAGS = [ "-i", os.path.join(os.path.dirname(__file__), "id_rsa"),

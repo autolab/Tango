@@ -34,6 +34,7 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
+from builtins import object
 from builtins import str
 import threading, logging, time, stat, re, os
 
@@ -46,7 +47,7 @@ from tangoObjects import TangoJob
 from config import Config
 
 
-class TangoServer:
+class TangoServer(object):
 
     """ TangoServer - Implements the API functions that the server accepts
     """
