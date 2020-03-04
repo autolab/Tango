@@ -50,7 +50,7 @@ class JobQueue:
 
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
-        keys = self.liveJobs.keys()
+        keys = list(self.liveJobs.keys())
         if (str(id) in keys):
             id = -1
             for i in xrange(1, Config.MAX_JOBID + 1):
@@ -134,7 +134,7 @@ class JobQueue:
         self.log.debug("remove|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
+        if str(id) in list(self.liveJobs.keys()):
             self.liveJobs.delete(id)
             status = 0
 
@@ -160,7 +160,7 @@ class JobQueue:
             status = -1
             self.queueLock.acquire()
             self.log.debug("delJob| Acquired lock to job queue.")
-            if str(id) in self.deadJobs.keys():
+            if str(id) in list(self.deadJobs.keys()):
                 self.deadJobs.delete(id)
                 status = 0
             self.queueLock.release()
@@ -178,7 +178,7 @@ class JobQueue:
         """
         self.queueLock.acquire()
         self.log.debug("get| Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
+        if str(id) in list(self.liveJobs.keys()):
             job = self.liveJobs.get(id)
         else:
             job = None
@@ -191,7 +191,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
-        for id, job in self.liveJobs.iteritems():
+        for id, job in self.liveJobs.items():
             if job.isNotAssigned():
                 self.queueLock.release()
                 return id
@@ -203,7 +203,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
-        for id, job in self.liveJobs.iteritems():
+        for id, job in self.liveJobs.items():
             # if target_id is set, only interested in this id
             if target_id and target_id != id:
                 continue
@@ -260,7 +260,7 @@ class JobQueue:
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
-        if str(id) in self.liveJobs.keys():
+        if str(id) in list(self.liveJobs.keys()):
             self.log.info("makeDead| Found job ID: %d in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
@@ -276,8 +276,8 @@ class JobQueue:
     def getInfo(self):
 
         info = {}
-        info['size'] = len(self.liveJobs.keys())
-        info['size_deadjobs'] = len(self.deadJobs.keys())
+        info['size'] = len(list(self.liveJobs.keys()))
+        info['size_deadjobs'] = len(list(self.deadJobs.keys()))
 
         return info
 

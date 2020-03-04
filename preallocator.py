@@ -29,7 +29,7 @@ class Preallocator:
     def poolSize(self, vmName):
         """ poolSize - returns the size of the vmName pool, for external callers
         """
-        if vmName not in self.machines.keys():
+        if vmName not in list(self.machines.keys()):
             return 0
         else:
             return len(self.machines.get(vmName)[0])
@@ -44,7 +44,7 @@ class Preallocator:
         of machines as necessary.
         """
         self.lock.acquire()
-        if vm.name not in self.machines.keys():
+        if vm.name not in list(self.machines.keys()):
             self.machines.set(vm.name, [[], TangoQueue(vm.name)])
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
@@ -70,7 +70,7 @@ class Preallocator:
         """ allocVM - Allocate a VM from the free list
         """
         vm = None
-        if vmName in self.machines.keys():
+        if vmName in list(self.machines.keys()):
             self.lock.acquire()
 
         if not self.machines.get(vmName)[1].empty():
@@ -201,7 +201,7 @@ class Preallocator:
         this function when the system is queiscent (pool size == free
         size)
         """
-        if vmName not in self.machines.keys():
+        if vmName not in list(self.machines.keys()):
             return -1
 
         dieVM = None
@@ -226,7 +226,7 @@ class Preallocator:
 
     def getAllPools(self):
         result = {}
-        for vmName in self.machines.keys():
+        for vmName in list(self.machines.keys()):
             result[vmName] = self.getPool(vmName)
         return result
 
@@ -234,7 +234,7 @@ class Preallocator:
         """ getPool - returns the members of a pool and its free list
         """
         result = {}
-        if vmName not in self.machines.keys():
+        if vmName not in list(self.machines.keys()):
             return result
 
         result["total"] = []
