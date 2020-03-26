@@ -5,6 +5,7 @@
 #
 
 from __future__ import print_function
+from builtins import range
 from future import standard_library
 standard_library.install_aliases()
 from builtins import map
@@ -359,7 +360,7 @@ def tango_runJob():
 
     args.jobname += "-0"
     args.outputFile += "-0"
-    for i in xrange(1, args.numJobs + 1):
+    for i in range(1, args.numJobs + 1):
         print("----------------------------------------- STARTING JOB " + str(i) + " -----------------------------------------")
         print("----------- OPEN")
         tango_open()
