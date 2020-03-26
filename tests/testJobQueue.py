@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import range
 from builtins import str
 import unittest
 import redis
@@ -129,7 +130,7 @@ class TestJobQueue(unittest.TestCase):
     def test__getNextID(self):
 
         init_id = self.jobQueue.nextID
-        for i in xrange(1, Config.MAX_JOBID + 100):
+        for i in range(1, Config.MAX_JOBID + 100):
             id = self.jobQueue._getNextID()
             self.assertNotEqual(str(id), self.jobId1)
 

@@ -2,6 +2,7 @@
 #
 # Implements objects used to pass state within Tango.
 #
+from builtins import range
 from builtins import object
 from future import standard_library
 standard_library.install_aliases()
@@ -309,7 +310,7 @@ class TangoRemoteDictionary(object):
         self.r.delete(self.hash_name)
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+        return iter([(i, self.get(i)) for i in range(1,Config.MAX_JOBID+1)
                 if self.get(i) != None])
 
 class TangoNativeDictionary(object):
@@ -337,7 +338,7 @@ class TangoNativeDictionary(object):
             del self.dict[str(id)]
 
     def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+        return iter([(i, self.get(i)) for i in range(1,Config.MAX_JOBID+1)
                 if self.get(i) != None])
 
     def _clean(self):

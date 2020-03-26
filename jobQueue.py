@@ -7,6 +7,7 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
+from builtins import range
 from builtins import object
 from builtins import str
 import threading, logging, time
@@ -55,7 +56,7 @@ class JobQueue(object):
         keys = list(self.liveJobs.keys())
         if (str(id) in keys):
             id = -1
-            for i in xrange(1, Config.MAX_JOBID + 1):
+            for i in range(1, Config.MAX_JOBID + 1):
                 if (str(i) not in keys):
                     id = i
                     break
