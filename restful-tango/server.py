@@ -8,6 +8,7 @@ from tempfile import NamedTemporaryFile
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+import asyncio
 
 import tangoREST
 from config import Config
@@ -167,4 +168,5 @@ if __name__ == "__main__":
 
     tangoREST.tango.resetTango(tangoREST.tango.preallocator.vmms)
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
+    asyncio.set_event_loop(asyncio.new_event_loop())
     tornado.ioloop.IOLoop.instance().start()
