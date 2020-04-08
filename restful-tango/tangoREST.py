@@ -112,7 +112,7 @@ class TangoREST(object):
         for elem in os.listdir(directory):
             if elem == filename:
                 try:
-                    body = open("%s/%s" % (directory, elem)).read()
+                    body = open("%s/%s" % (directory, elem)).read().encode('utf-8')
                     md5hash = hashlib.md5(body).hexdigest()
                     return md5hash == fileMD5
                 except IOError:
@@ -291,6 +291,9 @@ class TangoREST(object):
                     os.unlink(tempfile)
                     return self.status.wrong_courselab
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("upload request failed: %s" % str(e))
                 os.unlink(tempfile)
                 return self.status.create(-1, str(e))
@@ -321,7 +324,7 @@ class TangoREST(object):
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print((exc_type, fname, exc_tb.tb_lineno))
+                print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("addJob request failed: %s" % str(e))
                 return self.status.create(-1, str(e))
         else:
