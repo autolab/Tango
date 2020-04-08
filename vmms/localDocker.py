@@ -228,7 +228,6 @@ class LocalDocker(object):
         images that can be used to boot a docker container with. This 
         function is a lot of parsing and so can break easily.
         """
-        import ipdb; ipdb.set_trace()
         result = set()
         cmd = "docker images"
         o = subprocess.check_output("docker images", shell=True).decode('utf-8')
