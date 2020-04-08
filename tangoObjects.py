@@ -284,7 +284,7 @@ class TangoRemoteDictionary(object):
         return str(id)
 
     def get(self, id):
-        if str(id) in self.r.hkeys(self.hash_name):
+        if self.r.hexists(self.hash_name, str(id)):
             unpickled_obj = self.r.hget(self.hash_name, str(id))
             obj = pickle.loads(unpickled_obj)
             return obj
