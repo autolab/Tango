@@ -8,6 +8,7 @@
 #   TashiException - Tashi raises this if it encounters any problem
 #   tashiCallError - raised by tashiCall() function
 #
+# TODO: this currently probably does not work on Python 3 yet
 from builtins import object
 from builtins import str
 import random
@@ -309,7 +310,7 @@ class TashiSSH(object):
                     [
                         'autolab@%s' %
                         (domain_name),
-                        'cat time.out']).rstrip('\n')
+                        'cat time.out']).decode('utf-8').rstrip('\n')
 
                 # If the output is empty, then ignore it (timing info wasn't
                 # collected), otherwise let's log it!

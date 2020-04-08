@@ -338,7 +338,7 @@ class DistDocker(object):
             volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                                 DistDocker._SSH_AUTH_FLAGS +
                                                 ["%s@%s" % (self.hostUser, host),
-                                                "(ls %s)" % volumePath]).split('\n')
+                                                "(ls %s)" % volumePath]).decode('utf-8').split('\n')
             for volume in volumes:
                 if re.match("%s-" % config.Config.PREFIX, volume):
                     machine = TangoMachine()
@@ -376,7 +376,7 @@ class DistDocker(object):
             o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                         DistDocker._SSH_AUTH_FLAGS +
                                         ["%s@%s" % (self.hostUser, host),
-                                        "(docker images)"])
+                                        "(docker images)"]).decode('utf-8')
             o_l = o.split('\n')
             o_l.pop()
             o_l.reverse()
