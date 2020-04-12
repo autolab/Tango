@@ -292,7 +292,8 @@ class TangoRemoteDictionary(object):
             return None
 
     def keys(self):
-        return self.r.hkeys(self.hash_name)
+        keys = map(lambda key : key.decode(), self.r.hkeys(self.hash_name))
+        return list(keys)
 
     def values(self):
         vals = self.r.hvals(self.hash_name)
