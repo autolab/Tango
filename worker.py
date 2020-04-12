@@ -120,7 +120,7 @@ class Worker(threading.Thread):
         """
         self.appendMsg(f1, "Here is the output from the autograder:\n---")
         (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
-        wf=os.fdopen(wfd, "a")
+        wf=os.fdopen(wfd, "ab")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
         # f2 may not exist if autograder failed
