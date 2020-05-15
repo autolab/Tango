@@ -130,9 +130,16 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
     long bufsize;
     int s;
 
-    if ((bufsize = sysconf(_SC_GETPW_R_SIZE_MAX)) < 0) {
-        ERROR_ERRNO("Unable to get buffer size");
-        exit(EXIT_OSERROR);
+    errno = 0;
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize < 0) {
+        // POSIX doc: need to set bufsize if -1 returned and errno unchanged
+        if (bufsize == -1 && errno == 0) {
+            bufsize = 1024;
+        } else {
+            ERROR_ERRNO("Unable to get buffer size");
+            exit(EXIT_OSERROR);
+        }
     }
 
     if ((*buf = malloc(bufsize)) == NULL) {
