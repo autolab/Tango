@@ -398,7 +398,7 @@ static void cleanup(void) {
     // We are currently in ~user.
     // (Note by @mpandya: the find binary is in /bin in RHEL but in /usr/bin
     // in Ubuntu)
-    char *find_args[] = {"find", "/usr/bin/find", ".", "/tmp", "/var/tmp", "-user", 
+    char *find_args[] = {"env", "find", ".", "/tmp", "/var/tmp", "-user",
         args.user_info.pw_name, "-delete", NULL};
     if (call_program("/usr/bin/env", find_args) != 0) {
         ERROR("Error deleting user's files");

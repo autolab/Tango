@@ -1,0 +1,19 @@
+FROM alpine:3.11
+
+WORKDIR /home
+RUN apk add bash make coreutils procps findutils gcc libc-dev argp-standalone && \
+    mkdir -p autodriver && \
+    cd autodriver && \
+    wget "https://raw.githubusercontent.com/wlnirvana/Tango/master/autodriver/autodriver.c" && \
+    wget "https://raw.githubusercontent.com/wlnirvana/Tango/master/autodriver/Makefile" && \
+    make clean && \
+    make LDFLAGS=-largp && \
+    cp autodriver /usr/bin/autodriver && \
+    chmod +s /usr/bin/autodriver && \
+    cd /home && \
+    adduser -D autolab && \
+    adduser -D autograde && \
+    mkdir output && \
+    chown autolab:autolab output && \
+    apk del argp-standalone && \
+    rm -rf autodriver
