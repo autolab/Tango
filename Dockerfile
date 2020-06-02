@@ -16,24 +16,27 @@ RUN mkdir -p volumes
 
 WORKDIR /opt
 
+# To avoid having a prompt on tzdata setup during installation
+ENV DEBIAN_FRONTEND=noninteractive 
+
 # Install dependancies
 RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
 	git \
-    vim \
-    supervisor \
-    python-pip \
-    python-dev \
-    build-essential \
-    tcl8.5 \
-    wget \
-    libgcrypt11-dev \
-    zlib1g-dev \
+	vim \
+	supervisor \
+	python-pip \
+	python-dev \
+	build-essential \
+	tcl8.5 \
+	wget \
+	libgcrypt11-dev \
+	zlib1g-dev \
 	apt-transport-https \
-    ca-certificates \
-    lxc \
-    iptables \
+	ca-certificates \
+	lxc \
+	iptables \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
