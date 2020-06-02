@@ -1,5 +1,5 @@
 # Start with empty ubuntu machine
-FROM ubuntu:15.04
+FROM ubuntu:18.04
 
 MAINTAINER Autolab Development Team "autolab-dev@andrew.cmu.edu"
 
