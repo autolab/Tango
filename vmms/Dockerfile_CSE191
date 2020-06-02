@@ -1,0 +1,62 @@
+# Autolab - autograding docker image
+
+FROM ubuntu:18.04
+MAINTAINER Matthew Knepley <knepley@buffalo.edu>
+
+#C Setup
+RUN apt-get update
+RUN apt-get install -y gcc
+RUN apt-get install -y make
+RUN apt-get install -y build-essential
+RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
+
+#Python Setup
+RUN apt-get update --fix-missing && \
+    DEBIAN_FRONTEND=nointeractive apt-get install -y \
+    python3 python3-numpy python3-nose python3-pandas \
+    python python-numpy python-nose python-pandas \
+    pep8 python-pip python3-pip python-wheel \
+    python-sphinx && \
+    pip install --upgrade setuptools
+
+#Valgrind Setup
+RUN apt-get update
+RUN apt-get install -y valgrind
+#OPAM Setup
+RUN apt-get install -y m4
+RUN apt-get install -y pkg-config
+RUN apt-get install -y opam
+
+#Utility setup
+RUN apt-get install -y unzip
+
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+
+# Install Coq
+RUN su autograde -c "opam init && opam install coq"
+RUN echo "PATH=${PATH}:/home/autograde/.opam/system/bin" >> /home/autograde/.profile
+
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+RUN su autograde -c "/bin/bash -c 'source ~/.profile && which coqc'"
+RUN gcc --version
