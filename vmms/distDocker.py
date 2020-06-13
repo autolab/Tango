@@ -107,8 +107,6 @@ class DistDocker(object):
 
     def getVolumePath(self, instanceName):
         volumePath = config.Config.DOCKER_VOLUME_PATH
-        if '*' in volumePath:
-            volumePath = os.getcwd() + '/' + 'volumes/'
         volumePath = volumePath + instanceName + '/'
         return volumePath
 
