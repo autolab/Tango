@@ -40,6 +40,12 @@ class Config:
     # "tashiSSH", and "ec2SSH"
     VMMS_NAME = "localDocker"
 
+    # Update this to the 'volumes' directory of your Tango installation if
+    # Docker is being used.
+    # It must be an absolute path with trailing slash, i.e
+    # /opt/TangoService/Tango/volumes/
+    DOCKER_VOLUME_PATH = '/opt/TangoService/Tango/volumes'
+
     #####
     # Part 2: Constants that shouldn't need to change very often.
     #
@@ -73,9 +79,6 @@ class Config:
     BOOT2DOCKER_ENV_TIMEOUT = 5
     DOCKER_IMAGE_BUILD_TIMEOUT = 300
     DOCKER_RM_TIMEOUT = 5
-    # Must be absolute path with trailing slash
-    # Default value of '*'' points this path to /path/to/Tango/volumes/
-    DOCKER_VOLUME_PATH = '*'
     DOCKER_HOST_USER = ''
 
     # Maximum size for input files in bytes
