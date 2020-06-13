@@ -42,10 +42,10 @@ class Config(object):
     VMMS_NAME = "localDocker"
 
     # Update this to the 'volumes' directory of your Tango installation if
-    # Docker is being used.
+    # Docker is being used as the VMMs.
     # It must be an absolute path with trailing slash, i.e
     # /opt/TangoService/Tango/volumes/
-    DOCKER_VOLUME_PATH = '/opt/TangoService/Tango/volumes'
+    DOCKER_VOLUME_PATH = ""
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
