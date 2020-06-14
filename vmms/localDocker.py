@@ -86,9 +86,8 @@ class LocalDocker:
 
     def getVolumePath(self, instanceName):
         volumePath = config.Config.DOCKER_VOLUME_PATH
-        if '*' in volumePath:
-            volumePath = os.getcwd() + '/' + 'volumes/'
-        volumePath = volumePath + instanceName + '/'
+        # Last empty string to cause trailing '/'
+        volumePath = os.path.join(volumePath, instanceName, "")
         return volumePath
 
     def domainName(self, vm):
