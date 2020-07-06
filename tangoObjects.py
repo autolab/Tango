@@ -323,7 +323,7 @@ class TangoNativeDictionary(object):
         self.dict[str(id)] = obj
 
     def get(self, id):
-        if str(id) in list(self.dict.keys()):
+        if str(id) in self.dict:
             return self.dict[str(id)]
         else:
             return None
