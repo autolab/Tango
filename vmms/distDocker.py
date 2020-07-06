@@ -226,7 +226,7 @@ class DistDocker(object):
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab 2>&1 output/feedback' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
