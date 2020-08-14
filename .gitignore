@@ -22,6 +22,8 @@ pip-selfcheck.json
 
 # IDEs
 .idea
+.vscode
 
 # Backup files
 *.bak
+
