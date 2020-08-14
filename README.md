@@ -2,7 +2,7 @@
   <img src="http://svgshare.com/i/2Mf.svg" width="380px" height="100px">
 </a>
 
-Tango [![Circle CI](https://circleci.com/gh/autolab/Tango.svg?style=svg)](https://circleci.com/gh/autolab/Tango)
+Tango
 ======
 
 Tango is a standalone RESTful Web service that runs and manages jobs. A job is a set of files that must satisfy the following constraints:
