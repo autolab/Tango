@@ -9,15 +9,10 @@ ENV HOME /root
 # Change to working directory
 WORKDIR /opt
 
-# Move all code into Tango directory
-ADD . TangoService/Tango/
-WORKDIR /opt/TangoService/Tango
-RUN mkdir -p volumes
-
-WORKDIR /opt
-
 # To avoid having a prompt on tzdata setup during installation
 ENV DEBIAN_FRONTEND=noninteractive 
+
+RUN chmod 1777 /tmp
 
 # Install dependancies
 RUN apt-get update && apt-get install -y \
@@ -52,6 +47,13 @@ RUN curl -sSL https://get.docker.com/ | sh
 # Install the magic wrapper.
 ADD ./wrapdocker /usr/local/bin/wrapdocker
 RUN chmod +x /usr/local/bin/wrapdocker
+
+WORKDIR /opt
+
+# Move all code into Tango directory
+ADD . TangoService/Tango/
+WORKDIR /opt/TangoService/Tango
+RUN mkdir -p volumes
 
 # Define additional metadata for our image.
 VOLUME /var/lib/docker
