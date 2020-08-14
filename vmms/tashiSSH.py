@@ -281,7 +281,7 @@ class TashiSSH(object):
         self.log.debug("runJob: Running job on VM %s" % domain_name)
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-            %d -o %d autolab 2>&1 output" % (config.Config.VM_ULIMIT_USER_PROC,
+            %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
                                            config.Config.VM_ULIMIT_FILE_SIZE,
                                            runTimeout,
                                            config.Config.MAX_OUTPUT_FILE_SIZE)
