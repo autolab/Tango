@@ -117,10 +117,10 @@ class TangoServer(object):
             self.log.debug("Received getJobs(%s) request" % (item))
 
             if item == -1:  # return the list of dead jobs
-                return list(self.jobQueue.deadJobs.values())
+                return self.jobQueue.deadJobs.values()
 
             elif item == 0:  # return the list of live jobs
-                return list(self.jobQueue.liveJobs.values())
+                return self.jobQueue.liveJobs.values()
 
             else:  # invalid parameter
                 return []
