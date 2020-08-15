@@ -72,7 +72,7 @@ RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/superviso
 RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 
 # Reload new config scripts
-# CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 
 # TODO:
