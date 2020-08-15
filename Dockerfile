@@ -21,8 +21,8 @@ RUN apt-get update && apt-get install -y \
 	git \
 	vim \
 	supervisor \
-	python-pip \
-	python-dev \
+	python3 \
+	python3-pip \
 	build-essential \
 	tcl8.5 \
 	wget \
@@ -36,9 +36,10 @@ RUN apt-get update && apt-get install -y \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Redis
-RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
-WORKDIR /opt/redis-stable
-RUN make && make install
+# RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
+# WORKDIR /opt/redis-stable
+# RUN make && make install
+
 WORKDIR /opt/TangoService/Tango/
 
 # Install Docker from Docker Inc. repositories.
@@ -48,6 +49,9 @@ RUN curl -sSL https://get.docker.com/ | sh
 ADD ./wrapdocker /usr/local/bin/wrapdocker
 RUN chmod +x /usr/local/bin/wrapdocker
 
+# Define additional metadata for our image.
+VOLUME /var/lib/docker
+
 WORKDIR /opt
 
 # Move all code into Tango directory
@@ -55,13 +59,10 @@ ADD . TangoService/Tango/
 WORKDIR /opt/TangoService/Tango
 RUN mkdir -p volumes
 
-# Define additional metadata for our image.
-VOLUME /var/lib/docker
-
 # Create virtualenv to link dependancies
-RUN pip install virtualenv && virtualenv .
+RUN pip3 install virtualenv && virtualenv .
 # Install python dependancies
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
 
@@ -71,7 +72,7 @@ RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/superviso
 RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 
 # Reload new config scripts
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+# CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 
 # TODO:
