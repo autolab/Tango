@@ -46,7 +46,7 @@ class Preallocator(object):
         of machines as necessary.
         """
         self.lock.acquire()
-        if vm.name not in list(self.machines.keys()):
+        if vm.name not in self.machines.keys():
             self.machines.set(vm.name, [[], TangoQueue(vm.name)])
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
