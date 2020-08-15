@@ -1,0 +1,6 @@
+[submodule "Autolab"]
+	path = Autolab
+	url = https://github.com/autolab/Autolab
+[submodule "Tango"]
+	path = Tango
+	url = https://github.com/autolab/Tango
