@@ -54,29 +54,27 @@ VOLUME /var/lib/docker
 
 WORKDIR /opt
 
-# Move all code into Tango directory
-ADD . TangoService/Tango/
-WORKDIR /opt/TangoService/Tango
-RUN mkdir -p volumes
-
 # Create virtualenv to link dependancies
 RUN pip3 install virtualenv && virtualenv .
+
+WORKDIR /opt/TangoService/Tango
+
+# Add in requirements
+COPY requirements.txt .
+
 # Install python dependancies
 RUN pip3 install -r requirements.txt
+
+# Move all code into Tango directory
+ADD . .
+RUN mkdir -p volumes
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
 
 # Move custom config file to proper location
 RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.conf
 RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
-RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
+# RUN cp /opt/TangoService/Tango/deployment/config/redis.conf /etc/redis.conf
 
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
-
-
-# TODO:
-# volumes dir in root dir, supervisor only starts after calling start once , nginx also needs to be started
-# Different log numbers for two different tangos
-# what from nginx forwards requests to tango
-# why does it still start on 3000
