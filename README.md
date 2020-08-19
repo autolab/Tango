@@ -30,10 +30,10 @@ Tango was developed as a distributed grading system for [Autolab](https://github
 
 Please feel free to use Tango at your school/organization. If you run into any problems with the steps below, you can reach the core developers at `autolab-dev@andrew.cmu.edu` and we would be happy to help.
 
-1. [Follow the steps to set up Tango](https://github.com/autolab/Tango/wiki/Set-up-Tango).
-2. [Read the documentation for the REST API](https://github.com/autolab/Tango/wiki/Tango-REST-API).
-3. [Read the documentation for the VMMS API](https://github.com/autolab/Tango/wiki/Tango-VMMS-API).
-4. [Test whether Tango is set up properly and can process jobs](https://github.com/autolab/Tango/wiki/Testing-Tango).
+1. [Follow the steps to set up Tango](https://autolab.github.io/docs/tango/).
+2. [Read the documentation for the REST API](https://autolab.github.io/docs/tango-rest/).
+3. [Read the documentation for the VMMS API](https://autolab.github.io/docs/tango-vmms/).
+4. [Test whether Tango is set up properly and can process jobs](https://autolab.github.io/docs/tango-cli/).
 
 ## Python 2 Support
 Tango now runs on Python 3. However, there is a legacy branch [master-python2](https://github.com/autolab/Tango/tree/master-python2) which is a snapshot of the last Python 2 Tango commit for legacy reasons. You are strongly encouraged to upgrade to the current Python 3 version of Tango if you are still on the Python 2 version, as future enhancements and bug fixes will be focused on the current master. 
