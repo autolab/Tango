@@ -4,6 +4,7 @@
 
 Tango
 ======
+### This branch (`master-python2`) is preserved for legacy purposes as the last Python 2 commit for Tango. You are strongly encouraged to migrate to Python 3 for Tango on the master branch, as Python 2 has reached its EOL on Jan 1 2020. Future support for `master-python2` will be greatly limited. 
 
 Tango is a standalone RESTful Web service that runs and manages jobs. A job is a set of files that must satisfy the following constraints:
 
