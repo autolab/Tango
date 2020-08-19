@@ -8,6 +8,8 @@
 # `domain_name` attribtue of TangoMachine.
 #
 
+from builtins import object
+from builtins import str
 import random, subprocess, re, time, logging, threading, os, sys, shutil
 import tempfile
 import socket
@@ -64,7 +66,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
                             stderr=subprocess.STDOUT)
     return ret
 
-class DistDocker:
+class DistDocker(object):
 
     _SSH_FLAGS = ["-q", "-o", "BatchMode=yes" ]
     _SSH_AUTH_FLAGS = [ "-i", os.path.join(os.path.dirname(__file__), "id_rsa"),
@@ -223,7 +225,7 @@ class DistDocker:
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab &> output/feedback' % \
+        autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab > output/feedback 2>&1' % \
                         (config.Config.VM_ULIMIT_USER_PROC, 
                         config.Config.VM_ULIMIT_FILE_SIZE,
                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
@@ -335,7 +337,7 @@ class DistDocker:
             volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                                 DistDocker._SSH_AUTH_FLAGS +
                                                 ["%s@%s" % (self.hostUser, host),
-                                                "(ls %s)" % volumePath]).split('\n')
+                                                "(ls %s)" % volumePath]).decode('utf-8').split('\n')
             for volume in volumes:
                 if re.match("%s-" % config.Config.PREFIX, volume):
                     machine = TangoMachine()
@@ -373,7 +375,7 @@ class DistDocker:
             o = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
                                         DistDocker._SSH_AUTH_FLAGS +
                                         ["%s@%s" % (self.hostUser, host),
-                                        "(docker images)"])
+                                        "(docker images)"]).decode('utf-8')
             o_l = o.split('\n')
             o_l.pop()
             o_l.reverse()

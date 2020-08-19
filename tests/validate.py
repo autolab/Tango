@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # Recursively validates all python files with pyflakes that were modified
 # since the last validation, and provides basic stats. Ignores hidden
@@ -8,8 +9,8 @@ try:
     import pyflakes
     pyflakes  # avoid unused warning when validating self!
 except ImportError:
-    print 'Validate requires pyflakes. Please install '\
-          'with: pip install pyflakes'
+    print('Validate requires pyflakes. Please install '\
+          'with: pip install pyflakes')
     exit()
 
 import argparse
@@ -46,7 +47,7 @@ validated_issue_count = 0
 line_count = 0
 
 
-print '\n---- Validating all files ----'
+print('\n---- Validating all files ----')
 
 for dirname, dirnames, filenames in os.walk('.'):
     for filename in filenames:
@@ -77,16 +78,16 @@ for dirname, dirnames, filenames in os.walk('.'):
             if args.stats:
                 line_count += sum(1 for line in open(path))
 if validated_issue_count == 0:
-    print 'ALL OKAY'
-print '\n---- Validation summary ----'
-print 'Files with validation issues: %i' % validated_issue_count
-print 'Validated files: %i' % validated_count
-print 'Total python files: %i' % file_count
+    print('ALL OKAY')
+print('\n---- Validation summary ----')
+print('Files with validation issues: %i' % validated_issue_count)
+print('Validated files: %i' % validated_count)
+print('Total python files: %i' % file_count)
 
 # Print stats
 if args.stats:
-    print '\n---- Stats ----'
-    print 'Total python line count: %i' % line_count
+    print('\n---- Stats ----')
+    print('Total python line count: %i' % line_count)
 
 # Finish
-print ''
+print('')

@@ -2,12 +2,13 @@
 # config.py - Global configuration constants and runtime info
 #
 
+from builtins import object
 import logging, time
 
 # Config - defines
 
 
-class Config:
+class Config(object):
     #####
     # Part 1: Tango constants for developers
     #

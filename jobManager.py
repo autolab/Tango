@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
@@ -9,6 +10,10 @@
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+from builtins import object
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 import threading, logging, time, copy
 
 from datetime import datetime
@@ -20,7 +25,7 @@ from worker import Worker
 from tangoObjects import TangoQueue
 from config import Config
 
-class JobManager:
+class JobManager(object):
 
     def __init__(self, queue):
         self.daemon = True
@@ -62,9 +67,16 @@ class JobManager:
 
             if id:
                 job = self.jobQueue.get(id)
+
+                # job could no longer exist if it was completed by someone else
+                if job == None:
+                    continue
+
                 if not job.accessKey and Config.REUSE_VMS:
                     id, vm = self.jobQueue.getNextPendingJobReuse(id)
                     job = self.jobQueue.get(id)
+                    if job == None:
+                        continue
 
                 try:
                     # Mark the job assigned

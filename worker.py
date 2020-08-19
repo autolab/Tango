@@ -1,6 +1,7 @@
 #
 # worker.py - Thread that shepherds a job through it execution sequence
 #
+from builtins import str
 import threading
 import time
 import logging
@@ -119,7 +120,7 @@ class Worker(threading.Thread):
         """
         self.appendMsg(f1, "Here is the output from the autograder:\n---")
         (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
-        wf=os.fdopen(wfd, "a")
+        wf=os.fdopen(wfd, "ab")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
         # f2 may not exist if autograder failed
@@ -138,7 +139,7 @@ class Worker(threading.Thread):
                 outputFileName = job.outputFile.split(
                     "/")[-1]  # get filename from path
                 fh = open(job.outputFile, 'rb')
-                files = {'file': unicode(fh.read(), errors='ignore')}
+                files = {'file': str(fh.read(), errors='ignore')}
                 hdrs = {'Filename': outputFileName}
                 self.log.debug("Sending request to %s" % job.notifyURL)
                 response = requests.post(

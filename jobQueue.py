@@ -7,6 +7,9 @@
 # JobManager: Class that creates a thread object that looks for new
 # work on the job queue and assigns it to workers.
 #
+from builtins import range
+from builtins import object
+from builtins import str
 import threading, logging, time
 
 from datetime import datetime
@@ -28,7 +31,7 @@ from config import Config
 #
 
 
-class JobQueue:
+class JobQueue(object):
 
     def __init__(self, preallocator):
         self.liveJobs = TangoDictionary("liveJobs")
@@ -53,7 +56,7 @@ class JobQueue:
         keys = self.liveJobs.keys()
         if (str(id) in keys):
             id = -1
-            for i in xrange(1, Config.MAX_JOBID + 1):
+            for i in range(1, Config.MAX_JOBID + 1):
                 if (str(i) not in keys):
                     id = i
                     break
@@ -191,7 +194,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==False
         """
         self.queueLock.acquire()
-        for id, job in self.liveJobs.iteritems():
+        for id, job in self.liveJobs.items():
             if job.isNotAssigned():
                 self.queueLock.release()
                 return id
@@ -203,7 +206,7 @@ class JobQueue:
         Called by JobManager when Config.REUSE_VMS==True
         """
         self.queueLock.acquire()
-        for id, job in self.liveJobs.iteritems():
+        for id, job in self.liveJobs.items():
             # if target_id is set, only interested in this id
             if target_id and target_id != id:
                 continue

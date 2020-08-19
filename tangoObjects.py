@@ -2,9 +2,14 @@
 #
 # Implements objects used to pass state within Tango.
 #
+from builtins import range
+from builtins import object
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 import redis
 import pickle
-import Queue
+import queue
 from config import Config
 
 redisConnection = None
@@ -19,7 +24,7 @@ def getRedisConnection():
     return redisConnection
 
 
-class InputFile():
+class InputFile(object):
 
     """
         InputFile - Stores pointer to the path on the local machine and the
@@ -35,7 +40,7 @@ class InputFile():
                 self.destFile)
 
 
-class TangoMachine():
+class TangoMachine(object):
 
     """
         TangoMachine - A description of the Autograding Virtual Machine
@@ -62,7 +67,7 @@ class TangoMachine():
         return "TangoMachine(image: %s, vmms: %s)" % (self.image, self.vmms)
 
 
-class TangoJob():
+class TangoJob(object):
 
     """
         TangoJob - A job that is to be run on a TangoMachine
@@ -156,7 +161,7 @@ def TangoIntValue(object_name, obj):
         return TangoNativeIntValue(object_name, obj)
 
 
-class TangoRemoteIntValue():
+class TangoRemoteIntValue(object):
 
     def __init__(self, name, value, namespace="intvalue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
@@ -176,7 +181,7 @@ class TangoRemoteIntValue():
         return self.__db.set(self.key, val)
 
 
-class TangoNativeIntValue():
+class TangoNativeIntValue(object):
 
     def __init__(self, name, value, namespace="intvalue"):
         self.key = '%s:%s' % (namespace, name)
@@ -198,10 +203,10 @@ def TangoQueue(object_name):
     if Config.USE_REDIS:
         return TangoRemoteQueue(object_name)
     else:
-        return Queue.Queue()
+        return queue.Queue()
 
 
-class TangoRemoteQueue():
+class TangoRemoteQueue(object):
 
     """Simple Queue with Redis Backend"""
 
@@ -263,7 +268,7 @@ def TangoDictionary(object_name):
         return TangoNativeDictionary()
 
 
-class TangoRemoteDictionary():
+class TangoRemoteDictionary(object):
 
     def __init__(self, object_name):
         self.r = getRedisConnection()
@@ -279,7 +284,7 @@ class TangoRemoteDictionary():
         return str(id)
 
     def get(self, id):
-        if str(id) in self.r.hkeys(self.hash_name):
+        if self.r.hexists(self.hash_name, str(id)):
             unpickled_obj = self.r.hget(self.hash_name, str(id))
             obj = pickle.loads(unpickled_obj)
             return obj
@@ -287,7 +292,8 @@ class TangoRemoteDictionary():
             return None
 
     def keys(self):
-        return self.r.hkeys(self.hash_name)
+        keys = map(lambda key : key.decode(), self.r.hkeys(self.hash_name))
+        return list(keys)
 
     def values(self):
         vals = self.r.hvals(self.hash_name)
@@ -304,11 +310,11 @@ class TangoRemoteDictionary():
         # only for testing
         self.r.delete(self.hash_name)
 
-    def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+    def items(self):
+        return iter([(i, self.get(i)) for i in range(1,Config.MAX_JOBID+1)
                 if self.get(i) != None])
 
-class TangoNativeDictionary():
+class TangoNativeDictionary(object):
 
     def __init__(self):
         self.dict = {}
@@ -317,23 +323,23 @@ class TangoNativeDictionary():
         self.dict[str(id)] = obj
 
     def get(self, id):
-        if str(id) in self.dict.keys():
+        if str(id) in self.dict:
             return self.dict[str(id)]
         else:
             return None
 
     def keys(self):
-        return self.dict.keys()
+        return list(self.dict.keys())
 
     def values(self):
-        return self.dict.values()
+        return list(self.dict.values())
 
     def delete(self, id):
-        if str(id) in self.dict.keys():
+        if str(id) in list(self.dict.keys()):
             del self.dict[str(id)]
 
-    def iteritems(self):
-        return iter([(i, self.get(i)) for i in xrange(1,Config.MAX_JOBID+1)
+    def items(self):
+        return iter([(i, self.get(i)) for i in range(1,Config.MAX_JOBID+1)
                 if self.get(i) != None])
 
     def _clean(self):

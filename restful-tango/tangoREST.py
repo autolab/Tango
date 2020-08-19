@@ -1,9 +1,12 @@
+from __future__ import print_function
 # tangoREST.py
 #
 # Implements open, upload, addJob, and poll to be used for the RESTful
 # interface of Tango.
 #
 
+from builtins import object
+from builtins import str
 import sys
 import os
 import inspect
@@ -22,7 +25,7 @@ from tangoObjects import TangoJob, TangoMachine, InputFile
 from config import Config
 
 
-class Status:
+class Status(object):
 
     def __init__(self):
         self.found_dir = self.create(0, "Found directory")
@@ -53,7 +56,7 @@ class Status:
         return result
 
 
-class TangoREST:
+class TangoREST(object):
 
     COURSELABS = Config.COURSELABS
     OUTPUT_FOLDER = Config.OUTPUT_FOLDER
@@ -109,7 +112,7 @@ class TangoREST:
         for elem in os.listdir(directory):
             if elem == filename:
                 try:
-                    body = open("%s/%s" % (directory, elem)).read()
+                    body = open("%s/%s" % (directory, elem)).read().encode('utf-8')
                     md5hash = hashlib.md5(body).hexdigest()
                     return md5hash == fileMD5
                 except IOError:
@@ -288,6 +291,9 @@ class TangoREST:
                     os.unlink(tempfile)
                     return self.status.wrong_courselab
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("upload request failed: %s" % str(e))
                 os.unlink(tempfile)
                 return self.status.create(-1, str(e))

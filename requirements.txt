@@ -1,10 +1,9 @@
-backports.ssl-match-hostname==3.4.0.2
-boto==2.27.0
-futures==2.2.0
-plumbum==1.4.2
-pyflakes==0.8.1
-redis==2.10.3
-requests==2.2.1
-rpyc==3.3.0
-wsgiref==0.1.2
-tornado==4.1
+backports.ssl-match-hostname==3.7.0.1
+boto==2.49.0 # used only by ec2SSH.py
+plumbum==1.6.9
+pyflakes==2.1.1
+redis==3.4.1
+requests==2.23.0
+rpyc==4.1.4
+tornado==4.5.3
+future==0.18.2

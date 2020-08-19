@@ -8,6 +8,10 @@
 #   Ec2Exception - EC2 raises this if it encounters any problem
 #   ec2CallError - raised by ec2Call() function
 #
+# TODO: this currently probably does not work on Python 3 yet
+
+from builtins import object
+from builtins import str
 import subprocess
 import os
 import re
@@ -81,7 +85,7 @@ class ec2CallError(Exception):
     pass
 
 
-class Ec2SSH:
+class Ec2SSH(object):
     _SSH_FLAGS = ["-i", config.Config.SECURITY_KEY_PATH,
                   "-o", "StrictHostKeyChecking no",
                   "-o", "GSSAPIAuthentication no"]
@@ -341,7 +345,7 @@ class Ec2SSH:
                        self.instanceName(vm.id, vm.name))
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-                %d -o %d autolab &> output" % (config.Config.VM_ULIMIT_USER_PROC,
+                %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
                                                config.Config.VM_ULIMIT_FILE_SIZE,
                                                runTimeout,
                                                maxOutputFileSize)
@@ -368,7 +372,7 @@ class Ec2SSH:
                     self.ssh_flags +
                     [
                         "%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
-                        'cat time.out']).rstrip('\n')
+                        'cat time.out']).decode('utf-8').rstrip('\n')
 
                 # If the output is empty, then ignore it (timing info wasn't
                 # collected), otherwise let's log it!

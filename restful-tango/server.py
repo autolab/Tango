@@ -1,5 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
 import tornado.web
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import sys
 import os
 from tempfile import NamedTemporaryFile
@@ -67,7 +69,7 @@ class UploadHandler(tornado.web.RequestHandler):
         """ set up the temporary file"""
         tempdir="%s/tmp" % (Config.COURSELABS,)
         if not os.path.exists(tempdir):
-           os.mkdir(tempdir, 0700)
+           os.mkdir(tempdir, 0o700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
            return self.send_error()
@@ -104,7 +106,7 @@ class PollHandler(tornado.web.RequestHandler):
     def get(self, key, courselab, outputFile):
         """ get - Handles the get request to poll."""
         self.set_header('Content-Type', 'application/octet-stream')
-        return tangoREST.poll(key, courselab, urllib.unquote(outputFile))
+        return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
 
 
 class InfoHandler(tornado.web.RequestHandler):
