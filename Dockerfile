@@ -49,15 +49,20 @@ VOLUME /var/lib/docker
 
 WORKDIR /opt
 
-# Move all code into Tango directory
-ADD . TangoService/Tango/
-WORKDIR /opt/TangoService/Tango
-RUN mkdir -p volumes
-
 # Create virtualenv to link dependancies
 RUN pip3 install virtualenv && virtualenv .
+
+WORKDIR /opt/TangoService/Tango
+
+# Add in requirements
+COPY requirements.txt .
+
 # Install python dependancies
 RUN pip3 install -r requirements.txt
+
+# Move all code into Tango directory
+ADD . .
+RUN mkdir -p volumes
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
 
