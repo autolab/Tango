@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:latest
+    deploy:
+      replicas: 1
+  tango:
+    ports:
+      - '3000:3000'
+    build: 
+      context: ./Tango
+    depends_on:
+      - "redis"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./Tango/config.py.docker:/opt/TangoService/Tango/config.py
+  # autolab:
+  #   ports:
+  #     - '80:80'
+  #     - '443:443'
+  #   build: ./Autolab
+  #   volumes:
+  #     - ./Autolab/courses:/home/app/webapp/courses
+
+# db:
+#   image: mysql
+#   ports:
+#     - '3306'
+#   environment:
+#     MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+#   volumes:
+#     - ./Autolab/docker/mysql:/etc/mysql/conf.d
+#     - ./db-data:/var/lib/mysql
