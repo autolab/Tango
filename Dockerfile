@@ -61,7 +61,7 @@ COPY requirements.txt .
 RUN pip3 install -r requirements.txt
 
 # Move all code into Tango directory
-ADD . .
+COPY . .
 RUN mkdir -p volumes
 
 RUN mkdir -p /var/log/docker /var/log/supervisor
