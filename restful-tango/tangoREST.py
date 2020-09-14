@@ -112,7 +112,7 @@ class TangoREST(object):
         for elem in os.listdir(directory):
             if elem == filename:
                 try:
-                    body = open("%s/%s" % (directory, elem)).read().encode('utf-8')
+                    body = open("%s/%s" % (directory, elem), "rb").read()
                     md5hash = hashlib.md5(body).hexdigest()
                     return md5hash == fileMD5
                 except IOError:
