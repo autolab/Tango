@@ -19,10 +19,20 @@ services:
       - '80:80'
       # - '443:443'
     build: ./Autolab
+    # Some volume mappings may seem redundant, but we want to make it explicit
     volumes:
       - ./Autolab/db/db.sqlite3:/home/app/webapp/db/db.sqlite3
-      - ./Autolab/config/database.docker.yml:/home/app/webapp/config/database.yml
+      - ./Autolab/config/database.yml:/home/app/webapp/config/database.yml
+      - ./Autolab/config/initializers/devise.rb:/home/app/webapp/config/initializers/devise.rb
+      - ./Autolab/config/environments/production.rb:/home/app/webapp/config/environments/production.rb
+      - ./Autolab/config/autogradeConfig.rb:/home/app/webapp/config/autogradeConfig.rb
       - ./Autolab/courses:/home/app/webapp/courses
+      - ./Autolab/docker/nginx.conf:/etc/nginx/sites-enabled/webapp.conf
+    environment:
+      - DOCKER_SSL=false
+      - RESTFUL_HOST=tango
+      - RESTFUL_PORT=3000
+      - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
 
 # db:
 #   image: mysql
