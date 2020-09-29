@@ -20,6 +20,8 @@ services:
       # - '443:443'
     build: ./Autolab
     volumes:
+      - ./Autolab/db/db.sqlite3:/home/app/webapp/db/db.sqlite3
+      - ./Autolab/config/database.docker.yml:/home/app/webapp/config/database.yml
       - ./Autolab/courses:/home/app/webapp/courses
 
 # db:
