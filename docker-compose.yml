@@ -5,6 +5,7 @@ services:
     deploy:
       replicas: 1
   tango:
+    container_name: tango
     ports:
       - '3000:3000'
     build: 
@@ -15,6 +16,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./Tango/config.py.docker:/opt/TangoService/Tango/config.py
   autolab:
+    container_name: autolab
     ports:
       - '80:80'
       - '443:443'

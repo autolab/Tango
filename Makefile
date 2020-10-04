@@ -1,4 +1,4 @@
-setup_configs: 
+setup-configs: 
 	echo "Creating default Autolab/config/database.yml"
 	cp -n ./Autolab/config/database.docker.yml ./Autolab/config/database.yml
 
@@ -17,6 +17,9 @@ setup_configs:
 
 	echo "Creating default Autolab/config/autogradeConfig.rb"
 	cp -n ./Autolab/config/autogradeConfig.rb.template ./Autolab/config/autogradeConfig.rb
+
+db-migrate:
+	docker exec -it autolab bash /home/app/webapp/docker/db_migrate.sh
 	
 clean:
 	rm -r ./Autolab/config/database.yml
