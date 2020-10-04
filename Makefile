@@ -19,8 +19,8 @@ setup_configs:
 	cp -n ./Autolab/config/autogradeConfig.rb.template ./Autolab/config/autogradeConfig.rb
 	
 clean:
-	rm -rf ./Autolab/config/database.yml
-	rm -rf ./Autolab/config/school.yml
-	rm -rf ./Autolab/config/initializers/devise.rb
-	rm -rf ./Autolab/config/environments/production.rb
-	rm -rf ./Autolab/config/autogradeConfig.rb
+	rm -r ./Autolab/config/database.yml
+	rm -r ./Autolab/config/school.yml
+	rm -r ./Autolab/config/initializers/devise.rb
+	rm -r ./Autolab/config/environments/production.rb
+	rm -r ./Autolab/config/autogradeConfig.rb
