@@ -10,7 +10,7 @@ setup_configs:
 
 	# Replace the Devise secret key with a random string
 	echo "Setting random Devise secret"
-	sed -i"" "s/<YOUR-SECRET-KEY>/`LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 128`/g" ./Autolab/config/initializers/devise.rb
+	sed -i.bak "s/<YOUR-SECRET-KEY>/`LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 128`/g" ./Autolab/config/initializers/devise.rb && rm ./Autolab/config/initializers/devise.rb.bak
 
 	echo "Creating default Autolab/config/environments/production.rb"
 	cp -n ./Autolab/config/environments/production.rb.template ./Autolab/config/environments/production.rb
