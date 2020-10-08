@@ -6,6 +6,7 @@ from builtins import object
 import logging, time
 
 # Config - defines
+import os
 
 
 class Config(object):
@@ -18,7 +19,7 @@ class Config(object):
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = "local"
+    PREFIX = "prod" if os.getenv("DOCKER_DEPLOYMENT").lower() == "true" else "local"
 
     # Default port for the RESTful server to listen on.
     PORT = 3000
@@ -31,7 +32,7 @@ class Config(object):
 
     # Courselabs directory. Must be created before starting Tango
     COURSELABS = "courselabs"
-    
+
     # Directory within each courselab where Tango will copy the output 
     # for jobs of that courselab
     OUTPUT_FOLDER = "output"
@@ -45,7 +46,7 @@ class Config(object):
     # Docker is being used as the VMMs.
     # It must be an absolute path with trailing slash, i.e
     # /opt/TangoService/Tango/volumes/
-    DOCKER_VOLUME_PATH = ""
+    DOCKER_VOLUME_PATH = "/opt/TangoService/Tango/volumes/" if os.getenv("DOCKER_DEPLOYMENT").lower() == "true" else ""
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
@@ -83,7 +84,7 @@ class Config(object):
     DOCKER_HOST_USER = ''
 
     # Maximum size for input files in bytes
-    MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024 # 250MB
+    MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024  # 250MB
 
     # Maximum size for output file in bytes
     MAX_OUTPUT_FILE_SIZE = 1000 * 1024
