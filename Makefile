@@ -20,6 +20,13 @@ setup-configs:
 
 db-migrate:
 	docker exec -it autolab bash /home/app/webapp/docker/db_migrate.sh
+
+update:
+	cd ./Autolab && git checkout master && git pull origin master
+	cd ..
+	cd ./Tango && git checkout master && git pull origin master
+	cd ..
+
 	
 clean:
 	rm -r ./Autolab/config/database.yml
