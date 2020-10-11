@@ -19,7 +19,7 @@ class Config(object):
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = "prod" if os.getenv("DOCKER_DEPLOYMENT").lower() == "true" else "local"
+    PREFIX = os.getenv("DOCKER_DEPLOYMENT", "local").lower()
 
     # Default port for the RESTful server to listen on.
     PORT = 3000
@@ -46,7 +46,8 @@ class Config(object):
     # Docker is being used as the VMMs.
     # It must be an absolute path with trailing slash, i.e
     # /opt/TangoService/Tango/volumes/
-    DOCKER_VOLUME_PATH = "/opt/TangoService/Tango/volumes/" if os.getenv("DOCKER_DEPLOYMENT").lower() == "true" else ""
+    DEFAULT_DOCKER_VOLUME_PATH = ""
+    DOCKER_VOLUME_PATH = os.getenv("DOCKER_VOLUME_PATH", DEFAULT_DOCKER_VOLUME_PATH)
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
