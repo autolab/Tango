@@ -19,7 +19,8 @@ class Config(object):
     # Unique prefix that defines VM name space for this Tango
     # version. When working in development, this prefix should be your
     # unique identifier. The "prod" prefix is reserved for production
-    PREFIX = os.getenv("DOCKER_DEPLOYMENT", "local").lower()
+    DEFAULT_PREFIX = "local"
+    PREFIX = os.getenv("DOCKER_DEPLOYMENT", DEFAULT_PREFIX).lower()
 
     # Default port for the RESTful server to listen on.
     PORT = 3000
