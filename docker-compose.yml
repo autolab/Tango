@@ -14,7 +14,11 @@ services:
       - "redis"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./Tango/config.py.docker:/opt/TangoService/Tango/config.py
+      - ./Tango/config.template.py:/opt/TangoService/Tango/config.py
+    environment:
+      - DOCKER_DEPLOYMENT=prod
+      # do not modify
+      - DOCKER_VOLUME_PATH=/opt/TangoService/Tango/volumes/
   autolab:
     container_name: autolab
     ports:
