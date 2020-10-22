@@ -25,17 +25,19 @@ services:
     container_name: mysql
     image: mysql/mysql-server:latest
     environment:
-      - MYSQL_DATABASES=my-database
+      - MYSQL_DATABASE=autolab_development
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_HOST=localhost
-      - MYSQL_PORT=33306
+      - MYSQL_PORT=3306
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
-      - MYSQL_MY_DATABASE=my-database
-#    ports:
-#      - "33306:3306"
-#    volumes:
-#      - "./volumes/mysql:/var/lib/mysql"
+#      - MYSQL_MY_DATABASE=my-database
+    ports:
+      - "3306:3306"
+    volumes:
+#      - ./Autolab/docker/mysql:/etc/mysql/conf.d
+#      - ./db-data:/var/lib/mysql
+      - mysql-db:/var/lib/mysql
 
   autolab:
     container_name: autolab
@@ -60,3 +62,6 @@ services:
       - RESTFUL_HOST=tango
       - RESTFUL_PORT=3000
       - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
+
+volumes:
+  mysql-db:
