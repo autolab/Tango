@@ -31,12 +31,9 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
-#      - MYSQL_MY_DATABASE=my-database
     ports:
       - "3306:3306"
     volumes:
-#      - ./Autolab/docker/mysql:/etc/mysql/conf.d
-#      - ./db-data:/var/lib/mysql
       - mysql-db:/var/lib/mysql
 
   autolab:
