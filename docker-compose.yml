@@ -20,22 +20,27 @@ services:
       # do not modify
       - DOCKER_VOLUME_PATH=/opt/TangoService/Tango/volumes/
 
-  mysql-db:
-    container_name: mysql_db
-    image: mysql:8.0.17
-    restart: always
+
+  mysql:
+    container_name: mysql
+    image: mysql/mysql-server:latest
     environment:
-      MYSQL_USER: 'username'
-      MYSQL_PASSWORD: 'password'
-      MYSQL_ROOT_PASSWORD: 'rootpassword'
-      MYSQL_DATABASE: 'autolab_db'
+      - MYSQL_DATABASES=my-database
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_HOST=localhost
+      - MYSQL_PORT=33306
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_MY_DATABASE=my-database
 #    ports:
-#      - '32031:3306'
+#      - "33306:3306"
+#    volumes:
+#      - "./volumes/mysql:/var/lib/mysql"
 
   autolab:
     container_name: autolab
     depends_on:
-      - mysql-db
+      - mysql
     ports:
       - '80:80'
       - '443:443'
