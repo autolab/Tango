@@ -135,7 +135,8 @@ class Config(object):
     # Part 4: Settings for shared memory
     #
     USE_REDIS = True
-    REDIS_HOSTNAME = "127.0.0.1"
+    DEFAULT_REDIS_HOSTNAME = "127.0.0.1"
+    REDIS_HOSTNAME = = os.getenv("DOCKER_DEPLOYMENT", DEFAULT_REDIS_HOSTNAME).lower()
     REDIS_PORT = 6379
 
     ######
