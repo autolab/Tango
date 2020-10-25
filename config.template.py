@@ -136,7 +136,7 @@ class Config(object):
     #
     USE_REDIS = True
     DEFAULT_REDIS_HOSTNAME = "127.0.0.1"
-    REDIS_HOSTNAME = = os.getenv("DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
+    REDIS_HOSTNAME = os.getenv("DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
     REDIS_PORT = 6379
 
     ######
