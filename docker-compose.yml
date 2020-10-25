@@ -14,25 +14,12 @@ services:
       - "redis"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./Tango/config.template.py:/opt/TangoService/Tango/config.py
+      - ./Tango/config.py:/opt/TangoService/Tango/config.py
     environment:
       - DOCKER_DEPLOYMENT=prod
       # do not modify
       - DOCKER_VOLUME_PATH=/opt/TangoService/Tango/volumes/
-
-
-  mysql:
-    container_name: mysql
-    image: mysql/mysql-server:latest
-    environment:
-      - MYSQL_DATABASE=autolab_development
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_HOST=localhost
-      - MYSQL_PORT=3306
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
-    volumes:
-      - mysql-db:/var/lib/mysql
+      - DOCKER_REDIS_HOSTNAME=redis
 
   autolab:
     container_name: autolab
@@ -57,6 +44,19 @@ services:
       - RESTFUL_HOST=tango
       - RESTFUL_PORT=3000
       - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
+
+  mysql:
+    container_name: mysql
+    image: mysql/mysql-server:latest
+    environment:
+      - MYSQL_DATABASE=autolab_development
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_HOST=localhost
+      - MYSQL_PORT=3306
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    volumes:
+      - mysql-db:/var/lib/mysql
 
 volumes:
   mysql-db:
