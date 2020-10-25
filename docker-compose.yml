@@ -31,8 +31,6 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
-    ports:
-      - "3306:3306"
     volumes:
       - mysql-db:/var/lib/mysql
 
