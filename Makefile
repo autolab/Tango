@@ -1,4 +1,7 @@
-setup-configs: 
+all: setup-autolab-configs setup-tango-configs
+
+.PHONY: setup-autolab-configs
+setup-autolab-configs: 
 	echo "Creating default Autolab/config/database.yml"
 	cp -n ./Autolab/config/database.docker.yml ./Autolab/config/database.yml
 
@@ -18,6 +21,11 @@ setup-configs:
 	echo "Creating default Autolab/config/autogradeConfig.rb"
 	cp -n ./Autolab/config/autogradeConfig.rb.template ./Autolab/config/autogradeConfig.rb
 
+.PHONY: setup-tango-configs
+setup-tango-configs: 
+	echo "Creating default Tango/config.py"
+	cp -n ./Tango/config.template.py ./Tango/config.py
+
 db-migrate:
 	docker exec -it autolab bash /home/app/webapp/docker/db_migrate.sh
 
@@ -27,7 +35,7 @@ update:
 	cd ./Tango && git checkout master && git pull origin master
 	cd ..
 
-	
+.PHONY: clean
 clean:
 	rm -r ./Autolab/config/database.yml
 	rm -r ./Autolab/config/school.yml
