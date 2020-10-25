@@ -11,4 +11,4 @@ First ensure that you have Docker installed on your machine.
 6. Run the containers: `docker-compose up`
 7. Ensure that the newly created config files have the right permissions: `make set-perms`
 8. Perform migrations: `make db-migrate`
-9. Create initial root user: `make create-root`
+9. Create initial root user: `make create-user`

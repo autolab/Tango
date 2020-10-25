@@ -43,6 +43,10 @@ update:
 .PHONY: set-perms
 set-perms:
 	docker exec -it autolab chown -R app:app /home/app/webapp
+
+.PHONY: create-user
+create-user:
+	docker exec -it autolab bash /home/app/webapp/docker/initialize_user.sh
 	
 .PHONY: clean
 clean:
