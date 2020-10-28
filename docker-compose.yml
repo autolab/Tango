@@ -49,7 +49,6 @@ services:
       # Uncomment the below to disable SSL (not recommended)
       # - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
 
-
     environment:
       - DOCKER_SSL=true                         # set to false for no SSL (not recommended)
       - RESTFUL_HOST=tango
