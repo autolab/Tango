@@ -79,5 +79,5 @@ docker-compose run --rm --entrypoint "\
     --force-renewal" certbot
 echo
 
-echo "### Reloading Autolab..."
-docker-compose exec autolab nginx -s reload
+echo "### Stopping Containers..."
+docker-compose stop

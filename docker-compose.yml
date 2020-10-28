@@ -42,10 +42,12 @@ services:
       - ./Autolab/courses:/home/app/webapp/courses
       - ./ssl/certbot/conf:/etc/letsencrypt
       - ./ssl/certbot/www:/var/www/certbot
+
       # Comment the below out to disable SSL (not recommended)
-      - ./data/nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
+      - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
+
       # Uncomment the below to disable SSL (not recommended)
-      # - ./data/nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
+      # - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
 
 
     environment:
