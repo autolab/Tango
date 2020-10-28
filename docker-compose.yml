@@ -25,6 +25,7 @@ services:
     container_name: autolab
     depends_on:
       - mysql
+      - certbot
     ports:
       - '80:80'
       - '443:443'
@@ -64,6 +65,7 @@ services:
       - mysql-db:/var/lib/mysql
 
   certbot:
+    container_name: certbot
     image: certbot/certbot
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
