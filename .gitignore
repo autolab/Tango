@@ -1,2 +1,3 @@
 .idea/
 ssl/certbot/
+init-letsencrypt.sh
