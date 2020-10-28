@@ -48,6 +48,7 @@ set-perms:
 create-user:
 	docker exec -it autolab bash /home/app/webapp/docker/initialize_user.sh
 
+.PHONY: ssl
 ssl:
 	cp -n ./ssl/init-letsencrypt.sh.template ./ssl/init-letsencrypt.sh
 
