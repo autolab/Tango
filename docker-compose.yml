@@ -38,7 +38,12 @@ services:
       - ./Autolab/config/environments/production.rb:/home/app/webapp/config/environments/production.rb
       - ./Autolab/config/autogradeConfig.rb:/home/app/webapp/config/autogradeConfig.rb
       - ./Autolab/courses:/home/app/webapp/courses
-      - ./Autolab/docker/nginx.conf:/etc/nginx/sites-enabled/webapp.conf
+      # - ./Autolab/docker/nginx.conf:/etc/nginx/sites-enabled/webapp.conf
+      - ./data/nginx:/etc/nginx/conf.d
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+
+
     environment:
       - DOCKER_SSL=false
       - RESTFUL_HOST=tango
@@ -57,6 +62,14 @@ services:
       - MYSQL_PASSWORD=password
     volumes:
       - mysql-db:/var/lib/mysql
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+
+
 
 volumes:
   mysql-db:
