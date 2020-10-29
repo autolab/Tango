@@ -17,6 +17,7 @@ services:
       - ./Tango/config.py:/opt/TangoService/Tango/config.py
     environment:
       - DOCKER_DEPLOYMENT=prod
+      - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
       # do not modify
       - DOCKER_VOLUME_PATH=/opt/TangoService/Tango/volumes/
       - DOCKER_REDIS_HOSTNAME=redis
