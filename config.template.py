@@ -56,7 +56,7 @@ class Config(object):
 
     # Keys for Tango to authenticate client requests
     DEFAULT_KEY = "test"
-    KEYS = [os.getenv("DOCKER_TANGO_KEY", DEFAULT_KEY)]
+    KEYS = [os.getenv("RESTFUL_KEY", DEFAULT_KEY)]
 
     # Queue manager checks for new work every so many seconds
     DISPATCH_PERIOD = 0.2
