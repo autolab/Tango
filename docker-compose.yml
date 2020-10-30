@@ -1,6 +1,7 @@
 version: "3.3"
 services:
   redis:
+    container_name: redis 
     image: redis:latest
     deploy:
       replicas: 1
@@ -26,6 +27,7 @@ services:
     container_name: autolab
     depends_on:
       - mysql
+      - certbot
     ports:
       - '80:80'
       - '443:443'
@@ -39,9 +41,17 @@ services:
       - ./Autolab/config/environments/production.rb:/home/app/webapp/config/environments/production.rb
       - ./Autolab/config/autogradeConfig.rb:/home/app/webapp/config/autogradeConfig.rb
       - ./Autolab/courses:/home/app/webapp/courses
-      - ./Autolab/docker/nginx.conf:/etc/nginx/sites-enabled/webapp.conf
+      - ./ssl/certbot/conf:/etc/letsencrypt
+      - ./ssl/certbot/www:/var/www/certbot
+
+      # Comment the below out to disable SSL (not recommended)
+      - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
+
+      # Uncomment the below to disable SSL (not recommended)
+      # - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
+
     environment:
-      - DOCKER_SSL=false
+      - DOCKER_SSL=true                         # set to false for no SSL (not recommended)
       - RESTFUL_HOST=tango
       - RESTFUL_PORT=3000
       - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
@@ -58,6 +68,13 @@ services:
       - MYSQL_PASSWORD=password
     volumes:
       - mysql-db:/var/lib/mysql
+
+  certbot:
+    container_name: certbot
+    image: certbot/certbot
+    volumes:
+      - ./ssl/certbot/conf:/etc/letsencrypt
+      - ./ssl/certbot/www:/var/www/certbot
 
 volumes:
   mysql-db:

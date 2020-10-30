@@ -47,7 +47,12 @@ set-perms:
 .PHONY: create-user
 create-user:
 	docker exec -it autolab bash /home/app/webapp/docker/initialize_user.sh
-	
+
+.PHONY: ssl
+ssl:
+	cp -n ./ssl/init-letsencrypt.sh.template ./ssl/init-letsencrypt.sh
+
+
 .PHONY: clean
 clean:
 	rm -rf ./Autolab/config/database.yml
@@ -56,4 +61,5 @@ clean:
 	rm -rf ./Autolab/config/environments/production.rb
 	rm -rf ./Autolab/config/autogradeConfig.rb
 	rm -rf ./Tango/config.py
+	rm -rf ./ssl/init-letsencrypt.sh
 	# We don't remove Autolab/courses here, as it may contain important user data. Remove it yourself manually if needed.
