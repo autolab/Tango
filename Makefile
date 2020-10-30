@@ -61,4 +61,5 @@ clean:
 	rm -rf ./Autolab/config/environments/production.rb
 	rm -rf ./Autolab/config/autogradeConfig.rb
 	rm -rf ./Tango/config.py
+	rm -rf ./ssl/init-letsencrypt.sh
 	# We don't remove Autolab/courses here, as it may contain important user data. Remove it yourself manually if needed.
