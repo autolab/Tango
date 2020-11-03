@@ -1,3 +1,7 @@
 .idea/
 ssl/certbot/
+ssl/fullchain.pem
+ssl/privkey.pem
+ssl/ssl-dhparams.pem
 init-letsencrypt.sh
+
