@@ -14,7 +14,7 @@ First ensure that you have Docker installed on your machine.
 9. Create initial root user: `make create-user`
 10. Perform SSL setup. 
  
-	*Option 1 with Let's Encrypt:*
+	**Option 1 with Let's Encrypt:**
  
     1. Ensure that your DNS record points towards the IP address of your server
     2. Ensure that port 443 is exposed on your server (i.e checking your firewall, AWS security group settings, etc)
@@ -25,7 +25,7 @@ First ensure that you have Docker installed on your machine.
     7. Run your modified script: `sudo sh ./ssl/init-letsencrypt.sh`
 	     
 	     
-	*Option 2 with your own SSL certificate:*
+	**Option 2 with your own SSL certificate:**
  
     1. Copy your private key to ./ssl/privkey.pem
     2. Copy your certificate to ./ssl/fullchain.pem
