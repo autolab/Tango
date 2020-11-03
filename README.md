@@ -27,13 +27,16 @@ First ensure that you have Docker installed on your machine.
 	     
 	**Option 2 with your own SSL certificate:**
  
-    1. Copy your private key to ./ssl/privkey.pem
-    2. Copy your certificate to ./ssl/fullchain.pem
-    3. Uncomment the following lines in `docker-compose.yml`:
+    1. Stop all containers: `docker-compose stop`
+    2. Copy your private key to ./ssl/privkey.pem
+    3. Copy your certificate to ./ssl/fullchain.pem
+    4. Generate your dhparams, i.e `openssl dhparam -out ./ssl/ssl-dhparams.pem 4096`
+    5. Uncomment the following lines in `docker-compose.yml`:
      
     ```
        # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
        # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
+       # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
     ```
 12. Start up everything: `docker-compose up -d`
 
