@@ -25,8 +25,11 @@ First ensure that you have Docker installed on your machine.
     1. Copy your private key to ./ssl/privkey.pem
     2. Copy your certificate to ./ssl/fullchain.pem
     3. Uncomment the following lines in `docker-compose.yml`:
-      > # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
-      > # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
+     
+    ```
+       # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
+       # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
+    ```
 12. Start up everything: `docker-compose up -d`
 
 ## Future Start-up Instructions
