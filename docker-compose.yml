@@ -45,8 +45,9 @@ services:
       - ./ssl/certbot/www:/var/www/certbot
 
       # Uncomment the below if you are using your own certificate
-      # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
-      # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
+      # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem
+      # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem
+      # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
 
       # Comment the below out to disable SSL (not recommended)
       - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
