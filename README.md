@@ -8,7 +8,7 @@ First ensure that you have Docker installed on your machine.
 3. Update submodules: `make update`
 4. Create initial configs: `make`
 5. Build the Dockerfiles: `docker-compose build`
-6. Run the containers: `docker-compose up -d`
+6. Run the containers: `docker-compose up -d`. Note at this point Nginx will still be crash-looping in the Autolab container because SSL has not been configuired/disabled yet.
 7. Ensure that the newly created config files have the right permissions: `make set-perms`
 8. Perform migrations: `make db-migrate`
 9. Create initial root user: `make create-user`
@@ -34,11 +34,33 @@ First ensure that you have Docker installed on your machine.
     5. Uncomment the following lines in `docker-compose.yml`:
      
     ```
-       # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
-       # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
-       # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
+        # - ./ssl/fullchain.pem:/etc/letsencrypt/live/test.autolab.io/fullchain.pem;
+        # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
+        # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
     ```
-12. Start up everything: `docker-compose up -d`
+  **Option 3 without using SSL (not recommended, only for local development/testing):**
+    1. Stop all containers: `docker-compose stop`
+    2. In `docker-compose.yml`, comment out the following:
+  
+    ``` 
+        # Comment the below out to disable SSL (not recommended)
+        - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
+    ```
+    
+    Also uncomment the following:
+    ```
+       # Uncomment the below to disable SSL (not recommended)
+       # - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
+    ```
+    
+    Lastly set `DOCKER_SSL=false`:
+    ```
+        environment:
+          - DOCKER_SSL=true                         # set to false for no SSL (not recommended)
+    ```
+    
+  
+2. Start up everything: `docker-compose up -d`
 
 ## Future Start-up Instructions
 After you have done your initial set-up, you can start your containers up again by simply running `docker-compose up -d`. 
