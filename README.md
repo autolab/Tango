@@ -58,9 +58,9 @@ First ensure that you have Docker installed on your machine.
         environment:
           - DOCKER_SSL=true                         # set to false for no SSL (not recommended)
     ```
-    
   
 2. Start up everything: `docker-compose up -d`
+3. Autolab should now be served on port 80/443, and Tango will be accessible on port 3000.
 
 ## Future Start-up Instructions
 After you have done your initial set-up, you can start your containers up again by simply running `docker-compose up -d`. 
