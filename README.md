@@ -103,7 +103,7 @@ access.log  error.log
 ```
 
 ### Accessing the Rails console
-Obtain a shell in the `autolab` container as described [previously](### Checking Autolab logs), and do `RAILS_ENV=production bundle exec rails c`:
+Obtain a shell in the `autolab` container as described [previously](# Checking Autolab logs), and do `RAILS_ENV=production bundle exec rails c`:
 
 ```
 root@be56be775428:/home/app/webapp# RAILS_ENV=production bundle exec rails c
@@ -115,7 +115,7 @@ Loading production environment (Rails 5.2.0)
 In the example above, if you performed `make create-user` you should have at least one user in your database. If there are errors connecting to a database here it is likely that the database was misconfigured.
 
 ### Checking Tango Logs
-Get a shell in the Tango instance, similar to the instructions mentioned [previously](### Checking Autolab logs). The logs are stored in the parent folder (`/opt/TangoService`) of the project directory:
+Get a shell in the Tango instance, similar to the instructions mentioned [previously](# Checking Autolab logs). The logs are stored in the parent folder (`/opt/TangoService`) of the project directory:
 
 ```
 $ docker exec -it tango bash
