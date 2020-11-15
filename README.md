@@ -1,5 +1,5 @@
 <a href="http://autolabproject.com">
-  <img src="http://svgshare.com/i/2Mf.svg" width="380px" height="100px">
+  <img src="images/autolab_banner.svg" width="380px" height="100px">
 </a>
 
 Tango
