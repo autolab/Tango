@@ -38,7 +38,8 @@ First ensure that you have Docker installed on your machine.
         # - ./ssl/privkey.pem:/etc/letsencrypt/live/test.autolab.io/privkey.pem;
         # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
     ```
-  **Option 3 without using SSL (not recommended, only for local development/testing):**
+    
+ 	 **Option 3 without using SSL (not recommended, only for local development/testing):**
     1. Stop all containers: `docker-compose stop`
     2. In `docker-compose.yml`, comment out the following:
   
