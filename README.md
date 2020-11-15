@@ -1,5 +1,7 @@
-<img src="images/autolab_banner.svg" alt="Autolab Logo" width="300"/>
-<img src="images/docker-logo.png" alt="Docker Logo" width="300"/>
+<p float="left">
+  <img src="images/autolab_banner.svg" alt="Autolab Logo" width="300"/>
+  <img src="images/docker-logo.png" alt="Docker Logo" width="300"/>
+</p>
 
 
 # Autolab Docker Deployment
