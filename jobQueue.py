@@ -10,10 +10,13 @@
 from builtins import range
 from builtins import object
 from builtins import str
-import threading, logging, time
+import threading
+import multiprocessing
+import logging
+import time
 
 from datetime import datetime
-from tangoObjects import TangoDictionary, TangoJob
+from tangoObjects import TangoDictionary, TangoJob, TangoQueue
 from config import Config
 
 #
@@ -34,8 +37,9 @@ from config import Config
 class JobQueue(object):
 
     def __init__(self, preallocator):
-        self.liveJobs = TangoDictionary("liveJobs")
-        self.deadJobs = TangoDictionary("deadJobs")
+        self.liveJobs = TangoDictionary("liveJobs2")
+        self.deadJobs = TangoDictionary("deadJobs2")
+        self.unassignedJobs = TangoQueue("unassigneds2")
         self.queueLock = threading.Lock()
         self.preallocator = preallocator
         self.log = logging.getLogger("JobQueue")
@@ -51,11 +55,11 @@ class JobQueue(object):
         self.log.debug("_getNextID|Acquired lock to job queue.")
         id = self.nextID
 
-        # If there is an livejob in the queue with with nextID, 
-        # this means that the id is already taken. 
-        # We try to find a free id to use by looping through all 
-        # the job ids possible and finding one that is 
-        # not used by any of the livejovbs. 
+        # If there is an livejob in the queue with with nextID,
+        # this means that the id is already taken.
+        # We try to find a free id to use by looping through all
+        # the job ids possible and finding one that is
+        # not used by any of the livejobs.
         # Return -1 if no such free id is found.
         keys = self.liveJobs.keys()
         if (str(id) in keys):
@@ -101,6 +105,9 @@ class JobQueue(object):
         self.log.debug("add| Acquired lock to job queue.")
 
         self.liveJobs.set(job.id, job)
+        # Add this to the unassigned job queue too 
+        self.unassignedJobs.put(job)
+
         job.appendTrace("%s|Added job %s:%d to queue" %
                         (datetime.utcnow().ctime(), job.name, job.id))
 
@@ -111,7 +118,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%d to queue, details = %s" % 
+        self.log.info("Added job %s:%d to queue, details = %s" %
             (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
@@ -123,7 +130,7 @@ class JobQueue(object):
         """
         if (not isinstance(job, TangoJob)):
             return -1
-    
+
         job.setId(self._getNextID())
         if (job.id == -1):
             self.log.info("add|JobQueue is full")
@@ -142,6 +149,7 @@ class JobQueue(object):
 
         return job.id
 
+    # TODO: remove remove since it's not used 
     def remove(self, id):
         """remove - Remove job from live queue
         """
@@ -209,9 +217,9 @@ class JobQueue(object):
         for id, job in self.liveJobs.items():
             if job.isNotAssigned():
                 self.queueLock.release()
-                return id
+                return job, id
         self.queueLock.release()
-        return None
+        return None, None
 
     def getNextPendingJobReuse(self, target_id=None):
         """getNextPendingJobReuse - Returns ID of next pending job and its VM.
@@ -237,12 +245,17 @@ class JobQueue(object):
         self.queueLock.release()
         return (None, None)
 
+    # TODO Remove this interface 
     def assignJob(self, jobId):
         """ assignJob - marks a job to be assigned
         """
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
+
         job = self.liveJobs.get(jobId)
+        # Remove from the unassigned jobs list
+        # self.unassignedJobs.popBack()
+
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
         job.makeAssigned()
@@ -251,6 +264,8 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
 
+    # Note: It seems here that you also assume that a job is being 
+    # retried when you unassign it
     def unassignJob(self, jobId):
         """ assignJob - marks a job to be unassigned
         """
@@ -262,6 +277,10 @@ class JobQueue(object):
         else:
             job.retries += 1
             Config.job_retries += 1
+
+        # Add to the unassigned jobs list if it is not already there
+        # if str(jobId) not in self.unassignedJobs.keys():
+        #    self.unassignedJobs.pushBack(jobId)
 
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
@@ -276,26 +295,80 @@ class JobQueue(object):
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.liveJobs.keys():
-            self.log.info("makeDead| Found job ID: %d in the live queue" % (id))
+            self.log.info(
+                "makeDead| Found job ID: %d in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
             self.log.info("Terminated job %s:%d: %s" %
                           (job.name, job.id, reason))
-            self.deadJobs.set(id, job)           
+            self.deadJobs.set(id, job)
             self.liveJobs.delete(id)
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
+
+        # If this job is in unassigned jobs, remove it from the 
+        # unassigned jobs list too 
+        # if str(id) in self.unassignedJobs.keys():
+        #    self.unassignedJobs.delete(id)
+
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status
 
     def getInfo(self):
-
         info = {}
         info['size'] = len(self.liveJobs.keys())
         info['size_deadjobs'] = len(self.deadJobs.keys())
-
         return info
 
     def reset(self):
+        # TODO fix this
         self.liveJobs._clean()
         self.deadJobs._clean()
+
+    def _getPendingJobNoLock(self):
+        for id, job in self.liveJobs.items():
+            if job.isNotAssigned():
+                return job, id
+        return None, None
+
+       
+
+    def getNextPendingJobFromQueue(self):
+        self.log.debug("_getNextPendingJob|Acquiring lock to job queue.")
+        self.queueLock.acquire()
+        self.log.debug("_getNextPendingJob|Acquired lock to job queue.")
+
+        # if (self.unassignedJobs.empty()):
+        #     self.queueLock.release()
+        #     return None, None
+
+        job = self.unassignedJobs.get()
+        # job = self.liveJobs.get(id)
+        if job is None:
+           raise Exception("Unassigned job not found in live job queue")           
+
+        self.log.debug("getNextPendingJob| Releasing lock to job queue.")
+        self.queueLock.release()
+        self.log.debug("getNextPendingJob| Released lock to job queue.")
+        return job, id
+ 
+    def reuseVM(self, job):
+        # Create a pool if necessary
+        if self.preallocator.poolSize(job.vm.name) == 0:
+            self.preallocator.update(job.vm, Config.POOL_SIZE)
+
+        # If the job hasn't been assigned to a worker yet, see if there
+        # is a free VM
+        if (job.isNotAssigned()):
+            vm = self.preallocator.allocVM(job.vm.name)
+            if vm:
+                return vm
+            else: 
+                # No Vms to assign
+                return None
+        else:
+            if vm:
+                return vm
+            else:
+                raise Exception("Job assigned without vm")
+

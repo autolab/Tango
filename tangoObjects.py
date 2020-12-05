@@ -238,8 +238,9 @@ class TangoRemoteQueue(object):
         else:
             item = self.__db.lpop(self.key)
 
-        # if item:
-        #     item = item[1]
+        if block and item:
+            print(item[0])
+            item = item[1]
 
         item = pickle.loads(item)
         return item
