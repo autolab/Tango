@@ -51,8 +51,12 @@ class JobQueue(object):
         self.log.debug("_getNextID|Acquired lock to job queue.")
         id = self.nextID
 
-        # If a job already exists in the queue at nextID, then try to find
-        # an empty ID. If the queue is full, then return -1.
+        # If there is an livejob in the queue with with nextID, 
+        # this means that the id is already taken. 
+        # We try to find a free id to use by looping through all 
+        # the job ids possible and finding one that is 
+        # not used by any of the livejovbs. 
+        # Return -1 if no such free id is found.
         keys = self.liveJobs.keys()
         if (str(id) in keys):
             id = -1
@@ -61,8 +65,12 @@ class JobQueue(object):
                     id = i
                     break
 
+        if (id == -1):
+            # No free id found, return -1
+            return -1
         self.nextID += 1
         if self.nextID > Config.MAX_JOBID:
+            # Wrap around if job ids go over max job ids avail
             self.nextID = 1
         self.queueLock.release()
         self.log.debug("_getNextID|Released lock to job queue.")
@@ -115,7 +123,11 @@ class JobQueue(object):
         """
         if (not isinstance(job, TangoJob)):
             return -1
+    
         job.setId(self._getNextID())
+        if (job.id == -1):
+            self.log.info("add|JobQueue is full")
+            return -1
         self.log.info("addDead|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
         job.retries = 0
