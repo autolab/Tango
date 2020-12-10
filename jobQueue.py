@@ -53,11 +53,10 @@ class JobQueue(object):
 
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
-        keys = self.liveJobs.keys()
-        if (str(id) in keys):
+        if id in self.liveJobs:
             id = -1
             for i in range(1, Config.MAX_JOBID + 1):
-                if (str(i) not in keys):
+                if i not in self.liveJobs:
                     id = i
                     break
 
@@ -137,7 +136,7 @@ class JobQueue(object):
         self.log.debug("remove|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
+        if id in self.liveJobs:
             self.liveJobs.delete(id)
             status = 0
 
@@ -163,7 +162,7 @@ class JobQueue(object):
             status = -1
             self.queueLock.acquire()
             self.log.debug("delJob| Acquired lock to job queue.")
-            if str(id) in self.deadJobs.keys():
+            if id in self.deadJobs:
                 self.deadJobs.delete(id)
                 status = 0
             self.queueLock.release()
@@ -181,10 +180,7 @@ class JobQueue(object):
         """
         self.queueLock.acquire()
         self.log.debug("get| Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
-            job = self.liveJobs.get(id)
-        else:
-            job = None
+        job = self.liveJobs.get(id)
         self.queueLock.release()
         self.log.debug("get| Released lock to job queue.")
         return job
@@ -263,7 +259,7 @@ class JobQueue(object):
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
-        if str(id) in self.liveJobs.keys():
+        if id in self.liveJobs:
             self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
