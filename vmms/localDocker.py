@@ -136,7 +136,11 @@ class LocalDocker(object):
           autolab user
         """
         instanceName = self.instanceName(vm.id, vm.image)
-        volumePath = self.getVolumePath(instanceName)
+        if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
+            self.log.debug("In docker mode")
+            volumePath = os.getenv("DOCKER_TANGO_HOST_VOLUME")
+        else:
+            volumePath = self.getVolumePath(instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % (volumePath, '/home/mount')]
         args = args + [vm.image]
