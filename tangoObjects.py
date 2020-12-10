@@ -274,6 +274,9 @@ class TangoRemoteDictionary(object):
         self.r = getRedisConnection()
         self.hash_name = object_name
 
+    def __contains__(self, id):
+        return self.r.hexists(self.hash_name, str(id))
+
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
 
@@ -284,7 +287,7 @@ class TangoRemoteDictionary(object):
         return str(id)
 
     def get(self, id):
-        if self.r.hexists(self.hash_name, str(id)):
+        if id in self:
             unpickled_obj = self.r.hget(self.hash_name, str(id))
             obj = pickle.loads(unpickled_obj)
             return obj
@@ -319,11 +322,14 @@ class TangoNativeDictionary(object):
     def __init__(self):
         self.dict = {}
 
+    def __contains__(self, id):
+        return id in self.dict
+
     def set(self, id, obj):
         self.dict[str(id)] = obj
 
     def get(self, id):
-        if str(id) in self.dict:
+        if id in self:
             return self.dict[str(id)]
         else:
             return None
