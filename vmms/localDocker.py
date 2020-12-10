@@ -121,6 +121,9 @@ class LocalDocker(object):
         # Create a fresh volume
         os.makedirs(volumePath)
         for file in inputFiles:
+            # Create output directory if it does not exist
+            os.makedirs(os.path.dirname(volumePath), exist_ok=True)
+
             shutil.copy(file.localFile, volumePath + file.destFile)
             self.log.debug('Copied in file %s to %s' % (file.localFile, volumePath + file.destFile))
         return 0
