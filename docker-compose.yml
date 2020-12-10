@@ -16,11 +16,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./Tango/config.py:/opt/TangoService/Tango/config.py
+      - ./Tango/volumes:/opt/TangoService/Tango/volumes
     environment:
       - DOCKER_DEPLOYMENT=prod
       - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
+      - DOCKER_VOLUME_PATH=/home/ec2-user/autolab-docker/Tango/volumes
       # do not modify
-      - DOCKER_VOLUME_PATH=/opt/TangoService/Tango/volumes/
       - DOCKER_REDIS_HOSTNAME=redis
 
   autolab:
@@ -50,13 +51,13 @@ services:
       # - ./ssl/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
 
       # Comment the below out to disable SSL (not recommended)
-      - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
+      # - ./nginx/app.conf:/etc/nginx/sites-enabled/webapp.conf
 
       # Uncomment the below to disable SSL (not recommended)
-      # - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
+      - ./nginx/no-ssl-app.conf:/etc/nginx/sites-enabled/webapp.conf
 
     environment:
-      - DOCKER_SSL=true                         # set to false for no SSL (not recommended)
+      - DOCKER_SSL=false # set to false for no SSL (not recommended)
       - RESTFUL_HOST=tango
       - RESTFUL_PORT=3000
       - RESTFUL_KEY=REPLACE_ME_SECRET_TANGO_KEY
@@ -66,11 +67,11 @@ services:
     image: mysql/mysql-server:latest
     environment:
       - MYSQL_DATABASE=autolab_development
-      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_PASSWORD=fanpu
       - MYSQL_HOST=localhost
       - MYSQL_PORT=3306
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
+      - MYSQL_USER=fanpu
+      - MYSQL_PASSWORD=password123
     volumes:
       - mysql-db:/var/lib/mysql
 
