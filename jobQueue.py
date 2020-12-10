@@ -82,7 +82,7 @@ class JobQueue(object):
             self.log.info("add|JobQueue is full")
             return -1
         self.log.debug("add|Gotten next ID: " + str(job.id))
-        self.log.info("add|Unassigning job ID: %d" % (job.id))
+        self.log.info("add|Unassigning job ID: %s" % (job.id))
         job.makeUnassigned()
         job.retries = 0
 
@@ -93,7 +93,7 @@ class JobQueue(object):
         self.log.debug("add| Acquired lock to job queue.")
 
         self.liveJobs.set(job.id, job)
-        job.appendTrace("%s|Added job %s:%d to queue" %
+        job.appendTrace("%s|Added job %s:%s to queue" %
                         (datetime.utcnow().ctime(), job.name, job.id))
 
         self.log.debug("Ref: " + str(job._remoteLocation))
@@ -103,7 +103,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%d to queue, details = %s" % 
+        self.log.info("Added job %s:%s to queue, details = %s" % 
             (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
@@ -264,10 +264,10 @@ class JobQueue(object):
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.liveJobs.keys():
-            self.log.info("makeDead| Found job ID: %d in the live queue" % (id))
+            self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
-            self.log.info("Terminated job %s:%d: %s" %
+            self.log.info("Terminated job %s:%s: %s" %
                           (job.name, job.id, reason))
             self.deadJobs.set(id, job)           
             self.liveJobs.delete(id)
