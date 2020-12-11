@@ -143,7 +143,7 @@ class LocalDocker(object):
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
         if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
-            volumePath = getDockerVolumePath(
+            volumePath = self.getDockerVolumePath(
                 os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % (volumePath, '/home/mount')]
