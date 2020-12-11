@@ -289,7 +289,7 @@ class JobQueue(object):
         # Check to make sure that the job is in the live jobs queue
         if str(id) in self.liveJobs.keys():
             self.log.info(
-                "makeDead| Found job ID: %d in the live queue" % (id))
+                "makeDead| Found job ID: %d in the live queue", (id))
             status = 0
             # Get the job from the dictionary
             job = self.liveJobs.get(id)
@@ -326,7 +326,7 @@ class JobQueue(object):
         self.unassignedJobs._clean()
         self.deadJobs._clean()
 
-    def getNextPendingJobFromQueue(self):
+    def getNextPendingJob(self):
         """Gets the next unassigned live job. Note that this is a 
            blocking function and we will block till there is an available 
            job.

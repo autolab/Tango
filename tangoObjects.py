@@ -249,7 +249,6 @@ class TangoRemoteQueue(object):
             return None
 
         if block and item:
-            print(item[0])
             item = item[1]
 
         item = pickle.loads(item)

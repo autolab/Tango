@@ -69,15 +69,6 @@ class TestJobQueue(unittest.TestCase):
     def test_addDead(self):
         return self.assertEqual(1, 1)
 
-    def test_remove(self):
-        self.jobQueue.remove(self.jobId1)
-        info = self.jobQueue.getInfo()
-        self.assertEqual(info['size'], 1)
-
-        self.jobQueue.remove(self.jobId2)
-        info = self.jobQueue.getInfo()
-        self.assertEqual(info['size'], 0)
-
     def test_delJob(self):
         self.jobQueue.delJob(self.jobId1, 0)
         info = self.jobQueue.getInfo()
@@ -100,11 +91,8 @@ class TestJobQueue(unittest.TestCase):
     def test_getNextPendingJob(self):
         self.jobQueue.assignJob(self.jobId2)
         self.jobQueue.unassignJob(self.jobId1)
-        exp_id = self.jobQueue.getNextPendingJob()
-        self.assertMultiLineEqual(exp_id, self.jobId1)
-
-    def test_getNextPendingJobReuse(self):
-        return False
+        exp = self.jobQueue.getNextPendingJob()
+        self.assertMultiLineEqual(str(exp.id), self.jobId1)
 
     def test_assignJob(self):
         self.jobQueue.assignJob(self.jobId1)
