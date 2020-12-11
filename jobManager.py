@@ -96,19 +96,17 @@ class JobManager(object):
                         preVM = self.preallocator.allocVM(job.vm.name)
                     vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
-                if job is None:
-                    raise Exception("here1")
- 
-                # Now dispatch the job to a worker 
-                self.log.info("Dispatched job %s:%d to %s [try %d]" %
+                if (preVM is not None):
+                    # Log the preallocated vm only in the case where a vm 
+                    # was allocated
+                    self.log.info("Dispatched job %s:%d to %s [try %d]" %
                               (job.name, job.id, preVM.name, job.retries))
-                if job is None:
-                    raise Exception("here")
  
-                # job.appendTrace(
-                #    "%s|Dispatched job %s:%d [try %d]" %
-                #    (datetime.utcnow().ctime(), job.name, job.id, job.retries))
+                job.appendTrace(
+                   "%s|Dispatched job %s:%d [try %d]" %
+                   (datetime.utcnow().ctime(), job.name, job.id, job.retries))
 
+                # Now dispatch the job to a worker 
                 Worker(
                     job,
                     vmms,
