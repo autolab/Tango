@@ -29,6 +29,7 @@ from config import Config
 #   thread.  The trace attribute of a job being None indicates that
 #   the job is not yet assigned.  Only the JobManager thread can
 #   assign jobs to Workers.
+
 #
 # - The dead list is a dictionary of the jobs that have completed.
 #
@@ -114,7 +115,7 @@ class JobQueue(object):
         # Get an id for the new job
         self.log.debug("add|Getting next ID")
         nextId = self._getNextID()
-        if (nextId.id == -1):
+        if (nextId == -1):
             self.log.info("add|JobQueue is full")
             return -1
         job.setId(nextId)
@@ -167,7 +168,7 @@ class JobQueue(object):
         # Get an id for the new job
         self.log.debug("add|Getting next ID")
         nextId = self._getNextID()
-        if (nextId.id == -1):
+        if (nextId == -1):
             self.log.info("add|JobQueue is full")
             return -1
         job.setId(nextId)
@@ -226,29 +227,6 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("get| Released lock to job queue.")
         return job
-
-    def getNextPendingJobReuse(self, target_id=None):
-        """getNextPendingJobReuse - Returns ID of next pending job and its VM.
-        Called by JobManager when Config.REUSE_VMS==True
-        """
-        self.queueLock.acquire()
-        for id, job in self.liveJobs.items():
-            # if target_id is set, only interested in this id
-            if target_id and target_id != id:
-                continue
-            # Create a pool if necessary
-            if self.preallocator.poolSize(job.vm.name) == 0:
-                self.preallocator.update(job.vm, Config.POOL_SIZE)
-
-            # If the job hasn't been assigned to a worker yet, see if there
-            # is a free VM
-            if (job.isNotAssigned()):
-                vm = self.preallocator.allocVM(job.vm.name)
-                if vm:
-                    self.queueLock.release()
-                    return (id, vm)
-        self.queueLock.release()
-        return (None, None)
 
     def assignJob(self, jobId):
         """ assignJob - marks a job to be assigned
@@ -391,4 +369,27 @@ class JobQueue(object):
                 return job.vm
             else:
                 raise Exception("Job assigned without vm")
+
+    def getNextPendingJobReuse(self, target_id=None):
+        """getNextPendingJobReuse - Returns ID of next pending job and its VM.
+        Called by JobManager when Config.REUSE_VMS==True
+        """
+        self.queueLock.acquire()
+        for id, job in self.liveJobs.items():
+            # if target_id is set, only interested in this id
+            if target_id and target_id != id:
+                continue
+            # Create a pool if necessary
+            if self.preallocator.poolSize(job.vm.name) == 0:
+                self.preallocator.update(job.vm, Config.POOL_SIZE)
+
+            # If the job hasn't been assigned to a worker yet, see if there
+            # is a free VM
+            if (job.isNotAssigned()):
+                vm = self.preallocator.allocVM(job.vm.name)
+                if vm:
+                    self.queueLock.release()
+                    return (id, vm)
+        self.queueLock.release()
+        return (None, None)
 

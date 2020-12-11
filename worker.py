@@ -207,7 +207,9 @@ class Worker(threading.Thread):
                         self.job.vm.name)))
 
                 # Host name returned from EC2 is stored in the vm object
-                self.vmms.initializeVM(self.job.vm)
+                # Note: This call to VM adds the vm to the pool so that it 
+                # will be accounted for
+                self.preallocator.createVM(self.job.vm)
                 self.log.debug("Asigned job to a new VM")
 
             vm = self.job.vm

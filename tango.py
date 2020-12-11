@@ -94,12 +94,7 @@ class TangoServer(object):
         ret = self.__validateJob(job, self.preallocator.vmms)
         self.log.info("Done validating job %s" % (job.name))
         if ret == 0:
-            while (True):
-                # When there are not enough job ids, -1
-                res = self.jobQueue.add(job)
-                if res >= 0:
-                    break
-            return res
+           return self.jobQueue.add(job)
         else:
             self.jobQueue.addDead(job)
             return -1
