@@ -68,11 +68,11 @@ services:
     image: mysql/mysql-server:latest
     environment:
       - MYSQL_DATABASE=autolab_development
-      - MYSQL_ROOT_PASSWORD=fanpu
+      - MYSQL_ROOT_PASSWORD=root
       - MYSQL_HOST=localhost
       - MYSQL_PORT=3306
-      - MYSQL_USER=fanpu
-      - MYSQL_PASSWORD=password123
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
     volumes:
       - mysql-db:/var/lib/mysql
 
