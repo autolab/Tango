@@ -238,6 +238,9 @@ class TangoRemoteQueue(object):
         else:
             item = self.__db.lpop(self.key)
 
+        if item is None:
+            return None
+
         if block and item:
             print(item[0])
             item = item[1]

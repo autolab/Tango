@@ -337,16 +337,8 @@ class JobQueue(object):
         self.log.debug("_getNextPendingJob|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("_getNextPendingJob|Acquired lock to job queue.")
-
-        # if (self.unassignedJobs.empty()):
-        #     self.queueLock.release()
-        #     return None, None
-
+        # Blocks till the next item is added 
         job = self.unassignedJobs.get()
-        # job = self.liveJobs.get(id)
-        if job is None:
-           raise Exception("Unassigned job not found in live job queue")           
-
         self.log.debug("getNextPendingJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("getNextPendingJob| Released lock to job queue.")

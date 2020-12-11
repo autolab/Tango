@@ -69,6 +69,8 @@ class JobManager(object):
             # NOTE: This grabs and acquires the lock on the queue
             # If there is no pending job, job and id is None
             job, _ = self.jobQueue.getNextPendingJobFromQueue()
+            # If there is no pending job, then we continue with 
+            # the loop
             if job is None:
                 continue
 
