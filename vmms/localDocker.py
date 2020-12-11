@@ -92,6 +92,11 @@ class LocalDocker(object):
         volumePath = os.path.join(volumePath, instanceName, "")
         return volumePath
 
+    def getDockerVolumePath(self, dockerPath, instanceName):
+        # Last empty string to cause trailing '/'
+        volumePath = os.path.join(dockerPath, instanceName, "")
+        return volumePath
+
     def domainName(self, vm):
         """ Returns the domain name that is stored in the vm
         instance.
@@ -136,11 +141,10 @@ class LocalDocker(object):
           autolab user
         """
         instanceName = self.instanceName(vm.id, vm.image)
+        volumePath = self.getVolumePath(instanceName)
         if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
-            self.log.debug("In docker mode")
-            volumePath = os.getenv("DOCKER_TANGO_HOST_VOLUME")
-        else:
-            volumePath = self.getVolumePath(instanceName)
+            volumePath = getDockerVolumePath(
+                os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % (volumePath, '/home/mount')]
         args = args + [vm.image]
