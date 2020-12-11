@@ -149,27 +149,6 @@ class JobQueue(object):
 
         return job.id
 
-    # TODO: remove remove since it's not used 
-    def remove(self, id):
-        """remove - Remove job from live queue
-        """
-        status = -1
-        self.log.debug("remove|Acquiring lock to job queue.")
-        self.queueLock.acquire()
-        self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
-            self.liveJobs.delete(id)
-            status = 0
-
-        self.queueLock.release()
-        self.log.debug("remove|Relased lock to job queue.")
-
-        if status == 0:
-            self.log.debug("Removed job %s from queue" % id)
-        else:
-            self.log.error("Job %s not found in queue" % id)
-        return status
-
     def delJob(self, id, deadjob):
         """ delJob - Implements delJob() interface call
         @param id - The id of the job to remove
