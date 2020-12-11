@@ -9,7 +9,7 @@ standard_library.install_aliases()
 from builtins import str
 import redis
 import pickle
-import queue
+from queue import Queue
 from config import Config
 
 redisConnection = None
@@ -203,9 +203,16 @@ def TangoQueue(object_name):
     if Config.USE_REDIS:
         return TangoRemoteQueue(object_name)
     else:
-        return queue.Queue()
+        return ExtendedQueue()
 
-
+class ExtendedQueue(Queue):
+    def remove(self, value):
+        with self.mutex:
+            self.queue.remove(value)
+    def _clean(self):
+        with self.mutex:
+            self.queue.clear()
+            
 class TangoRemoteQueue(object):
 
     """Simple Queue with Redis Backend"""
@@ -252,6 +259,12 @@ class TangoRemoteQueue(object):
         """Equivalent to get(False)."""
         return self.get(False)
 
+    def remove(self, value):
+        return self.__db.lrem(self.key, 0, value)
+
+    def _clean(self):
+        self.__db.delete(self.key)
+            
     def __getstate__(self):
         ret = {}
         ret['key'] = self.key

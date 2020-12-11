@@ -67,7 +67,7 @@ class JobManager(object):
         while True:
             # Gets the next pending job/ id
             # Blocks until we get a next job
-            job, _ = self.jobQueue.getNextPendingJobFromQueue()
+            job = self.jobQueue.getNextPendingJobFromQueue()
 
             if not job.accessKey and Config.REUSE_VMS:
                 vm = self.jobQueue.reuseVM(job)
