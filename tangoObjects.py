@@ -323,7 +323,7 @@ class TangoNativeDictionary(object):
         self.dict = {}
 
     def __contains__(self, id):
-        return id in self.dict
+        return str(id) in self.dict
 
     def set(self, id, obj):
         self.dict[str(id)] = obj
