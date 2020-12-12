@@ -13,9 +13,6 @@ import tango
 from datetime import datetime
 from builtins import str
 
-import sys
-import pickle
-
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
