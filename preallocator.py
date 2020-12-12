@@ -146,6 +146,7 @@ class Preallocator(object):
         This function should always be called in a thread since it
         might take a long time to complete.
         """
+        self.log.debug("__create: vm.vmms %s ", vm.vmms)
         vmms = self.vmms[vm.vmms]
         self.log.debug("__create: Using VMMS %s " % (Config.VMMS_NAME))
         for i in range(cnt):

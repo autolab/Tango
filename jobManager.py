@@ -103,6 +103,11 @@ class JobManager(object):
                     # was allocated
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                               (job.name, job.id, preVM.name, job.retries))
+                else:
+                    self.log.info("No VM preallocated for job %s:%d [try %d]" %
+                              (job.name, job.id, job.retries))
+
+
  
                 job.appendTrace(
                    "%s|Dispatched job %s:%d [try %d]" %
@@ -131,9 +136,6 @@ class JobManager(object):
         for key in t.preallocator.machines.keys():
             t.preallocator.machines.set(key, [[], TangoQueue(key)])
         jobs = JobManager(t.jobQueue)
-        fp = open("mock", "wb")
-        pickle.dump(1, fp)
-
         print("Starting the stand-alone Tango JobManager", mock_vmms)
         jobs.run()
 
