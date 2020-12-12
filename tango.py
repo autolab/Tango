@@ -52,7 +52,7 @@ class TangoServer(object):
     """ TangoServer - Implements the API functions that the server accepts
     """
 
-    def __init__(self):
+    def __init__(self, mock_vmms=None):
         self.daemon = True
         
         vmms = None
@@ -68,6 +68,9 @@ class TangoServer(object):
         elif Config.VMMS_NAME == "distDocker":
             from vmms.distDocker import DistDocker
             vmms = DistDocker()
+        elif Config.VMMS_NAME == "mock":
+            vmms = mock_vmms
+
 
         self.preallocator = Preallocator({Config.VMMS_NAME: vmms})
         self.jobQueue = JobQueue(self.preallocator)

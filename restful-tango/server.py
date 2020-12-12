@@ -9,10 +9,16 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-import tangoREST
+import importlib
 from config import Config
 
-tangoREST = tangoREST.TangoREST()
+try:
+    tangoREST = importlib.import_module("tangoREST")
+except:
+    tangoREST = importlib.import_module(".tangoREST", package="restful-tango")
+
+
+tREST = tangoREST.TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Regex for the resources
@@ -60,7 +66,7 @@ class OpenHandler(tornado.web.RequestHandler):
     @unblock
     def get(self, key, courselab):
         """ get - Handles the get request to open."""
-        return tangoREST.open(key, courselab)
+        return tREST.open(key, courselab)
 
 @tornado.web.stream_request_body
 class UploadHandler(tornado.web.RequestHandler):
@@ -71,7 +77,7 @@ class UploadHandler(tornado.web.RequestHandler):
         if not os.path.exists(tempdir):
            os.mkdir(tempdir, 0o700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
-           tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+           tREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
            return self.send_error()
         self.tempfile = NamedTemporaryFile(prefix='upload', dir=tempdir,
                                            delete=False)
@@ -86,7 +92,7 @@ class UploadHandler(tornado.web.RequestHandler):
         """ post - Handles the post request to upload."""
         name = self.tempfile.name
         self.tempfile.close()
-        return tangoREST.upload(
+        return tREST.upload(
             key,
             courselab,
             self.request.headers['Filename'],
@@ -97,7 +103,7 @@ class AddJobHandler(tornado.web.RequestHandler):
     @unblock
     def post(self, key, courselab):
         """ post - Handles the post request to add a job."""
-        return tangoREST.addJob(key, courselab, self.request.body)
+        return tREST.addJob(key, courselab, self.request.body)
 
 
 class PollHandler(tornado.web.RequestHandler):
@@ -106,7 +112,7 @@ class PollHandler(tornado.web.RequestHandler):
     def get(self, key, courselab, outputFile):
         """ get - Handles the get request to poll."""
         self.set_header('Content-Type', 'application/octet-stream')
-        return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
+        return tREST.poll(key, courselab, urllib.parse.unquote(outputFile))
 
 
 class InfoHandler(tornado.web.RequestHandler):
@@ -114,7 +120,7 @@ class InfoHandler(tornado.web.RequestHandler):
     @unblock
     def get(self, key):
         """ get - Handles the get request to info."""
-        return tangoREST.info(key)
+        return tREST.info(key)
 
 
 class JobsHandler(tornado.web.RequestHandler):
@@ -122,7 +128,7 @@ class JobsHandler(tornado.web.RequestHandler):
     @unblock
     def get(self, key, deadJobs):
         """ get - Handles the get request to jobs."""
-        return tangoREST.jobs(key, deadJobs)
+        return tREST.jobs(key, deadJobs)
 
 class PoolHandler(tornado.web.RequestHandler):
 
@@ -134,7 +140,7 @@ class PoolHandler(tornado.web.RequestHandler):
             key_l = key.split('/')
             key = key_l[0]
             image = key_l[1]
-        return tangoREST.pool(key, image)
+        return tREST.pool(key, image)
 
 
 class PreallocHandler(tornado.web.RequestHandler):
@@ -142,7 +148,7 @@ class PreallocHandler(tornado.web.RequestHandler):
     @unblock
     def post(self, key, image, num):
         """ post - Handles the post request to prealloc."""
-        return tangoREST.prealloc(key, image, num, self.request.body)
+        return tREST.prealloc(key, image, num, self.request.body)
 
 # Routes
 application = tornado.web.Application([
@@ -159,12 +165,22 @@ application = tornado.web.Application([
 ])
 
 
+class RunServer():
+    @staticmethod
+    def run(mock_vmms=None):
+        tg = importlib.import_module(".tangoREST")
+        tREST = tg.TangoREST(mock_vmms)
+        tREST.tango.resetTango(tREST.tango.preallocator.vmms)
+        application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
+        tornado.ioloop.IOLoop.instance().start()
+
+
 if __name__ == "__main__":
 
     port = Config.PORT
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
-    tangoREST.tango.resetTango(tangoREST.tango.preallocator.vmms)
+    tREST.tango.resetTango(tREST.tango.preallocator.vmms)
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
     tornado.ioloop.IOLoop.instance().start()

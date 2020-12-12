@@ -8,9 +8,14 @@ from tangoObjects import TangoQueue
 from worker import Worker
 from preallocator import Preallocator
 from jobQueue import JobQueue
-from tango import *
+# from tango import *
+import tango
 from datetime import datetime
 from builtins import str
+
+import sys
+import pickle
+
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
@@ -118,6 +123,18 @@ class JobManager(object):
             # Sleep for a bit and then check again
             time.sleep(Config.DISPATCH_PERIOD)
 
+    @staticmethod
+    def runJobManager(mock_vmms=None):
+        t = tango.TangoServer(mock_vmms)
+        t.log.debug("Resetting Tango VMs")
+        t.resetTango(t.preallocator.vmms)
+        for key in t.preallocator.machines.keys():
+            t.preallocator.machines.set(key, [[], TangoQueue(key)])
+        jobs = JobManager(t.jobQueue)
+
+        print("Starting the stand-alone Tango JobManager", mock_vmms)
+        jobs.run()
+
 
 if __name__ == "__main__":
 
@@ -125,12 +142,9 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
-        tango = TangoServer()
-        tango.log.debug("Resetting Tango VMs")
-        tango.resetTango(tango.preallocator.vmms)
-        for key in tango.preallocator.machines.keys():
-            tango.preallocator.machines.set(key, [[], TangoQueue(key)])
-        jobs = JobManager(tango.jobQueue)
-
-        print("Starting the stand-alone Tango JobManager")
-        jobs.run()
+        n = len(sys.argv)
+        if (n == 1):
+            JobManager.runJobManager()
+        else:
+            mock = pickle.load(open('mock', "rb"))
+            JobManager.runJobManager(mock_vmms=mock)

@@ -66,7 +66,7 @@ class TangoREST(object):
     # This key is just for testing.
     KEYS = Config.KEYS
 
-    def __init__(self):
+    def __init__(self, mock_vmms=None):
 
         logging.basicConfig(
             filename = self.LOGFILE,
@@ -76,7 +76,7 @@ class TangoREST(object):
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
         
-        self.tango = TangoServer()
+        self.tango = TangoServer(mock_vmms)
         self.status = Status()
 
     def validateKey(self, key):
