@@ -89,12 +89,15 @@ class TangoServer(object):
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
 
-    def addJob(self, job):
+    def addJob(self, job, skip_validate=False):
         """ addJob - Add a job to the job queue
         """
         Config.job_requests += 1
         self.log.debug("Received addJob request")
-        ret = self.__validateJob(job, self.preallocator.vmms)
+        if (not skip_validate):
+            ret = self.__validateJob(job, self.preallocator.vmms)
+        else:
+            ret = 0
         self.log.info("Done validating job %s" % (job.name))
         if ret == 0:
            return self.jobQueue.add(job)

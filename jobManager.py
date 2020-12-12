@@ -131,6 +131,8 @@ class JobManager(object):
         for key in t.preallocator.machines.keys():
             t.preallocator.machines.set(key, [[], TangoQueue(key)])
         jobs = JobManager(t.jobQueue)
+        fp = open("mock", "wb")
+        pickle.dump(1, fp)
 
         print("Starting the stand-alone Tango JobManager", mock_vmms)
         jobs.run()
@@ -142,9 +144,4 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
-        n = len(sys.argv)
-        if (n == 1):
-            JobManager.runJobManager()
-        else:
-            mock = pickle.load(open('mock', "rb"))
-            JobManager.runJobManager(mock_vmms=mock)
+        JobManager.runJobManager()

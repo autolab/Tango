@@ -10,13 +10,14 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
 import importlib
-from config import Config
 
 try:
     tangoREST = importlib.import_module("tangoREST")
 except:
     tangoREST = importlib.import_module(".tangoREST", package="restful-tango")
 
+
+from config import Config
 
 tREST = tangoREST.TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
