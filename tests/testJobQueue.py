@@ -101,7 +101,7 @@ class TestJobQueue(unittest.TestCase):
         self.jobQueue.assignJob(self.jobId2)
         self.jobQueue.unassignJob(self.jobId1)
         exp_id = self.jobQueue.getNextPendingJob()
-        self.assertMultiLineEqual(exp_id, self.jobId1)
+        self.assertMultiLineEqual(str(exp_id), self.jobId1)
 
     def test_getNextPendingJobReuse(self):
         return False
