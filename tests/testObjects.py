@@ -24,29 +24,29 @@ class TestObjects(unittest.TestCase):
 
     def runDictionaryTests(self):
         test_dict = TangoDictionary("test")
-        assert test_dict.keys() == []
-        assert test_dict.values() == []
+        self.assertEqual(test_dict.keys(), [])
+        self.assertEqual(test_dict.values(), [])
 
         for key in self.test_entries:
             test_dict.set(key, self.test_entries[key])
         
         for key in self.test_entries:
-            assert key in test_dict
-            assert test_dict.get(key) == self.test_entries[key]
+            self.assertTrue(key in test_dict)
+            self.assertEqual(test_dict.get(key), self.test_entries[key])
 
         for (key, val) in test_dict.items():
-            assert self.test_entries.get(key) == val
+            self.assertEqual(self.test_entries.get(key), val)
 
-        assert test_dict.keys() == [str(key) for key in self.test_entries.keys()]
-        assert test_dict.values() == list(self.test_entries.values())
-        assert "key_not_present" not in test_dict
-        assert test_dict.get("key_not_present") is None
+        self.assertEqual(test_dict.keys(), [str(key) for key in self.test_entries.keys()])
+        self.assertEqual(test_dict.values(), list(self.test_entries.values()))
+        self.assertTrue("key_not_present" not in test_dict)
+        self.assertEqual(test_dict.get("key_not_present"), None)
 
         test_dict.set("key", "new_value")
-        assert test_dict.get("key") == "new_value"
+        self.assertEqual(test_dict.get("key"), "new_value")
 
         test_dict.delete("key")
-        assert "key" not in test_dict
+        self.assertTrue("key" not in test_dict)
 
     def test_nativeDictionary(self):
         Config.USE_REDIS = False
