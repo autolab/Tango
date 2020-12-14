@@ -13,6 +13,10 @@ import shutil
 from datetime import datetime
 from config import Config
 
+from jobQueue import JobQueue
+from preallocator import Preallocator
+from tangoObjects import TangoJob
+
 #
 # Worker - The worker class is very simple and very dumb. The goal is
 # to walk through the VMMS interface, track the job's progress, and if
@@ -27,7 +31,7 @@ from config import Config
 
 class Worker(threading.Thread):
 
-    def __init__(self, job, vmms, jobQueue, preallocator, preVM):
+    def __init__(self, job: TangoJob, vmms: str, jobQueue: JobQueue, preallocator: Preallocator, preVM):
         threading.Thread.__init__(self)
         self.daemon = True
         self.job = job
@@ -41,7 +45,7 @@ class Worker(threading.Thread):
     #
     # Worker helper functions
     #
-    def detachVM(self, return_vm=False, replace_vm=False):
+    def detachVM(self, return_vm: bool=False, replace_vm: bool=False) -> None:
         """ detachVM - Detach the VM from this worker. The options are
         to return it to the pool's free list (return_vm), destroy it
         (not return_vm), and if destroying it, whether to replace it
@@ -64,7 +68,7 @@ class Worker(threading.Thread):
             # pool is empty and creates a spurious vm.
             self.preallocator.removeVM(self.job.vm)
 
-    def rescheduleJob(self, hdrfile, ret, err):
+    def rescheduleJob(self, hdrfile: str, ret: dict, err: str) -> None:
         """ rescheduleJob - Reschedule a job that has failed because
         of a system error, such as a VM timing out or a connection
         failure.
@@ -107,14 +111,14 @@ class Worker(threading.Thread):
             self.detachVM(return_vm=False, replace_vm=True)
             self.notifyServer(self.job)
 
-    def appendMsg(self, filename, msg):
+    def appendMsg(self, filename: str, msg: str) -> None:
         """ appendMsg - Append a timestamped Tango message to a file
         """
         f = open(filename, "a")
         f.write("Autograder [%s]: %s\n" % (datetime.now().ctime(), msg))
         f.close()
 
-    def catFiles(self, f1, f2):
+    def catFiles(self, f1: str, f2: str) -> None:
         """ catFiles - cat f1 f2 > f2, where f1 is the Tango header
         and f2 is the output from the Autodriver
         """
@@ -133,7 +137,7 @@ class Worker(threading.Thread):
         os.rename(tmpname, f2)
         os.remove(f1)
 
-    def notifyServer(self, job):
+    def notifyServer(self, job: TangoJob) -> None:
         try:
             if job.notifyURL:
                 outputFileName = job.outputFile.split(
@@ -153,7 +157,7 @@ class Worker(threading.Thread):
     #
     # Main worker function
     #
-    def run(self):
+    def run(self) -> None:
         """run - Step a job through its execution sequence
         """
         try:

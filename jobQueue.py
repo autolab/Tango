@@ -14,9 +14,11 @@ import threading
 import multiprocessing
 import logging
 import time
+from typing import Union, Optional, Tuple
 
 from datetime import datetime
 from tangoObjects import TangoDictionary, TangoJob, TangoQueue
+from preallocator import Preallocator
 from config import Config
 
 #
@@ -37,7 +39,7 @@ from config import Config
 
 class JobQueue(object):
 
-    def __init__(self, preallocator):
+    def __init__(self, preallocator: Preallocator) -> None:
         """
         Here we maintain several data structures used to keep track of the 
         jobs present for the autograder. 
@@ -66,7 +68,7 @@ class JobQueue(object):
         self.log = logging.getLogger("JobQueue")
         self.nextID = 1
 
-    def _getNextID(self):
+    def _getNextID(self) -> int:
         """_getNextID - updates and returns the next ID to be used for a job
 
         Jobs have ID's between 1 and MAX_JOBID.
@@ -101,7 +103,7 @@ class JobQueue(object):
         self.log.debug("_getNextID|Released lock to job queue.")
         return id
 
-    def add(self, job):
+    def add(self, job: TangoJob) -> Union[int, str]:
         """add - add job to live queue
 
         This function assigns an ID number to a *new* job and then adds it
@@ -156,7 +158,7 @@ class JobQueue(object):
 
         return str(job.id)
 
-    def addDead(self, job):
+    def addDead(self, job: TangoJob) -> int:
         """ addDead - add a job to the dead queue.
 
         Called by validateJob when a job validation fails. 
@@ -189,7 +191,7 @@ class JobQueue(object):
 
         return job.id
 
-    def delJob(self, id, deadjob):
+    def delJob(self, id: int, deadjob: Union[int, TangoDictionary]) -> int:
         """ delJob - Implements delJob() interface call
         @param id - The id of the job to remove
         @param deadjob - If 0, move the job from the live queue to the
@@ -214,7 +216,7 @@ class JobQueue(object):
                 self.log.error("Job %s not found in dead queue" % id)
             return status
 
-    def get(self, id):
+    def get(self, id: int) -> Optional[TangoJob]:
         """get - retrieve job from live queue
         @param id - the id of the job to retrieve
         """
@@ -228,7 +230,7 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def assignJob(self, jobId):
+    def assignJob(self, jobId: int) -> None:
         """ assignJob - marks a job to be assigned
 
         Note: This is currently not used
@@ -249,7 +251,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
 
-    def unassignJob(self, jobId):
+    def unassignJob(self, jobId: int) -> None:
         """ assignJob - marks a job to be unassigned
             Note: We assume here that a job is to be rescheduled or 
             'retried' when you unassign it. This retry is done by
@@ -278,7 +280,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 
-    def makeDead(self, id, reason):
+    def makeDead(self, id: int, reason: str) -> int:
         """ makeDead - move a job from live queue to dead queue
         """
         self.log.info("makeDead| Making dead job ID: " + str(id))
@@ -312,13 +314,13 @@ class JobQueue(object):
         self.log.debug("makeDead| Released lock to job queue.")
         return status
 
-    def getInfo(self):
+    def getInfo(self) -> dict:
         info = {}
         info['size'] = len(self.liveJobs.keys())
         info['size_deadjobs'] = len(self.deadJobs.keys())
         return info
 
-    def reset(self):
+    def reset(self) -> None:
         """ reset - resets and clears all the internal dictionaries 
                     and queues
         """
@@ -326,7 +328,7 @@ class JobQueue(object):
         self.unassignedJobs._clean()
         self.deadJobs._clean()
 
-    def getNextPendingJob(self):
+    def getNextPendingJob(self) -> TangoJob:
         """Gets the next unassigned live job. Note that this is a 
            blocking function and we will block till there is an available 
            job.
@@ -348,7 +350,7 @@ class JobQueue(object):
         self.log.debug("getNextPendingJob| Released lock to job queue.")
         return job
  
-    def reuseVM(self, job):
+    def reuseVM(self, job: TangoJob) -> str:
         """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is 
            set to true.
         """
@@ -371,7 +373,7 @@ class JobQueue(object):
             else:
                 raise Exception("Job assigned without vm")
 
-    def getNextPendingJobReuse(self, target_id=None):
+    def getNextPendingJobReuse(self, target_id: Optional[int]=None) -> Tuple[Optional[int], Optional[str]]:
         """getNextPendingJobReuse - Returns ID of next pending job and its VM.
         Called by JobManager when Config.REUSE_VMS==True
         """

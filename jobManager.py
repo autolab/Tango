@@ -3,6 +3,7 @@ import copy
 import time
 import logging
 import threading
+from typing import Optional
 from config import Config
 from tangoObjects import TangoQueue
 from worker import Worker
@@ -31,7 +32,7 @@ standard_library.install_aliases()
 
 class JobManager(object):
 
-    def __init__(self, queue):
+    def __init__(self, queue: JobQueue) -> None:
         self.daemon = True
         self.jobQueue = queue
         self.preallocator = self.jobQueue.preallocator
@@ -41,19 +42,19 @@ class JobManager(object):
         self.nextId = 10000
         self.running = False
 
-    def start(self):
+    def start(self) -> None:
         if self.running:
             return
         thread = threading.Thread(target=self.__manage)
         thread.daemon = True
         thread.start()
 
-    def run(self):
+    def run(self) -> None:
         if self.running:
             return
         self.__manage()
 
-    def _getNextID(self):
+    def _getNextID(self) -> int:
         """ _getNextID - returns next ID to be used for a job-associated
         VM.  Job-associated VM's have 5-digit ID numbers between 10000
         and 99999.
@@ -64,7 +65,7 @@ class JobManager(object):
             self.nextId = 10000
         return id
 
-    def __manage(self):
+    def __manage(self) -> None:
         self.running = True
         while True:
             # Gets the next pending job/ id
@@ -126,7 +127,7 @@ class JobManager(object):
             time.sleep(Config.DISPATCH_PERIOD)
 
     @staticmethod
-    def runJobManager(mock_vmms=None):
+    def runJobManager(mock_vmms: Optional[str]=None) -> None:
         t = tango.TangoServer(mock_vmms)
         t.log.debug("Resetting Tango VMs")
         t.resetTango(t.preallocator.vmms)
