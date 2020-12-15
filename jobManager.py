@@ -98,7 +98,7 @@ class JobManager(object):
                             preVM = self.preallocator.allocVM(job.vm.name)
                         vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
-                    if prevVM.name is not None:
+                    if preVM.name is not None:
                         self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                       (job.name, job.id, preVM.name, job.retries))
                     else:
