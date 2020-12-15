@@ -191,30 +191,6 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def getNextPendingJobReuse(self, target_id=None):
-        """getNextPendingJobReuse - Returns ID of next pending job and its VM.
-        Called by JobManager when Config.REUSE_VMS==True
-        """
-        self.queueLock.acquire()
-        for id, job in self.liveJobs.items():
-            # if target_id is set, only interested in this id
-            if target_id and target_id != id:
-                continue
-            # Create a pool if necessary
-            if self.preallocator.poolSize(job.vm.name) == 0:
-                self.preallocator.update(job.vm, Config.POOL_SIZE)
-
-            # If the job hasn't been assigned to a worker yet, see if there
-            # is a free VM
-            if (job.isNotAssigned()):
-                vm = self.preallocator.allocVM(job.vm.name)
-                if vm:
-                    self.queueLock.release()
-                    return (id, vm)
-
-        self.queueLock.release()
-        return (None, None)
-
     def assignJob(self, jobId):
         """ assignJob - marks a job to be assigned
         """
@@ -318,3 +294,25 @@ class JobQueue(object):
         self.log.debug("getNextPendingJob| Released lock to job queue.")
         return job
  
+    def reuseVM(self, job):
+        """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is 
+           set to true.
+        """
+
+        # Create a pool if necessary
+        # This is when there is no existing pool for the vm name required.
+        if self.preallocator.poolSize(job.vm.name) == 0:
+            self.preallocator.update(job.vm, Config.POOL_SIZE)
+
+        # If the job hasn't been assigned to a worker yet, we try to 
+        # allocate a new vm for this job
+        if (job.isNotAssigned()):
+            # Note: This could return None, when all VMs are being used
+            return self.preallocator.allocVM(job.vm.name)
+        else:
+            # In the case where a job is already assigned, it should have 
+            # a vm, and we just return that vm here
+            if job.vm:
+                return job.vm
+            else:
+                raise Exception("Job assigned without vm")
