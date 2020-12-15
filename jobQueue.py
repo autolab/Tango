@@ -302,12 +302,13 @@ class JobQueue(object):
            blocking function and we will block till there is an available 
            job.
         """
+        # Blocks till the next item is added 
+        id = self.unassignedJobs.get()
+
         self.log.debug("_getNextPendingJob|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("_getNextPendingJob|Acquired lock to job queue.")
 
-        # Blocks till the next item is added 
-        id = self.unassignedJobs.get()
         # Get the corresponding job
         job = self.liveJobs.get(id)
         if job is None:
