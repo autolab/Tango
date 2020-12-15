@@ -64,9 +64,6 @@ class JobQueue(object):
                     id = i
                     break
 
-        if (id == -1):
-            # No free id found, return -1
-            return -1
         self.nextID += 1
         if self.nextID > Config.MAX_JOBID:
             # Wrap around if job ids go over max job ids avail
