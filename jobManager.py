@@ -91,9 +91,12 @@ class JobManager(object):
                         preVM = self.preallocator.allocVM(job.vm.name)
                     vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
-                # Now dispatch the job to a worker
-                self.log.info("Dispatched job %s:%d to %s [try %d]" %
-                              (job.name, job.id, preVM.name, job.retries))
+                if preVM.name is not None:
+                    self.log.info("Dispatched job %s:%d to %s [try %d]" %
+                                  (job.name, job.id, preVM.name, job.retries))
+                else:
+                    self.log.info("Unable to pre-allocate a vm for job job %s:%d [try %d]" % (job.name, job.id, job.retries))
+
                 job.appendTrace(
                     "%s|Dispatched job %s:%d [try %d]" %
                     (datetime.utcnow().ctime(), job.name, job.id, job.retries))
