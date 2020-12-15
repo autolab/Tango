@@ -97,9 +97,23 @@ class TestJobQueue(unittest.TestCase):
 
     def test_getNextPendingJob(self):
         self.jobQueue.assignJob(self.jobId2)
+        # job 2 should have been removed from unassigned queue
+        info = self.jobQueue.getInfo()
+        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.jobQueue.assignJob(self.jobId1)
+        info = self.jobQueue.getInfo()
+        self.assertEqual(info['size_unassignedjobs'], 0)
         self.jobQueue.unassignJob(self.jobId1)
+        info = self.jobQueue.getInfo()
+        self.assertEqual(info['size_unassignedjobs'], 1)
         job = self.jobQueue.getNextPendingJob()
         self.assertMultiLineEqual(str(job.id), self.jobId1)
+
+    def test_getNextPendingJob2(self):
+        job = self.jobQueue.getNextPendingJob()
+        self.assertMultiLineEqual(str(job.id), self.jobId1)
+        job = self.jobQueue.getNextPendingJob()
+        self.assertMultiLineEqual(str(job.id), self.jobId2)
 
     def test_getNextPendingJobReuse(self):
         return False
@@ -121,17 +135,17 @@ class TestJobQueue(unittest.TestCase):
     def test_makeDead(self):
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size_deadjobs'], 0)
+        self.assertEqual(info['size_unassignedjobs'], 2)
         self.jobQueue.makeDead(self.jobId1, "test")
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size_deadjobs'], 1)
+        self.assertEqual(info['size_unassignedjobs'], 1)
 
     def test__getNextID(self):
-
         init_id = self.jobQueue.nextID
         for i in range(1, Config.MAX_JOBID + 100):
             id = self.jobQueue._getNextID()
             self.assertNotEqual(str(id), self.jobId1)
-
         self.jobQueue.nextID = init_id
 
 if __name__ == '__main__':
