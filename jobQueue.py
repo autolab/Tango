@@ -246,13 +246,14 @@ class JobQueue(object):
             job.retries += 1
             Config.job_retries += 1
 
+        self.log.info("unassignJob|Unassigning job %s" % str(job.id))
+        job.makeUnassigned()
+
         # Since the assumption is that the job is being retried, 
         # we simply add the job to the unassigned jobs queue without 
         # removing anything from it
         self.unassignedJobs.put(int(jobId))
 
-        self.log.info("unassignJob|Unassigning job %s" % str(job.id))
-        job.makeUnassigned()
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 
