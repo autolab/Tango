@@ -34,6 +34,26 @@ from config import Config
 class JobQueue(object):
 
     def __init__(self, preallocator):
+        """
+        Here we maintain several data structures used to keep track of the 
+        jobs present for the autograder. 
+
+        Live jobs contains:
+        - jobs that are yet to be assigned and run
+        - jobs that are currently running
+
+        Dead jobs contains: 
+        - jobs that have been completed, or have been 'deleted' when in
+          the live jobs queue
+
+        This is a FIFO queue of jobs that are pending assignment. 
+        - We enforce the invariant that all jobs in this queue must be 
+          present in live jobs
+
+        queueLock protects all the internal data structure of JobQueue. This 
+        is needed since there are multiple worker threads and they might be 
+        using the makeUnassigned api.
+        """
         self.liveJobs = TangoDictionary("liveJobs")
         self.deadJobs = TangoDictionary("deadJobs")
         self.unassignedJobs = TangoQueue("unassignedLiveJobs")
