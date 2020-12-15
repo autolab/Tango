@@ -43,7 +43,6 @@ class JobQueue(object):
 
     def _getNextID(self):
         """_getNextID - updates and returns the next ID to be used for a job
-
         Jobs have ID's between 1 and MAX_JOBID.
         """
         self.log.debug("_getNextID|Acquiring lock to job queue.")
@@ -51,17 +50,26 @@ class JobQueue(object):
         self.log.debug("_getNextID|Acquired lock to job queue.")
         id = self.nextID
 
-        # If a job already exists in the queue at nextID, then try to find
-        # an empty ID. If the queue is full, then return -1.
-        if id in self.liveJobs:
+        # If there is an livejob in the queue with with nextID,
+        # this means that the id is already taken.
+        # We try to find a free id to use by looping through all
+        # the job ids possible and finding one that is
+        # not used by any of the livejobs.
+        # Return -1 if no such free id is found.
+        keys = self.liveJobs.keys()
+        if (str(id) in keys):
             id = -1
             for i in range(1, Config.MAX_JOBID + 1):
-                if i not in self.liveJobs:
+                if (str(i) not in keys):
                     id = i
                     break
 
+        if (id == -1):
+            # No free id found, return -1
+            return -1
         self.nextID += 1
         if self.nextID > Config.MAX_JOBID:
+            # Wrap around if job ids go over max job ids avail
             self.nextID = 1
         self.queueLock.release()
         self.log.debug("_getNextID|Released lock to job queue.")
