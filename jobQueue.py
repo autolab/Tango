@@ -93,7 +93,12 @@ class JobQueue(object):
         self.queueLock.acquire()
         self.log.debug("add| Acquired lock to job queue.")
 
+        # Adds the job to the live jobs dictionary
         self.liveJobs.set(job.id, job)
+
+        # Add this to the unassigned job queue too 
+        self.unassignedJobs.put(job.id)
+
         job.appendTrace("%s|Added job %s:%d to queue" %
                         (datetime.utcnow().ctime(), job.name, job.id))
 
@@ -266,6 +271,7 @@ class JobQueue(object):
         info = {}
         info['size'] = len(self.liveJobs.keys())
         info['size_deadjobs'] = len(self.deadJobs.keys())
+        info['size_unassignedjobs'] = self.unassignedJobs.qsize()
 
         return info
 
