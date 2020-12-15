@@ -270,8 +270,10 @@ class TangoRemoteQueue(object):
         self.__db = getRedisConnection()
         self.__dict__.update(dict)
 
-    def remove(self, value):
-        return self.__db.lrem(self.key, 0, value)
+    def remove(self, item):
+        items = self.__db.lrange(self.key, 0, -1)
+        pickled_item = pickle.dumps(item)
+        return self.__db.lrem(self.key, 0, pickled_item)
 
     def _clean(self):
         self.__db.delete(self.key)

@@ -66,9 +66,8 @@ class TestJobQueue(unittest.TestCase):
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size'], 2)
 
-    def test_addTOUnassigned(self):
+    def test_addToUnassigned(self):
         info = self.jobQueue.getInfo()
-
         self.assertEqual(info['size_unassignedjobs'], 2)
 
     def test_addDead(self):
@@ -79,10 +78,13 @@ class TestJobQueue(unittest.TestCase):
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size'], 1)
         self.assertEqual(info['size_deadjobs'], 1)
+        self.assertEqual(info['size_unassignedjobs'], 1)
 
         self.jobQueue.delJob(self.jobId1, 1)
         info = self.jobQueue.getInfo()
         self.assertEqual(info['size_deadjobs'], 0)
+        self.assertEqual(info['size'], 1)
+        self.assertEqual(info['size_unassignedjobs'], 1)
 
         return False
 

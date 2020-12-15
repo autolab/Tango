@@ -96,7 +96,7 @@ class JobQueue(object):
         self.liveJobs.set(job.id, job)
 
         # Add this to the unassigned job queue too 
-        self.unassignedJobs.put(job.id)
+        self.unassignedJobs.put(int(job.id))
 
         job.appendTrace("%s|Added job %s:%d to queue" %
                         (datetime.utcnow().ctime(), job.name, job.id))
@@ -204,7 +204,7 @@ class JobQueue(object):
         job = self.liveJobs.get(jobId)
 
         # Remove the current job from the queue
-        self.unassignedJobs.remove(jobId)
+        self.unassignedJobs.remove(int(jobId))
 
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
@@ -229,7 +229,7 @@ class JobQueue(object):
         # Since the assumption is that the job is being retried, 
         # we simply add the job to the unassigned jobs queue without 
         # removing anything from it
-        self.unassignedJobs.put(jobId)
+        self.unassignedJobs.put(int(jobId))
 
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
@@ -255,7 +255,7 @@ class JobQueue(object):
             # Remove the job from the live jobs dictionary 
             self.liveJobs.delete(id)
             # Remove the job from the unassigned queue too
-            self.unassignedJobs.remove(id)
+            self.unassignedJobs.remove(int(id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
