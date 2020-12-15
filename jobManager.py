@@ -63,58 +63,53 @@ class JobManager(object):
     def __manage(self):
         self.running = True
         while True:
-            id = self.jobQueue.getNextPendingJob()
 
-            if id:
+            # Blocks until we get a next job
+            job = self.jobQueue.getNextPendingJob()
+
+            if not job.accessKey and Config.REUSE_VMS:
+                id, vm = self.jobQueue.getNextPendingJobReuse(job.id)
                 job = self.jobQueue.get(id)
-
-                # job could no longer exist if it was completed by someone else
                 if job == None:
                     continue
 
-                if not job.accessKey and Config.REUSE_VMS:
-                    id, vm = self.jobQueue.getNextPendingJobReuse(id)
-                    job = self.jobQueue.get(id)
-                    if job == None:
-                        continue
-
-                try:
-                    # Mark the job assigned
-                    self.jobQueue.assignJob(job.id)
-                    # if the job has specified an account
-                    # create an VM on the account and run on that instance
-                    if job.accessKeyId:
-                        from vmms.ec2SSH import Ec2SSH
-                        vmms = Ec2SSH(job.accessKeyId, job.accessKey)
-                        newVM = copy.deepcopy(job.vm)
-                        newVM.id = self._getNextID()
-                        preVM = vmms.initializeVM(newVM)
+            try:
+                # Mark the job assigned
+                job.makeAssigned()
+                # if the job has specified an account
+                # create an VM on the account and run on that instance
+                if job.accessKeyId:
+                    from vmms.ec2SSH import Ec2SSH
+                    vmms = Ec2SSH(job.accessKeyId, job.accessKey)
+                    newVM = copy.deepcopy(job.vm)
+                    newVM.id = self._getNextID()
+                    preVM = vmms.initializeVM(newVM)
+                else:
+                    # Try to find a vm on the free list and allocate it to
+                    # the worker if successful.
+                    if Config.REUSE_VMS:
+                        preVM = vm
                     else:
-                        # Try to find a vm on the free list and allocate it to
-                        # the worker if successful.
-                        if Config.REUSE_VMS:
-                            preVM = vm
-                        else:
-                            preVM = self.preallocator.allocVM(job.vm.name)
-                        vmms = self.vmms[job.vm.vmms]  # Create new vmms object
+                        preVM = self.preallocator.allocVM(job.vm.name)
+                    vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
-                    # Now dispatch the job to a worker
-                    self.log.info("Dispatched job %s:%d to %s [try %d]" %
-                                  (job.name, job.id, preVM.name, job.retries))
-                    job.appendTrace(
-                        "%s|Dispatched job %s:%d [try %d]" %
-                        (datetime.utcnow().ctime(), job.name, job.id, job.retries))
+                # Now dispatch the job to a worker
+                self.log.info("Dispatched job %s:%d to %s [try %d]" %
+                              (job.name, job.id, preVM.name, job.retries))
+                job.appendTrace(
+                    "%s|Dispatched job %s:%d [try %d]" %
+                    (datetime.utcnow().ctime(), job.name, job.id, job.retries))
 
-                    Worker(
-                        job,
-                        vmms,
-                        self.jobQueue,
-                        self.preallocator,
-                        preVM
-                    ).start()
+                Worker(
+                    job,
+                    vmms,
+                    self.jobQueue,
+                    self.preallocator,
+                    preVM
+                ).start()
 
-                except Exception as err:
-                    self.jobQueue.makeDead(job.id, str(err))
+            except Exception as err:
+                self.jobQueue.makeDead(job.id, str(err))
 
             # Sleep for a bit and then check again
             time.sleep(Config.DISPATCH_PERIOD)
