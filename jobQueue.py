@@ -36,7 +36,6 @@ class JobQueue(object):
     def __init__(self, preallocator):
         self.liveJobs = TangoDictionary("liveJobs")
         self.deadJobs = TangoDictionary("deadJobs")
-        self.unassignedJobs = TangoQueue("unassignedLiveJobs")
         self.queueLock = threading.Lock()
         self.preallocator = preallocator
         self.log = logging.getLogger("JobQueue")
@@ -93,13 +92,7 @@ class JobQueue(object):
         self.queueLock.acquire()
         self.log.debug("add| Acquired lock to job queue.")
 
-
-        # Adds the job to the live jobs dictionary
         self.liveJobs.set(job.id, job)
-
-        # Add this to the unassigned job queue too 
-        self.unassignedJobs.put(job.id)
-
         job.appendTrace("%s|Added job %s:%d to queue" %
                         (datetime.utcnow().ctime(), job.name, job.id))
 
@@ -110,7 +103,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%d to queue, details = %s" %
+        self.log.info("Added job %s:%d to queue, details = %s" % 
             (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
@@ -136,26 +129,6 @@ class JobQueue(object):
         self.log.debug("addDead|Released lock to job queue.")
 
         return job.id
-
-    def remove(self, id):
-        """remove - Remove job from live queue
-        """
-        status = -1
-        self.log.debug("remove|Acquiring lock to job queue.")
-        self.queueLock.acquire()
-        self.log.debug("remove|Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
-            self.liveJobs.delete(id)
-            status = 0
-
-        self.queueLock.release()
-        self.log.debug("remove|Relased lock to job queue.")
-
-        if status == 0:
-            self.log.debug("Removed job %s from queue" % id)
-        else:
-            self.log.error("Job %s not found in queue" % id)
-        return status
 
     def delJob(self, id, deadjob):
         """ delJob - Implements delJob() interface call
