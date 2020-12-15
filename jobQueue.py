@@ -243,7 +243,7 @@ class JobQueue(object):
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         if str(id) in self.liveJobs.keys():
-            self.log.info("makeDead| Found job ID: %d in the live queue" % (id))
+            self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
             self.log.info("Terminated job %s:%d: %s" %
