@@ -92,6 +92,11 @@ class LocalDocker(object):
         volumePath = os.path.join(volumePath, instanceName, "")
         return volumePath
 
+    def getDockerVolumePath(self, dockerPath, instanceName):
+        # Last empty string to cause trailing '/'
+        volumePath = os.path.join(dockerPath, instanceName, "")
+        return volumePath
+
     def domainName(self, vm):
         """ Returns the domain name that is stored in the vm
         instance.
@@ -121,6 +126,9 @@ class LocalDocker(object):
         # Create a fresh volume
         os.makedirs(volumePath)
         for file in inputFiles:
+            # Create output directory if it does not exist
+            os.makedirs(os.path.dirname(volumePath), exist_ok=True)
+
             shutil.copy(file.localFile, volumePath + file.destFile)
             self.log.debug('Copied in file %s to %s' % (file.localFile, volumePath + file.destFile))
         return 0
@@ -134,6 +142,9 @@ class LocalDocker(object):
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
+        if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
+            volumePath = self.getDockerVolumePath(
+                os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName)
         args = ['docker', 'run', '--name', instanceName, '-v']
         args = args + ['%s:%s' % (volumePath, '/home/mount')]
         args = args + [vm.image]

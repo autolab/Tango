@@ -54,11 +54,10 @@ class JobQueue(object):
 
         # If a job already exists in the queue at nextID, then try to find
         # an empty ID. If the queue is full, then return -1.
-        keys = self.liveJobs.keys()
-        if (str(id) in keys):
+        if id in self.liveJobs:
             id = -1
             for i in range(1, Config.MAX_JOBID + 1):
-                if (str(i) not in keys):
+                if i not in self.liveJobs:
                     id = i
                     break
 
@@ -83,7 +82,7 @@ class JobQueue(object):
             self.log.info("add|JobQueue is full")
             return -1
         self.log.debug("add|Gotten next ID: " + str(job.id))
-        self.log.info("add|Unassigning job ID: %d" % (job.id))
+        self.log.info("add|Unassigning job ID: %s" % (job.id))
         job.makeUnassigned()
         job.retries = 0
 
@@ -109,7 +108,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%d to queue, details = %s" % 
+        self.log.info("Added job %s:%s to queue, details = %s" % 
             (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
@@ -149,7 +148,7 @@ class JobQueue(object):
             status = -1
             self.queueLock.acquire()
             self.log.debug("delJob| Acquired lock to job queue.")
-            if str(id) in self.deadJobs.keys():
+            if id in self.deadJobs:
                 self.deadJobs.delete(id)
                 status = 0
             self.queueLock.release()
@@ -167,10 +166,7 @@ class JobQueue(object):
         """
         self.queueLock.acquire()
         self.log.debug("get| Acquired lock to job queue.")
-        if str(id) in self.liveJobs.keys():
-            job = self.liveJobs.get(id)
-        else:
-            job = None
+        job = self.liveJobs.get(id)
         self.queueLock.release()
         self.log.debug("get| Released lock to job queue.")
         return job
@@ -247,11 +243,11 @@ class JobQueue(object):
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
-        if str(id) in self.liveJobs.keys():
+        if id in self.liveJobs:
             self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
-            self.log.info("Terminated job %s:%d: %s" %
+            self.log.info("Terminated job %s:%s: %s" %
                           (job.name, job.id, reason))
 
             # Add the job to the dead jobs dictionary
