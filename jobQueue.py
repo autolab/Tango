@@ -274,8 +274,6 @@ class JobQueue(object):
             self.deadJobs.set(id, job)
             # Remove the job from the live jobs dictionary 
             self.liveJobs.delete(id)
-            # Remove the job from the unassigned queue too
-            self.unassignedJobs.remove(int(id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
