@@ -70,6 +70,9 @@ class JobManager(object):
                 vm = None
                 while (vm is None):
                     vm = self.jobQueue.reuseVM(job)
+                    # Sleep for a bit and then check again
+                    time.sleep(Config.DISPATCH_PERIOD)
+
             try:
                 # Mark the job assigned
                 job.makeAssigned()
@@ -110,9 +113,6 @@ class JobManager(object):
 
             except Exception as err:
                 self.jobQueue.makeDead(job.id, str(err))
-
-            # Sleep for a bit and then check again
-            time.sleep(Config.DISPATCH_PERIOD)
 
 
 if __name__ == "__main__":
