@@ -63,7 +63,6 @@ class JobManager(object):
     def __manage(self):
         self.running = True
         while True:
-
             # Blocks until we get a next job
             job = self.jobQueue.getNextPendingJob()
 
