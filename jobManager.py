@@ -68,7 +68,7 @@ class JobManager(object):
 
             if not job.accessKey and Config.REUSE_VMS:
                 vm = None
-                while (vm is None):
+                while vm is None:
                     vm = self.jobQueue.reuseVM(job)
                     # Sleep for a bit and then check again
                     time.sleep(Config.DISPATCH_PERIOD)
