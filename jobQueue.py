@@ -46,6 +46,7 @@ class JobQueue(object):
         - jobs that have been completed, or have been 'deleted' when in
           the live jobs queue
 
+        Unassigned jobs: 
         This is a FIFO queue of jobs that are pending assignment. 
         - We enforce the invariant that all jobs in this queue must be 
           present in live jobs
@@ -92,6 +93,27 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("_getNextID|Released lock to job queue.")
         return id
+
+    def remove(self, id):	
+        """remove - Remove job from live queue	
+        """	
+        status = -1	
+        self.log.debug("remove|Acquiring lock to job queue.")	
+        self.queueLock.acquire()	
+        self.log.debug("remove|Acquired lock to job queue.")	
+        if id in self.liveJobs:	
+            self.liveJobs.delete(id)	
+            status = 0	
+        self.unassignedJobs.remove(int(id))
+
+        self.queueLock.release()	
+        self.log.debug("remove|Relased lock to job queue.")	
+
+        if status == 0:	
+            self.log.debug("Removed job %s from queue" % id)	
+        else:	
+            self.log.error("Job %s not found in queue" % id)	
+        return status	
 
     def add(self, job):
         """add - add job to live queue
