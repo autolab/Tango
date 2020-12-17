@@ -11,9 +11,11 @@ from builtins import range
 from builtins import object
 from builtins import str
 import threading, logging, time
+from typing import Optional, Union
 
 from datetime import datetime
 from tangoObjects import TangoDictionary, TangoJob, TangoQueue
+from preallocator import Preallocator
 from config import Config
 
 #
@@ -33,7 +35,7 @@ from config import Config
 
 class JobQueue(object):
 
-    def __init__(self, preallocator):
+    def __init__(self, preallocator: Preallocator) -> None:
         """
         Here we maintain several data structures used to keep track of the 
         jobs present for the autograder. 
@@ -63,7 +65,7 @@ class JobQueue(object):
         self.log = logging.getLogger("JobQueue")
         self.nextID = 1
 
-    def _getNextID(self):
+    def _getNextID(self) -> int:
         """_getNextID - updates and returns the next ID to be used for a job
         Jobs have ID's between 1 and MAX_JOBID.
         """
@@ -94,7 +96,7 @@ class JobQueue(object):
         self.log.debug("_getNextID|Released lock to job queue.")
         return id
 
-    def remove(self, id):	
+    def remove(self, id: str) -> int:	
         """remove - Remove job from live queue	
         """	
         status = -1	
@@ -115,7 +117,7 @@ class JobQueue(object):
             self.log.error("Job %s not found in queue" % id)	
         return status	
 
-    def add(self, job):
+    def add(self, job: TangoJob) -> Union[int, str]:
         """add - add job to live queue
         This function assigns an ID number to a *new* job and then adds it
         to the queue of live jobs. 
@@ -168,7 +170,7 @@ class JobQueue(object):
 
         return str(job.id)
 
-    def addDead(self, job):
+    def addDead(self, job: TangoJob) -> int:
         """ addDead - add a job to the dead queue.
         Called by validateJob when a job validation fails. 
         Returns -1 on failure and the job id on success
@@ -200,7 +202,7 @@ class JobQueue(object):
 
         return job.id
 
-    def delJob(self, id, deadjob):
+    def delJob(self, id: int, deadjob) -> int:
         """ delJob - Implements delJob() interface call
         @param id - The id of the job to remove
         @param deadjob - If 0, move the job from the live queue to the
@@ -225,7 +227,7 @@ class JobQueue(object):
                 self.log.error("Job %s not found in dead queue" % id)
             return status
 
-    def get(self, id):
+    def get(self, id: str) -> Optional[TangoJob]:
         """get - retrieve job from live queue
         @param id - the id of the job to retrieve
         """
@@ -236,7 +238,7 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def assignJob(self, jobId):
+    def assignJob(self, jobId: str) -> None:
         """ assignJob - marks a job to be assigned
         """
         self.queueLock.acquire()
@@ -255,7 +257,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
 
-    def unassignJob(self, jobId):
+    def unassignJob(self, jobId: str) -> None:
         """ unassignJob - marks a job to be unassigned
             Note: We assume here that a job is to be rescheduled or 
             'retried' when you unassign it. This retry is done by
@@ -285,7 +287,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 
-    def makeDead(self, id, reason):
+    def makeDead(self, id: int, reason: str) -> int:
         """ makeDead - move a job from live queue to dead queue
         """
         self.log.info("makeDead| Making dead job ID: " + str(id))
@@ -313,7 +315,7 @@ class JobQueue(object):
         self.log.debug("makeDead| Released lock to job queue.")
         return status
 
-    def getInfo(self):
+    def getInfo(self) -> dict:
 
         info = {}
         info['size'] = len(self.liveJobs.keys())
@@ -322,7 +324,7 @@ class JobQueue(object):
 
         return info
 
-    def reset(self):
+    def reset(self) -> None:
         """ reset - resets and clears all the internal dictionaries 
                     and queues
         """
@@ -331,7 +333,7 @@ class JobQueue(object):
         self.unassignedJobs._clean()
 
 
-    def getNextPendingJob(self):
+    def getNextPendingJob(self) -> TangoJob:
         """Gets the next unassigned live job. Note that this is a 
            blocking function and we will block till there is an available 
            job.
@@ -353,7 +355,7 @@ class JobQueue(object):
         self.log.debug("getNextPendingJob| Released lock to job queue.")
         return job
  
-    def reuseVM(self, job):
+    def reuseVM(self, job: TangoJob) -> Optional['vm']:
         """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is 
            set to true.
         """
