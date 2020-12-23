@@ -2,7 +2,6 @@ language: python
 services:
         - redis-server
 before_script:
-        - redis-server
         - pip install unittest pyflakes
 script:
         - python -m unittest tests/test*
