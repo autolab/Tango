@@ -9,18 +9,19 @@ RUN apt-get update && apt-get install -y \
   git \
   make \
   sudo \
-  && rm -rf /var/lib/apt/lists/*
+&& rm -rf /var/lib/apt/lists/*
 
 # Install autodriver
 WORKDIR /home
-RUN useradd autolab
-RUN useradd autograde
-RUN mkdir autolab autograde output
-RUN chown autolab:autolab autolab
-RUN chown autolab:autolab output
-RUN chown autograde:autograde autograde
+RUN useradd autolab \
+  && useradd autograde \
+  && mkdir autolab autograde output \
+  && chown autolab:autolab autolab \
+  && chown autolab:autolab output \
+  && chown autograde:autograde autograde
+
 RUN git clone --depth 1 https://github.com/autolab/Tango.git
-WORKDIR Tango/autodriver
+WORKDIR /home/Tango/autodriver
 RUN make clean && make
 RUN cp autodriver /usr/bin/autodriver
 RUN chmod +s /usr/bin/autodriver
