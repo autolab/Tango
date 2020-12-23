@@ -231,7 +231,7 @@ class LocalDocker(object):
         """
         instanceName = self.instanceName(vm.id, vm.name)
         ret = timeout(['docker', 'inspect', instanceName])
-        return (ret is 0)
+        return ret == 0
 
     def getImages(self):
         """ getImages - Executes `docker images` and returns a list of

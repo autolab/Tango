@@ -9,7 +9,7 @@ standard_library.install_aliases()
 from builtins import str
 import redis
 import pickle
-import queue
+from queue import Queue
 from config import Config
 
 redisConnection = None
@@ -203,8 +203,18 @@ def TangoQueue(object_name):
     if Config.USE_REDIS:
         return TangoRemoteQueue(object_name)
     else:
-        return queue.Queue()
+        return ExtendedQueue()
 
+
+class ExtendedQueue(Queue):
+    """ Python Thread safe Queue with the remove and clean function added """
+
+    def remove(self, value):
+        with self.mutex:
+            self.queue.remove(value)
+    def _clean(self):
+        with self.mutex:
+            self.queue.clear()
 
 class TangoRemoteQueue(object):
 
@@ -238,8 +248,11 @@ class TangoRemoteQueue(object):
         else:
             item = self.__db.lpop(self.key)
 
-        # if item:
-        #     item = item[1]
+        if item is None:
+            return None
+
+        if block and item:
+            item = item[1]
 
         item = pickle.loads(item)
         return item
@@ -257,6 +270,13 @@ class TangoRemoteQueue(object):
         self.__db = getRedisConnection()
         self.__dict__.update(dict)
 
+    def remove(self, item):
+        items = self.__db.lrange(self.key, 0, -1)
+        pickled_item = pickle.dumps(item)
+        return self.__db.lrem(self.key, 0, pickled_item)
+
+    def _clean(self):
+        self.__db.delete(self.key)
 
 # This is an abstract class that decides on
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
