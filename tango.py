@@ -37,6 +37,7 @@
 from builtins import object
 from builtins import str
 import threading, logging, time, stat, re, os
+from typing import List, Any
 
 from datetime import datetime
 from preallocator import Preallocator
@@ -109,7 +110,7 @@ class TangoServer(object):
         self.log.debug("Received delJob(%d, %d) request" % (id, deadjob))
         return self.jobQueue.delJob(id, deadjob)
 
-    def getJobs(self, item) -> list:
+    def getJobs(self, item) -> List[Any]:
         """ getJobs - Return the list of live jobs (item == 0) or the
         list of dead jobs (item == -1).
         """
@@ -173,7 +174,7 @@ class TangoServer(object):
             self.log.error("delVM request failed: %s" % err)
             return -1
 
-    def getPool(self, vmName: str) -> list:
+    def getPool(self, vmName: str) -> List[str]:
         """ getPool - Return the current members of a pool and its free list
         """
         self.log.debug("Received getPool request(%s)" % (vmName))
@@ -209,7 +210,7 @@ class TangoServer(object):
     #
     # Helper functions
     #
-    def resetTango(self, vmms: list) -> None:
+    def resetTango(self, vmms: List[Any]) -> None:
         """ resetTango - resets Tango to a clean predictable state and
         ensures that it has a working virtualization environment. A side
         effect is that also checks that each supported VMMS is actually
@@ -246,7 +247,7 @@ class TangoServer(object):
             os._exit(1)
 
 
-    def __validateJob(self, job: TangoJob, vmms: list) -> int:
+    def __validateJob(self, job: TangoJob, vmms: List[Any]) -> int:
         """ validateJob - validate the input arguments in an addJob request.
         """
         errors = 0

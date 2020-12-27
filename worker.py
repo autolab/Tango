@@ -68,7 +68,7 @@ class Worker(threading.Thread):
             # pool is empty and creates a spurious vm.
             self.preallocator.removeVM(self.job.vm)
 
-    def rescheduleJob(self, hdrfile: str, ret: dict, err: str) -> None:
+    def rescheduleJob(self, hdrfile: str, ret: Dict[str, str], err: str) -> None:
         """ rescheduleJob - Reschedule a job that has failed because
         of a system error, such as a VM timing out or a connection
         failure.

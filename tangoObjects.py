@@ -7,16 +7,17 @@ from builtins import object
 from future import standard_library
 standard_library.install_aliases()
 from builtins import str
+from typing import List, Any
 import redis
 import pickle
-from typing import Optional, Iterator, Tuple
+from typing import Optional, Iterator, Tuple, Union, Any, Dict
 from queue import Queue
 from config import Config
 
 redisConnection = None
 
 
-def getRedisConnection() -> redis.StrictRedis:
+def getRedisConnection() -> redis.client.Redis:
     global redisConnection
     if redisConnection is None:
         redisConnection = redis.StrictRedis(
@@ -75,7 +76,7 @@ class TangoJob(object):
     """
 
     def __init__(self, vm=None,
-                 outputFile: Optional[str]=None, name: Optional[str]=None, input: Optional[list]=None,
+                 outputFile: Optional[str]=None, name: Optional[str]=None, input: Optional[List[Any]]=None,
                  notifyURL: Optional[str]=None, timeout: int=0,
                  maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE,
                  accessKeyId=None, accessKey=None):
@@ -92,7 +93,7 @@ class TangoJob(object):
         self.name = name
         self.notifyURL = notifyURL
         self.timeout = timeout
-        self.trace = []
+        self.trace = []  # type: List[Any]
         self.maxOutputFileSize = maxOutputFileSize
         self._remoteLocation = None
         self.accessKeyId = accessKeyId
@@ -155,7 +156,7 @@ class TangoJob(object):
         self.maxOutputFileSize = other_job.maxOutputFileSize
 
 
-def TangoIntValue(object_name: str, obj: int) -> 'TangoIntValue':
+def TangoIntValue(object_name: str, obj: int) -> Union[TangoRemoteIntValue, TangoNativeIntValue]:
     if Config.USE_REDIS:
         return TangoRemoteIntValue(object_name, obj)
     else:
@@ -200,7 +201,7 @@ class TangoNativeIntValue(object):
         return val
 
 
-def TangoQueue(object_name: str) -> 'TangoQueue':
+def TangoQueue(object_name: str) -> Union[TangoRemoteQueue, ExtendedQueue]:
     if Config.USE_REDIS:
         return TangoRemoteQueue(object_name)
     else:
@@ -239,7 +240,7 @@ class TangoRemoteQueue(object):
         pickled_item = pickle.dumps(item)
         self.__db.rpush(self.key, pickled_item)
 
-    def get(self, block: bool=True, timeout: Optional[float]=None):
+    def get(self, block: bool=True, timeout: int=None):
         """Remove and return an item from the queue.
 
         If optional args block is true and timeout is None (the default), block
@@ -262,7 +263,7 @@ class TangoRemoteQueue(object):
         """Equivalent to get(False)."""
         return self.get(False)
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> Dict[str, str]:
         ret = {}
         ret['key'] = self.key
         return ret
@@ -271,7 +272,7 @@ class TangoRemoteQueue(object):
         self.__db = getRedisConnection()
         self.__dict__.update(dict)
 
-    def remove(self, item: int):
+    def remove(self, item: int) -> Any:
         items = self.__db.lrange(self.key, 0, -1)
         pickled_item = pickle.dumps(item)
         return self.__db.lrem(self.key, 0, pickled_item)
@@ -282,7 +283,7 @@ class TangoRemoteQueue(object):
 # This is an abstract class that decides on
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
 # Since there are no abstract classes in Python, we use a simple method
-def TangoDictionary(object_name) -> 'TangoDictionary':
+def TangoDictionary(object_name) -> Union[TangoRemoteDictionary, TangoNativeDictionary]:
     if Config.USE_REDIS:
         return TangoRemoteDictionary(object_name)
     else:
@@ -298,7 +299,7 @@ class TangoRemoteDictionary(object):
     def __contains__(self, id: int) -> bool:
         return self.r.hexists(self.hash_name, str(id))
 
-    def set(self, id: int, obj) -> str:
+    def set(self, id: Union[int, str], obj) -> str:
         pickled_obj = pickle.dumps(obj)
 
         if hasattr(obj, '_remoteLocation'):
@@ -307,7 +308,7 @@ class TangoRemoteDictionary(object):
         self.r.hset(self.hash_name, str(id), pickled_obj)
         return str(id)
 
-    def get(self, id: int):
+    def get(self, id: Union[int, str]):
         if id in self:
             unpickled_obj = self.r.hget(self.hash_name, str(id))
             obj = pickle.loads(unpickled_obj)
@@ -315,18 +316,18 @@ class TangoRemoteDictionary(object):
         else:
             return None
 
-    def keys(self) -> list:
+    def keys(self) -> List[str]:
         keys = map(lambda key : key.decode(), self.r.hkeys(self.hash_name))
         return list(keys)
 
-    def values(self) -> list:
+    def values(self) -> List[Any]:
         vals = self.r.hvals(self.hash_name)
         valslist = []
         for val in vals:
             valslist.append(pickle.loads(val))
         return valslist
 
-    def delete(self, id: int) -> None:
+    def delete(self, id: bytes) -> None:
         self._remoteLocation = None
         self.r.hdel(self.hash_name, id)
 
@@ -341,24 +342,24 @@ class TangoRemoteDictionary(object):
 class TangoNativeDictionary(object):
 
     def __init__(self) -> None:
-        self.dict = {}
+        self.dict = {}  # type: Dict[str, int]
 
-    def __contains__(self, id: int) -> None:
+    def __contains__(self, id) -> bool:
         return str(id) in self.dict
 
-    def set(self, id: int, obj) -> None:
+    def set(self, id: Union[int, str], obj: Any) -> None:
         self.dict[str(id)] = obj
 
-    def get(self, id: int):
-        if id in self:
+    def get(self, id: Union[int, str]) -> Optional[int]:
+        if str(id) in self:
             return self.dict[str(id)]
         else:
             return None
 
-    def keys(self) -> list:
+    def keys(self) -> List[str]:
         return list(self.dict.keys())
 
-    def values(self) -> list:
+    def values(self) -> List[Any]:
         return list(self.dict.values())
 
     def delete(self, id: int) -> None:
