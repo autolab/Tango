@@ -17,7 +17,7 @@ from builtins import str
 import threading, logging, time, copy
 
 from datetime import datetime
-from tango import *
+from tango import TangoServer
 from jobQueue import JobQueue
 from preallocator import Preallocator
 from worker import Worker
