@@ -258,11 +258,10 @@ class TashiSSH(object):
             self.log.debug("Copying file %s to VM %s" %
                            (file.localFile, domain_name))
 
-            ret = timeout(["scp",
-                           "-vvv"] + TashiSSH._SSH_FLAGS + [file.localFile,
-                                                            "autolab@%s:autolab/%s" % (domain_name,
-                                                                                       file.destFile)],
-                          config.Config.COPYIN_TIMEOUT)
+            ret = timeout(["scp", "-vvv"] +
+                          TashiSSH._SSH_FLAGS +
+                          [file.localFile, "autolab@%s:autolab/%s" %
+                           (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
 
             if ret == 0:
                 self.log.debug(

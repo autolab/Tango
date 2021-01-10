@@ -37,8 +37,9 @@ class TestDictionary(unittest.TestCase):
         for (key, val) in test_dict.items():
             self.assertEqual(self.test_entries.get(key), val)
 
-        self.assertEqual(test_dict.keys(), [str(key)
-                                            for key in self.test_entries.keys()])
+        self.assertEqual(
+            test_dict.keys(), [
+                str(key) for key in self.test_entries.keys()])
         self.assertEqual(test_dict.values(), list(self.test_entries.values()))
         self.assertTrue("key_not_present" not in test_dict)
         self.assertEqual(test_dict.get("key_not_present"), None)

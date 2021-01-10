@@ -278,11 +278,12 @@ class DistDocker(object):
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        ret = timeout(["scp"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
+        ret = timeout(["scp"] +
+                      DistDocker._SSH_FLAGS +
+                      vm.ssh_flags +
                       ["%s@%s:%s" %
-                       (self.hostUser, vm.domain_name, volumePath + 'feedback'),
-                       destFile],
-                      config.Config.COPYOUT_TIMEOUT)
+                       (self.hostUser, vm.domain_name, volumePath +
+                        'feedback'), destFile], config.Config.COPYOUT_TIMEOUT)
 
         self.log.debug('Copied feedback file to %s' % destFile)
         self.destroyVM(vm)
@@ -346,10 +347,12 @@ class DistDocker(object):
             return machines
         volumePath = self.getVolumePath('')
         for host in hosts:
-            volumes = subprocess.check_output(["ssh"] + DistDocker._SSH_FLAGS +
+            volumes = subprocess.check_output(["ssh"] +
+                                              DistDocker._SSH_FLAGS +
                                               DistDocker._SSH_AUTH_FLAGS +
-                                              ["%s@%s" % (self.hostUser, host),
-                                               "(ls %s)" % volumePath]).decode('utf-8').split('\n')
+                                              ["%s@%s" %
+                                               (self.hostUser, host), "(ls %s)" %
+                                               volumePath]).decode('utf-8').split('\n')
             for volume in volumes:
                 if re.match("%s-" % config.Config.PREFIX, volume):
                     machine = TangoMachine()

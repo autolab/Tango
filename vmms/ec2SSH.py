@@ -99,8 +99,10 @@ class Ec2SSH(object):
         """
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
-            self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
-                                                    aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
+            self.connection = ec2.connect_to_region(
+                config.Config.EC2_REGION,
+                aws_access_key_id=accessKeyId,
+                aws_secret_access_key=accessKey)
             self.useDefaultKeyPair = False
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
@@ -182,8 +184,11 @@ class Ec2SSH(object):
                 config.Config.DEFAULT_SECURITY_GROUP,
                 "Autolab security group - allowing all traffic")
             # All ports, all traffics, all ips
-            security_group.authorize(from_port=None,
-                                     to_port=None, ip_protocol='-1', cidr_ip='0.0.0.0/0')
+            security_group.authorize(
+                from_port=None,
+                to_port=None,
+                ip_protocol='-1',
+                cidr_ip='0.0.0.0/0')
         except boto.exception.EC2ResponseError:
             pass
 
@@ -348,8 +353,8 @@ class Ec2SSH(object):
                                                     config.Config.VM_ULIMIT_FILE_SIZE,
                                                     runTimeout,
                                                     maxOutputFileSize)
-        ret = timeout(["ssh"] + self.ssh_flags +
-                      ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+        ret = timeout(["ssh"] + self.ssh_flags + ["%s@%s" %
+                                                  (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
         return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 

@@ -57,8 +57,10 @@ parser.add_argument('--runJob', help='Run a job from a specific directory')
 parser.add_argument(
     '--numJobs', type=int, default=1, help='Number of jobs to run')
 
-parser.add_argument('--vmms', default='localDocker',
-                    help='Choose vmms between ec2SSH, tashiSSH, localDocker, and distDocker')
+parser.add_argument(
+    '--vmms',
+    default='localDocker',
+    help='Choose vmms between ec2SSH, tashiSSH, localDocker, and distDocker')
 parser.add_argument('--image', default='',
                     help='VM image name (default "autograding_image")')
 parser.add_argument(
@@ -220,13 +222,19 @@ def tango_addJob():
              args.key,
              args.courselab),
             data=json.dumps(requestObj))
-        print("Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
-              (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
+        print(
+            "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
+            (args.server,
+             args.port,
+             args.key,
+             args.courselab,
+             json.dumps(requestObj)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
-              (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
+        print(
+            "Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
+            (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
         print(str(err))
         sys.exit(0)
 
@@ -247,13 +255,25 @@ def tango_poll():
              args.courselab,
              urllib.parse.quote(
                  args.outputFile)))
-        print("Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port,
-                                                        args.key, args.courselab, urllib.parse.quote(args.outputFile)))
+        print(
+            "Sent request to %s:%d/poll/%s/%s/%s/" %
+            (args.server,
+             args.port,
+             args.key,
+             args.courselab,
+             urllib.parse.quote(
+                 args.outputFile)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server,
-                                                                  args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
+        print(
+            "Failed to send request to %s:%d/poll/%s/%s/%s/" %
+            (args.server,
+             args.port,
+             args.key,
+             args.courselab,
+             urllib.parse.quote(
+                 args.outputFile)))
         print(str(err))
         sys.exit(0)
 
@@ -343,13 +363,20 @@ def tango_prealloc():
              args.image,
              args.num),
             data=json.dumps(vmObj))
-        print("Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
-              (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
+        print(
+            "Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
+            (args.server,
+             args.port,
+             args.key,
+             args.image,
+             args.num,
+             json.dumps(vmObj)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
-              (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
+        print(
+            "Failed to send request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
+            (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
         print(str(err))
         sys.exit(0)
 

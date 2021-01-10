@@ -105,7 +105,8 @@ class JobManager(object):
                                   (job.name, job.id, preVM.name, job.retries))
                 else:
                     self.log.info(
-                        "Unable to pre-allocate a vm for job job %s:%d [try %d]" % (job.name, job.id, job.retries))
+                        "Unable to pre-allocate a vm for job job %s:%d [try %d]" %
+                        (job.name, job.id, job.retries))
 
                 job.appendTrace(
                     "%s|Dispatched job %s:%d [try %d]" %
@@ -126,7 +127,8 @@ class JobManager(object):
 if __name__ == "__main__":
 
     if not Config.USE_REDIS:
-        print("You need to have Redis running to be able to initiate stand-alone\
+        print(
+            "You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
         tango = tango.TangoServer()

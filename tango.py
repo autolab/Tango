@@ -321,8 +321,10 @@ class TangoServer(object):
 
         # Check for max output file size parameter
         if not job.maxOutputFileSize:
-            self.log.debug("validateJob: Setting job.maxOutputFileSize "
-                           "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
+            self.log.debug(
+                "validateJob: Setting job.maxOutputFileSize "
+                "to default value: %d bytes",
+                Config.MAX_OUTPUT_FILE_SIZE)
             job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
         # Check the list of input files
@@ -337,8 +339,9 @@ class TangoServer(object):
                 if not os.path.exists(os.path.dirname(job.outputFile)):
                     self.log.error(
                         "validateJob: Bad output path: %s", job.outputFile)
-                    job.appendTrace("%s|validateJob: Bad output path: %s" %
-                                    (datetime.utcnow().ctime(), job.outputFile))
+                    job.appendTrace(
+                        "%s|validateJob: Bad output path: %s" %
+                        (datetime.utcnow().ctime(), job.outputFile))
                     errors += 1
 
             if inputFile.destFile == 'Makefile':
@@ -347,14 +350,17 @@ class TangoServer(object):
         # Check if input files include a Makefile
         if not hasMakefile:
             self.log.error("validateJob: Missing Makefile in input files.")
-            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (
-                datetime.utcnow().ctime()))
+            job.appendTrace(
+                "%s|validateJob: Missing Makefile in input files." %
+                (datetime.utcnow().ctime()))
             errors += 1
 
         # Check if job timeout has been set; If not set timeout to default
         if not job.timeout or job.timeout <= 0:
-            self.log.debug("validateJob: Setting job.timeout to"
-                           " default config value: %d secs", Config.RUNJOB_TIMEOUT)
+            self.log.debug(
+                "validateJob: Setting job.timeout to"
+                " default config value: %d secs",
+                Config.RUNJOB_TIMEOUT)
             job.timeout = Config.RUNJOB_TIMEOUT
 
         # Any problems, return an error status
