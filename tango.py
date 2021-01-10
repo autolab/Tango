@@ -37,6 +37,7 @@
 from builtins import object
 from builtins import str
 import threading, logging, time, stat, re, os
+from typing import List, Any
 
 from datetime import datetime
 from preallocator import Preallocator
@@ -52,7 +53,7 @@ class TangoServer(object):
     """ TangoServer - Implements the API functions that the server accepts
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.daemon = True
         
         vmms = None
@@ -86,7 +87,7 @@ class TangoServer(object):
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
 
-    def addJob(self, job):
+    def addJob(self, job: TangoJob):
         """ addJob - Add a job to the job queue
         """
         Config.job_requests += 1
@@ -99,7 +100,7 @@ class TangoServer(object):
             self.jobQueue.addDead(job)
             return -1
 
-    def delJob(self, id, deadjob):
+    def delJob(self, id: int, deadjob: int) -> int:
         """ delJob - Delete a job
         @param id: Id of job to delete
         @param deadjob - If 0, move the job from the live queue to the
@@ -109,7 +110,7 @@ class TangoServer(object):
         self.log.debug("Received delJob(%d, %d) request" % (id, deadjob))
         return self.jobQueue.delJob(id, deadjob)
 
-    def getJobs(self, item):
+    def getJobs(self, item) -> List[Any]:
         """ getJobs - Return the list of live jobs (item == 0) or the
         list of dead jobs (item == -1).
         """
@@ -127,7 +128,7 @@ class TangoServer(object):
         except Exception as e:
             self.log.debug("getJobs: %s" % str(e))
 
-    def preallocVM(self, vm, num):
+    def preallocVM(self, vm, num: int) -> int:
         """ preallocVM - Set the pool size for VMs of type vm to num
         """
         self.log.debug("Received preallocVM(%s,%d)request"
@@ -147,7 +148,7 @@ class TangoServer(object):
             self.log.error("preallocVM failed: %s" % err)
             return -1
 
-    def getVMs(self, vmms_name):
+    def getVMs(self, vmms_name: str) -> list:
         """ getVMs - return the list of VMs managed by the service vmms_name
         """
         self.log.debug("Received getVMs request(%s)" % vmms_name)
@@ -161,7 +162,7 @@ class TangoServer(object):
             self.log.error("getVMs request failed: %s" % err)
             return []
 
-    def delVM(self, vmName, id):
+    def delVM(self, vmName: str, id: int) -> int:
         """ delVM - delete a specific VM instance from a pool
         """
         self.log.debug("Received delVM request(%s, %d)" % (vmName, id))
@@ -173,7 +174,7 @@ class TangoServer(object):
             self.log.error("delVM request failed: %s" % err)
             return -1
 
-    def getPool(self, vmName):
+    def getPool(self, vmName: str) -> List[str]:
         """ getPool - Return the current members of a pool and its free list
         """
         self.log.debug("Received getPool request(%s)" % (vmName))
@@ -209,7 +210,7 @@ class TangoServer(object):
     #
     # Helper functions
     #
-    def resetTango(self, vmms):
+    def resetTango(self, vmms: List[Any]) -> None:
         """ resetTango - resets Tango to a clean predictable state and
         ensures that it has a working virtualization environment. A side
         effect is that also checks that each supported VMMS is actually
@@ -246,7 +247,7 @@ class TangoServer(object):
             os._exit(1)
 
 
-    def __validateJob(self, job, vmms):
+    def __validateJob(self, job: TangoJob, vmms: List[Any]) -> int:
         """ validateJob - validate the input arguments in an addJob request.
         """
         errors = 0

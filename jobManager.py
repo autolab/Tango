@@ -27,7 +27,7 @@ from config import Config
 
 class JobManager(object):
 
-    def __init__(self, queue):
+    def __init__(self, queue: JobQueue) -> None:
         self.daemon = True
         self.jobQueue = queue
         self.preallocator = self.jobQueue.preallocator
@@ -37,19 +37,19 @@ class JobManager(object):
         self.nextId = 10000
         self.running = False
 
-    def start(self):
+    def start(self) -> None:
         if self.running:
             return
         thread = threading.Thread(target=self.__manage)
         thread.daemon = True
         thread.start()
 
-    def run(self):
+    def run(self) -> None:
         if self.running:
             return
         self.__manage()
 
-    def _getNextID(self):
+    def _getNextID(self) -> int:
         """ _getNextID - returns next ID to be used for a job-associated
         VM.  Job-associated VM's have 5-digit ID numbers between 10000
         and 99999.
@@ -60,7 +60,7 @@ class JobManager(object):
             self.nextId = 10000
         return id
 
-    def __manage(self):
+    def __manage(self) -> None:
         self.running = True
         while True:
             # Blocks until we get a next job
