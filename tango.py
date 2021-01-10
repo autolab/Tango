@@ -40,13 +40,14 @@ import time
 import stat
 import re
 import os
+
 from builtins import object
 from builtins import str
-
 from datetime import datetime
+
+from jobManager import JobManager
 from preallocator import Preallocator
 from jobQueue import JobQueue
-from jobManager import JobManager
 from tangoObjects import TangoJob
 from config import Config
 
