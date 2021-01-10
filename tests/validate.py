@@ -9,7 +9,7 @@ try:
     import pyflakes
     pyflakes  # avoid unused warning when validating self!
 except ImportError:
-    print('Validate requires pyflakes. Please install '\
+    print('Validate requires pyflakes. Please install '
           'with: pip install pyflakes')
     exit()
 

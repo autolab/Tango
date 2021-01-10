@@ -3,7 +3,10 @@
 #
 from builtins import object
 from builtins import range
-import threading, logging, time, copy
+import threading
+import logging
+import time
+import copy
 
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config

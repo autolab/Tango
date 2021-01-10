@@ -5,20 +5,22 @@
 #
 
 from __future__ import print_function
+import urllib.error
+import urllib.parse
+import urllib.request
+import json
+import requests
+import argparse
+import sys
+import os
+from builtins import str
+from builtins import map
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
-from builtins import map
-from builtins import str
-import os
-import sys
 
 sys.path.append('/usr/lib/python2.7/site-packages/')
 
-import argparse
-import requests
-import json
-import urllib.request, urllib.parse, urllib.error
 
 #
 #
@@ -145,12 +147,14 @@ def tango_open():
         response = requests.get(
             'http://%s:%d/open/%s/%s/' %
             (args.server, args.port, args.key, args.courselab))
-        print("Sent request to %s:%d/open/%s/%s/" % (args.server, args.port, args.key, args.courselab))
+        print("Sent request to %s:%d/open/%s/%s/" %
+              (args.server, args.port, args.key, args.courselab))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/open/%s/%s/" % (args.server, args.port, args.key, args.courselab))
-        print (str(err))
+        print("Failed to send request to %s:%d/open/%s/%s/" %
+              (args.server, args.port, args.key, args.courselab))
+        print(str(err))
         sys.exit(0)
 
 # upload
@@ -176,12 +180,14 @@ def tango_upload():
             data=f.read(),
             headers=header)
         f.close()
-        print("Sent request to %s:%d/upload/%s/%s/ filename=%s" % (args.server, args.port, args.key, args.courselab, args.filename))
+        print("Sent request to %s:%d/upload/%s/%s/ filename=%s" %
+              (args.server, args.port, args.key, args.courselab, args.filename))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/upload/%s/%s/ filename=%s" % (args.server, args.port, args.key, args.courselab, args.filename))
-        print (str(err))
+        print("Failed to send request to %s:%d/upload/%s/%s/ filename=%s" %
+              (args.server, args.port, args.key, args.courselab, args.filename))
+        print(str(err))
         sys.exit(0)
 
 # addJob
@@ -200,10 +206,10 @@ def tango_addJob():
         requestObj['max_kb'] = args.maxsize
         requestObj['output_file'] = args.outputFile
         requestObj['jobName'] = args.jobname
-        
+
         if (args.notifyURL):
             requestObj['notifyURL'] = args.notifyURL
-        
+
         requestObj['accessKeyId'] = args.accessKeyId
         requestObj['accessKey'] = args.accessKey
 
@@ -214,12 +220,14 @@ def tango_addJob():
              args.key,
              args.courselab),
             data=json.dumps(requestObj))
-        print("Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
+        print("Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
+              (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s" % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
-        print (str(err))
+        print("Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s" %
+              (args.server, args.port, args.key, args.courselab, json.dumps(requestObj)))
+        print(str(err))
         sys.exit(0)
 
 # poll
@@ -239,12 +247,14 @@ def tango_poll():
              args.courselab,
              urllib.parse.quote(
                  args.outputFile)))
-        print("Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
+        print("Sent request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port,
+                                                        args.key, args.courselab, urllib.parse.quote(args.outputFile)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server, args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
-        print (str(err))
+        print("Failed to send request to %s:%d/poll/%s/%s/%s/" % (args.server,
+                                                                  args.port, args.key, args.courselab, urllib.parse.quote(args.outputFile)))
+        print(str(err))
         sys.exit(0)
 
 # info
@@ -258,12 +268,14 @@ def tango_info():
 
         response = requests.get(
             'http://%s:%d/info/%s/' % (args.server, args.port, args.key))
-        print("Sent request to %s:%d/info/%s/" % (args.server, args.port, args.key))
+        print("Sent request to %s:%d/info/%s/" %
+              (args.server, args.port, args.key))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/info/%s/" % (args.server, args.port, args.key))
-        print (str(err))
+        print("Failed to send request to %s:%d/info/%s/" %
+              (args.server, args.port, args.key))
+        print(str(err))
         sys.exit(0)
 
 # jobs
@@ -278,12 +290,14 @@ def tango_jobs():
         response = requests.get(
             'http://%s:%d/jobs/%s/%d/' %
             (args.server, args.port, args.key, args.deadJobs))
-        print("Sent request to %s:%d/jobs/%s/%d/" % (args.server, args.port, args.key, args.deadJobs))
+        print("Sent request to %s:%d/jobs/%s/%d/" %
+              (args.server, args.port, args.key, args.deadJobs))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/jobs/%s/%d/" % (args.server, args.port, args.key, args.deadJobs))
-        print (str(err))
+        print("Failed to send request to %s:%d/jobs/%s/%d/" %
+              (args.server, args.port, args.key, args.deadJobs))
+        print(str(err))
         sys.exit(0)
 
 # pool
@@ -297,12 +311,14 @@ def tango_pool():
 
         response = requests.get('http://%s:%d/pool/%s/%s/' %
                                 (args.server, args.port, args.key, args.image))
-        print("Sent request to %s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image))
+        print("Sent request to %s:%d/pool/%s/%s/" %
+              (args.server, args.port, args.key, args.image))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image))
-        print (str(err))
+        print("Failed to send request to %s:%d/pool/%s/%s/" %
+              (args.server, args.port, args.key, args.image))
+        print(str(err))
         sys.exit(0)
 
 # prealloc
@@ -327,12 +343,14 @@ def tango_prealloc():
              args.image,
              args.num),
             data=json.dumps(vmObj))
-        print("Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" % (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
+        print("Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
+              (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
         print(response.text)
 
     except Exception as err:
-        print("Failed to send request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" % (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
-        print (str(err))
+        print("Failed to send request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s" %
+              (args.server, args.port, args.key, args.image, args.num, json.dumps(vmObj)))
+        print(str(err))
         sys.exit(0)
 
 
@@ -361,7 +379,8 @@ def tango_runJob():
     args.jobname += "-0"
     args.outputFile += "-0"
     for i in range(1, args.numJobs + 1):
-        print("----------------------------------------- STARTING JOB " + str(i) + " -----------------------------------------")
+        print("----------------------------------------- STARTING JOB " +
+              str(i) + " -----------------------------------------")
         print("----------- OPEN")
         tango_open()
         print("----------- UPLOAD")
@@ -395,6 +414,7 @@ def router():
         tango_prealloc()
     elif (args.runJob):
         tango_runJob()
+
 
 #
 # Parse the command line arguments

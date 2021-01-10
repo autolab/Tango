@@ -92,6 +92,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
 # User defined exceptions
 #
 # tashiCall() exception
+
+
 class tashiCallError(Exception):
     pass
 
@@ -282,9 +284,9 @@ class TashiSSH(object):
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
             %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
-                                           config.Config.VM_ULIMIT_FILE_SIZE,
-                                           runTimeout,
-                                           config.Config.MAX_OUTPUT_FILE_SIZE)
+                                                config.Config.VM_ULIMIT_FILE_SIZE,
+                                                runTimeout,
+                                                config.Config.MAX_OUTPUT_FILE_SIZE)
         ret = timeout(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
                       ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout

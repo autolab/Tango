@@ -15,7 +15,7 @@ class TestDictionary(unittest.TestCase):
             __db = redis.StrictRedis(
                 Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
-        
+
         self.test_entries = {
             "key": "value",
             0: "0_value",
@@ -29,7 +29,7 @@ class TestDictionary(unittest.TestCase):
 
         for key in self.test_entries:
             test_dict.set(key, self.test_entries[key])
-        
+
         for key in self.test_entries:
             self.assertTrue(key in test_dict)
             self.assertEqual(test_dict.get(key), self.test_entries[key])
@@ -37,7 +37,8 @@ class TestDictionary(unittest.TestCase):
         for (key, val) in test_dict.items():
             self.assertEqual(self.test_entries.get(key), val)
 
-        self.assertEqual(test_dict.keys(), [str(key) for key in self.test_entries.keys()])
+        self.assertEqual(test_dict.keys(), [str(key)
+                                            for key in self.test_entries.keys()])
         self.assertEqual(test_dict.values(), list(self.test_entries.values()))
         self.assertTrue("key_not_present" not in test_dict)
         self.assertEqual(test_dict.get("key_not_present"), None)
@@ -64,7 +65,7 @@ class TestQueue(unittest.TestCase):
                 Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
         self.test_entries = [i for i in range(10)]
-    
+
     def addAllToQueue(self):
         # Add all items into the queue
         for x in self.test_entries:

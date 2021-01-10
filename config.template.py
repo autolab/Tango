@@ -3,7 +3,8 @@
 #
 
 from builtins import object
-import logging, time
+import logging
+import time
 
 # Config - defines
 import os
@@ -34,7 +35,7 @@ class Config(object):
     # Courselabs directory. Must be created before starting Tango
     COURSELABS = "courselabs"
 
-    # Directory within each courselab where Tango will copy the output 
+    # Directory within each courselab where Tango will copy the output
     # for jobs of that courselab
     OUTPUT_FOLDER = "output"
 
@@ -48,7 +49,8 @@ class Config(object):
     # It must be an absolute path with trailing slash, i.e
     # /opt/TangoService/Tango/volumes/
     DEFAULT_DOCKER_VOLUME_PATH = ""
-    DOCKER_VOLUME_PATH = os.getenv("DOCKER_VOLUME_PATH", DEFAULT_DOCKER_VOLUME_PATH)
+    DOCKER_VOLUME_PATH = os.getenv(
+        "DOCKER_VOLUME_PATH", DEFAULT_DOCKER_VOLUME_PATH)
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
@@ -137,7 +139,8 @@ class Config(object):
     #
     USE_REDIS = True
     DEFAULT_REDIS_HOSTNAME = "127.0.0.1"
-    REDIS_HOSTNAME = os.getenv("DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
+    REDIS_HOSTNAME = os.getenv(
+        "DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
     REDIS_PORT = 6379
 
     ######

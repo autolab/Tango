@@ -10,7 +10,9 @@
 from builtins import range
 from builtins import object
 from builtins import str
-import threading, logging, time
+import threading
+import logging
+import time
 
 from datetime import datetime
 from tangoObjects import TangoDictionary, TangoJob, TangoQueue
@@ -94,26 +96,26 @@ class JobQueue(object):
         self.log.debug("_getNextID|Released lock to job queue.")
         return id
 
-    def remove(self, id):	
+    def remove(self, id):
         """remove - Remove job from live queue	
-        """	
-        status = -1	
-        self.log.debug("remove|Acquiring lock to job queue.")	
-        self.queueLock.acquire()	
-        self.log.debug("remove|Acquired lock to job queue.")	
-        if id in self.liveJobs:	
-            self.liveJobs.delete(id)	
-            status = 0	
+        """
+        status = -1
+        self.log.debug("remove|Acquiring lock to job queue.")
+        self.queueLock.acquire()
+        self.log.debug("remove|Acquired lock to job queue.")
+        if id in self.liveJobs:
+            self.liveJobs.delete(id)
+            status = 0
         self.unassignedJobs.remove(int(id))
 
-        self.queueLock.release()	
-        self.log.debug("remove|Relased lock to job queue.")	
+        self.queueLock.release()
+        self.log.debug("remove|Relased lock to job queue.")
 
-        if status == 0:	
-            self.log.debug("Removed job %s from queue" % id)	
-        else:	
-            self.log.error("Job %s not found in queue" % id)	
-        return status	
+        if status == 0:
+            self.log.debug("Removed job %s from queue" % id)
+        else:
+            self.log.error("Job %s not found in queue" % id)
+        return status
 
     def add(self, job):
         """add - add job to live queue
@@ -123,7 +125,7 @@ class JobQueue(object):
         """
         if (not isinstance(job, TangoJob)):
             return -1
-  
+
         # Get an id for the new job
         self.log.debug("add|Getting next ID")
         nextId = self._getNextID()
@@ -137,7 +139,7 @@ class JobQueue(object):
         # Make the job unassigned
         job.makeUnassigned()
 
-        # Since we assume that the job is new, we set the number of retries 
+        # Since we assume that the job is new, we set the number of retries
         # of this job to 0
         job.retries = 0
 
@@ -150,7 +152,7 @@ class JobQueue(object):
         # Adds the job to the live jobs dictionary
         self.liveJobs.set(job.id, job)
 
-        # Add this to the unassigned job queue too 
+        # Add this to the unassigned job queue too
         self.unassignedJobs.put(int(job.id))
 
         job.appendTrace("%s|Added job %s:%d to queue" %
@@ -163,8 +165,8 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("add|Releasing lock to job queue.")
 
-        self.log.info("Added job %s:%s to queue, details = %s" % 
-            (job.name, job.id, str(job.__dict__)))
+        self.log.info("Added job %s:%s to queue, details = %s" %
+                      (job.name, job.id, str(job.__dict__)))
 
         return str(job.id)
 
@@ -260,10 +262,10 @@ class JobQueue(object):
             Note: We assume here that a job is to be rescheduled or 
             'retried' when you unassign it. This retry is done by
             the worker.
-        """	       
+        """
         self.queueLock.acquire()
         self.log.debug("unassignJob| Acquired lock to job queue.")
-        
+
         # Get the current job
         job = self.liveJobs.get(jobId)
 
@@ -277,8 +279,8 @@ class JobQueue(object):
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
 
-        # Since the assumption is that the job is being retried, 
-        # we simply add the job to the unassigned jobs queue without 
+        # Since the assumption is that the job is being retried,
+        # we simply add the job to the unassigned jobs queue without
         # removing anything from it
         self.unassignedJobs.put(int(jobId))
 
@@ -294,7 +296,8 @@ class JobQueue(object):
         status = -1
         # Check to make sure that the job is in the live jobs queue
         if id in self.liveJobs:
-            self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
+            self.log.info(
+                "makeDead| Found job ID: %s in the live queue" % (id))
             status = 0
             job = self.liveJobs.get(id)
             self.log.info("Terminated job %s:%s: %s" %
@@ -302,10 +305,10 @@ class JobQueue(object):
 
             # Add the job to the dead jobs dictionary
             self.deadJobs.set(id, job)
-            # Remove the job from the live jobs dictionary 
+            # Remove the job from the live jobs dictionary
             self.liveJobs.delete(id)
 
-            # Remove the job from the unassigned live jobs queue 
+            # Remove the job from the unassigned live jobs queue
             self.unassignedJobs.remove(int(id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
@@ -330,13 +333,12 @@ class JobQueue(object):
         self.deadJobs._clean()
         self.unassignedJobs._clean()
 
-
     def getNextPendingJob(self):
         """Gets the next unassigned live job. Note that this is a 
            blocking function and we will block till there is an available 
            job.
         """
-        # Blocks till the next item is added 
+        # Blocks till the next item is added
         id = self.unassignedJobs.get()
 
         self.log.debug("_getNextPendingJob|Acquiring lock to job queue.")
@@ -352,7 +354,7 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("getNextPendingJob| Released lock to job queue.")
         return job
- 
+
     def reuseVM(self, job):
         """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is 
            set to true.
@@ -363,13 +365,13 @@ class JobQueue(object):
         if self.preallocator.poolSize(job.vm.name) == 0:
             self.preallocator.update(job.vm, Config.POOL_SIZE)
 
-        # If the job hasn't been assigned to a worker yet, we try to 
+        # If the job hasn't been assigned to a worker yet, we try to
         # allocate a new vm for this job
         if (job.isNotAssigned()):
             # Note: This could return None, when all VMs are being used
             return self.preallocator.allocVM(job.vm.name)
         else:
-            # In the case where a job is already assigned, it should have 
+            # In the case where a job is already assigned, it should have
             # a vm, and we just return that vm here
             if job.vm:
                 return job.vm

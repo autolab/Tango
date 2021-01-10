@@ -119,8 +119,8 @@ class Worker(threading.Thread):
         and f2 is the output from the Autodriver
         """
         self.appendMsg(f1, "Here is the output from the autograder:\n---")
-        (wfd, tmpname)=tempfile.mkstemp(dir=os.path.dirname(f2))
-        wf=os.fdopen(wfd, "ab")
+        (wfd, tmpname) = tempfile.mkstemp(dir=os.path.dirname(f2))
+        wf = os.fdopen(wfd, "ab")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
         # f2 may not exist if autograder failed
@@ -342,6 +342,6 @@ class Worker(threading.Thread):
             # if vm is not set but self.preVM is set, we still need
             # to return the VM, but have to initialize self.job.vm first
             if self.preVM and not vm:
-               vm = self.job.vm = self.preVM
+                vm = self.job.vm = self.preVM
             if vm:
-               self.detachVM(return_vm=False, replace_vm=True)
+                self.detachVM(return_vm=False, replace_vm=True)

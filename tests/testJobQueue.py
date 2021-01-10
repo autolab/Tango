@@ -115,7 +115,6 @@ class TestJobQueue(unittest.TestCase):
         job = self.jobQueue.getNextPendingJob()
         self.assertMultiLineEqual(str(job.id), self.jobId2)
 
-
     def test_assignJob(self):
         self.jobQueue.assignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
@@ -145,6 +144,7 @@ class TestJobQueue(unittest.TestCase):
             id = self.jobQueue._getNextID()
             self.assertNotEqual(str(id), self.jobId1)
         self.jobQueue.nextID = init_id
+
 
 if __name__ == '__main__':
     unittest.main()

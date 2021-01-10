@@ -100,7 +100,7 @@ class Ec2SSH(object):
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION,
-                    aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
+                                                    aws_access_key_id=accessKeyId, aws_secret_access_key=accessKey)
             self.useDefaultKeyPair = False
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
@@ -183,7 +183,7 @@ class Ec2SSH(object):
                 "Autolab security group - allowing all traffic")
             # All ports, all traffics, all ips
             security_group.authorize(from_port=None,
-                to_port=None, ip_protocol='-1', cidr_ip='0.0.0.0/0')
+                                     to_port=None, ip_protocol='-1', cidr_ip='0.0.0.0/0')
         except boto.exception.EC2ResponseError:
             pass
 
@@ -207,7 +207,6 @@ class Ec2SSH(object):
             else:
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
                 self.createKeyPair()
-
 
             reservation = self.connection.run_instances(
                 ec2instance['ami'],
@@ -330,7 +329,7 @@ class Ec2SSH(object):
                           self.ssh_flags +
                           [file.localFile, "%s@%s:autolab/%s" %
                            (config.Config.EC2_USER_NAME, domain_name, file.destFile)],
-                            config.Config.COPYIN_TIMEOUT)
+                          config.Config.COPYIN_TIMEOUT)
             if ret != 0:
                 return ret
 
@@ -346,11 +345,11 @@ class Ec2SSH(object):
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
                 %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
-                                               config.Config.VM_ULIMIT_FILE_SIZE,
-                                               runTimeout,
-                                               maxOutputFileSize)
+                                                    config.Config.VM_ULIMIT_FILE_SIZE,
+                                                    runTimeout,
+                                                    maxOutputFileSize)
         ret = timeout(["ssh"] + self.ssh_flags +
-                       ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+                      ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
         return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
@@ -393,7 +392,8 @@ class Ec2SSH(object):
                 pass
 
         return timeout(["scp"] + self.ssh_flags +
-                       ["%s@%s:output" % (config.Config.EC2_USER_NAME, domain_name), destFile],
+                       ["%s@%s:output" %
+                           (config.Config.EC2_USER_NAME, domain_name), destFile],
                        config.Config.COPYOUT_TIMEOUT)
 
     def destroyVM(self, vm):

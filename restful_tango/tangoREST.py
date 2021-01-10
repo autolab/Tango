@@ -1,4 +1,7 @@
 from __future__ import print_function
+from config import Config
+from tangoObjects import TangoJob, TangoMachine, InputFile
+from tango import TangoServer
 # tangoREST.py
 #
 # Implements open, upload, addJob, and poll to be used for the RESTful
@@ -16,14 +19,9 @@ from builtins import object
 from builtins import str
 
 currentdir = os.path.dirname(
-        os.path.abspath(inspect.getfile(inspect.currentframe())))
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-
-from tango import TangoServer
-from tangoObjects import TangoJob, TangoMachine, InputFile
-
-from config import Config
 
 
 class Status(object):
@@ -70,13 +68,13 @@ class TangoREST(object):
     def __init__(self):
 
         logging.basicConfig(
-            filename = self.LOGFILE,
-            format = "%(levelname)s|%(asctime)s|%(name)s|%(message)s",
-            level = Config.LOGLEVEL
+            filename=self.LOGFILE,
+            format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
+            level=Config.LOGLEVEL
         )
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
-        
+
         self.tango = TangoServer()
         self.status = Status()
 
@@ -318,7 +316,8 @@ class TangoREST(object):
                 if (jobId == -1):
                     self.log.info("Failed to add job to tango")
                     return self.status.create(-1, job.trace)
-                self.log.info("Successfully added job ID: %s to tango" % str(jobId))
+                self.log.info(
+                    "Successfully added job ID: %s to tango" % str(jobId))
                 result = self.status.job_added
                 result['jobId'] = jobId
                 return result
@@ -408,7 +407,7 @@ class TangoREST(object):
                 else:
                     self.log.info("Invalid image name: %s" % image)
                     result = self.status.pool_not_found
-            
+
             result["pools"] = pools
             return result
         else:
