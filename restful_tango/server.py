@@ -9,7 +9,7 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-import tangoREST
+from restful_tango import tangoREST
 from config import Config
 
 tangoREST = tangoREST.TangoREST()
