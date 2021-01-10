@@ -1,22 +1,4 @@
 from __future__ import print_function
-import copy
-import time
-import logging
-import threading
-
-from builtins import str
-from builtins import object
-from datetime import datetime
-from future import standard_library
-
-import tango # Written this way to avoid circular imports
-from config import Config
-from tangoObjects import TangoQueue
-from worker import Worker
-from preallocator import Preallocator
-from jobQueue import JobQueue
-
-standard_library.install_aliases()
 
 #
 # JobManager - Thread that assigns jobs to worker threads
@@ -29,6 +11,25 @@ standard_library.install_aliases()
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
+
+import copy
+import time
+import logging
+import threading
+
+from builtins import str
+from builtins import object
+from datetime import datetime
+from future import standard_library
+
+import tango  # Written this way to avoid circular imports
+from config import Config
+from tangoObjects import TangoQueue
+from worker import Worker
+from preallocator import Preallocator
+from jobQueue import JobQueue
+
+standard_library.install_aliases()
 
 
 class JobManager(object):
