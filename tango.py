@@ -5,7 +5,7 @@
 # 1. The Restful API: This is the interface for Tango that receives
 #    requests from clients via HTTP. AddJob requests are converted
 #    into a form that the tangoServer understands and then passed on
-#    to an instance of the tangoServer class. (restful-tango/*)
+#    to an instance of the tangoServer class. (restful_tango/*)
 #
 # 2. The TangoServer Class: This is a class that accepts addJob requests
 #    from the restful server. Job requests are validated and placed in
