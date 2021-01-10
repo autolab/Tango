@@ -443,6 +443,6 @@ class Ec2SSH(object):
         return False
 
     def getImages(self):
-        """ getImages - return a constant; actually use the ami specified in config 
+        """ getImages - return a constant; actually use the ami specified in config
         """
         return ["default.img"]

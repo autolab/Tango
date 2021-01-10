@@ -126,7 +126,7 @@ class DistDocker(object):
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM -  Assign a host machine for this container to 
+        """ initializeVM -  Assign a host machine for this container to
         run on.
         """
         return vm
@@ -329,7 +329,7 @@ class DistDocker(object):
         """
         start_time = time.time()
         while self.existsVM(vm):
-            if (time.time()-start_time > config.Config.DESTROY_SECS):
+            if (time.time() - start_time > config.Config.DESTROY_SECS):
                 self.log.error("Failed to safely destroy container %s"
                                % vm.name)
                 return
@@ -373,9 +373,9 @@ class DistDocker(object):
         return (vm.name in vmnames)
 
     def getImages(self):
-        """ getImages - Executes `docker images` on every host and 
-        returns a list of images that can be used to boot a docker 
-        container with. This function is a lot of parsing and so 
+        """ getImages - Executes `docker images` on every host and
+        returns a list of images that can be used to boot a docker
+        container with. This function is a lot of parsing and so
         can break easily.
         """
         result = set()

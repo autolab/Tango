@@ -417,4 +417,5 @@ class TashiSSH(object):
         """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
         .img extension
         """
-        return [img for img in os.listdir(Config.TASHI_IMAGE_PATH) if img.endswith('.img')]
+        return [img for img in os.listdir(
+            Config.TASHI_IMAGE_PATH) if img.endswith('.img')]

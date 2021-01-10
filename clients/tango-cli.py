@@ -428,7 +428,7 @@ if (not args.open and not args.upload and not args.addJob
 
 try:
     response = requests.get('http://%s:%d/' % (args.server, args.port))
-except:
+except BaseException:
     print('Tango not reachable on %s:%d!\n' % (args.server, args.port))
     sys.exit(0)
 

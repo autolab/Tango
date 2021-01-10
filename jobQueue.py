@@ -37,24 +37,24 @@ class JobQueue(object):
 
     def __init__(self, preallocator):
         """
-        Here we maintain several data structures used to keep track of the 
-        jobs present for the autograder. 
+        Here we maintain several data structures used to keep track of the
+        jobs present for the autograder.
 
         Live jobs contains:
         - jobs that are yet to be assigned and run
         - jobs that are currently running
 
-        Dead jobs contains: 
+        Dead jobs contains:
         - jobs that have been completed, or have been 'deleted' when in
           the live jobs queue
 
-        Unassigned jobs: 
-        This is a FIFO queue of jobs that are pending assignment. 
-        - We enforce the invariant that all jobs in this queue must be 
+        Unassigned jobs:
+        This is a FIFO queue of jobs that are pending assignment.
+        - We enforce the invariant that all jobs in this queue must be
           present in live jobs
 
-        queueLock protects all the internal data structure of JobQueue. This 
-        is needed since there are multiple worker threads and they might be 
+        queueLock protects all the internal data structure of JobQueue. This
+        is needed since there are multiple worker threads and they might be
         using the makeUnassigned api.
         """
         self.liveJobs = TangoDictionary("liveJobs")
@@ -97,7 +97,7 @@ class JobQueue(object):
         return id
 
     def remove(self, id):
-        """remove - Remove job from live queue	
+        """remove - Remove job from live queue
         """
         status = -1
         self.log.debug("remove|Acquiring lock to job queue.")
@@ -120,8 +120,8 @@ class JobQueue(object):
     def add(self, job):
         """add - add job to live queue
         This function assigns an ID number to a *new* job and then adds it
-        to the queue of live jobs. 
-        Returns the job id on success, -1 otherwise 
+        to the queue of live jobs.
+        Returns the job id on success, -1 otherwise
         """
         if (not isinstance(job, TangoJob)):
             return -1
@@ -172,7 +172,7 @@ class JobQueue(object):
 
     def addDead(self, job):
         """ addDead - add a job to the dead queue.
-        Called by validateJob when a job validation fails. 
+        Called by validateJob when a job validation fails.
         Returns -1 on failure and the job id on success
         """
         if (not isinstance(job, TangoJob)):
@@ -259,7 +259,7 @@ class JobQueue(object):
 
     def unassignJob(self, jobId):
         """ unassignJob - marks a job to be unassigned
-            Note: We assume here that a job is to be rescheduled or 
+            Note: We assume here that a job is to be rescheduled or
             'retried' when you unassign it. This retry is done by
             the worker.
         """
@@ -326,7 +326,7 @@ class JobQueue(object):
         return info
 
     def reset(self):
-        """ reset - resets and clears all the internal dictionaries 
+        """ reset - resets and clears all the internal dictionaries
                     and queues
         """
         self.liveJobs._clean()
@@ -334,8 +334,8 @@ class JobQueue(object):
         self.unassignedJobs._clean()
 
     def getNextPendingJob(self):
-        """Gets the next unassigned live job. Note that this is a 
-           blocking function and we will block till there is an available 
+        """Gets the next unassigned live job. Note that this is a
+           blocking function and we will block till there is an available
            job.
         """
         # Blocks till the next item is added
@@ -356,7 +356,7 @@ class JobQueue(object):
         return job
 
     def reuseVM(self, job):
-        """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is 
+        """Helps a job reuse a vm. This is called if CONFIG.REUSE_VM is
            set to true.
         """
 

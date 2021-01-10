@@ -211,7 +211,7 @@ class LocalDocker(object):
         """
         start_time = time.time()
         while self.existsVM(vm):
-            if (time.time()-start_time > config.Config.DESTROY_SECS):
+            if (time.time() - start_time > config.Config.DESTROY_SECS):
                 self.log.error("Failed to safely destroy container %s"
                                % vm.name)
                 return
@@ -246,7 +246,7 @@ class LocalDocker(object):
 
     def getImages(self):
         """ getImages - Executes `docker images` and returns a list of
-        images that can be used to boot a docker container with. This 
+        images that can be used to boot a docker container with. This
         function is a lot of parsing and so can break easily.
         """
         result = set()
