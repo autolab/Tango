@@ -9,10 +9,10 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-import tangoREST
+from tangoREST import TangoREST
 from config import Config
 
-tangoREST = tangoREST.TangoREST()
+tangoREST = TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Regex for the resources

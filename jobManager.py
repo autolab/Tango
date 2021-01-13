@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
@@ -10,20 +11,26 @@ from __future__ import print_function
 # is launched that will handle things from here on. If anything goes
 # wrong, the job is made dead with the error.
 #
-from builtins import object
-from future import standard_library
-standard_library.install_aliases()
+
+import copy
+import time
+import logging
+import threading
+
 from builtins import str
-import threading, logging, time, copy
-
+from builtins import object
 from datetime import datetime
-from tango import *
-from jobQueue import JobQueue
-from preallocator import Preallocator
-from worker import Worker
+from future import standard_library
 
-from tangoObjects import TangoQueue
+import tango  # Written this way to avoid circular imports
 from config import Config
+from tangoObjects import TangoQueue
+from worker import Worker
+from preallocator import Preallocator
+from jobQueue import JobQueue
+
+standard_library.install_aliases()
+
 
 class JobManager(object):
 
@@ -97,7 +104,8 @@ class JobManager(object):
                     self.log.info("Dispatched job %s:%d to %s [try %d]" %
                                   (job.name, job.id, preVM.name, job.retries))
                 else:
-                    self.log.info("Unable to pre-allocate a vm for job job %s:%d [try %d]" % (job.name, job.id, job.retries))
+                    self.log.info(
+                        "Unable to pre-allocate a vm for job job %s:%d [try %d]" % (job.name, job.id, job.retries))
 
                 job.appendTrace(
                     "%s|Dispatched job %s:%d [try %d]" %
@@ -121,7 +129,7 @@ if __name__ == "__main__":
         print("You need to have Redis running to be able to initiate stand-alone\
          JobManager")
     else:
-        tango = TangoServer()
+        tango = tango.TangoServer()
         tango.log.debug("Resetting Tango VMs")
         tango.resetTango(tango.preallocator.vmms)
         for key in tango.preallocator.machines.keys():

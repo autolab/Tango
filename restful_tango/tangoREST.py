@@ -5,14 +5,15 @@ from __future__ import print_function
 # interface of Tango.
 #
 
-from builtins import object
-from builtins import str
 import sys
 import os
 import inspect
 import hashlib
 import json
 import logging
+
+from builtins import object
+from builtins import str
 
 currentdir = os.path.dirname(
         os.path.abspath(inspect.getfile(inspect.currentframe())))

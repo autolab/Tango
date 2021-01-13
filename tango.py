@@ -5,7 +5,7 @@
 # 1. The Restful API: This is the interface for Tango that receives
 #    requests from clients via HTTP. AddJob requests are converted
 #    into a form that the tangoServer understands and then passed on
-#    to an instance of the tangoServer class. (restful-tango/*)
+#    to an instance of the tangoServer class. (restful_tango/*)
 #
 # 2. The TangoServer Class: This is a class that accepts addJob requests
 #    from the restful server. Job requests are validated and placed in
@@ -34,15 +34,20 @@
 #    the pool, the preallocator creates another instance and adds it
 #    to the pool. (preallocator.py)
 
+import threading
+import logging
+import time
+import stat
+import re
+import os
+
 from builtins import object
 from builtins import str
-import threading, logging, time, stat, re, os
-
 from datetime import datetime
+
+from jobManager import JobManager
 from preallocator import Preallocator
 from jobQueue import JobQueue
-from jobManager import JobManager
-
 from tangoObjects import TangoJob
 from config import Config
 
@@ -54,7 +59,7 @@ class TangoServer(object):
 
     def __init__(self):
         self.daemon = True
-        
+
         vmms = None
         if Config.VMMS_NAME == "tashiSSH":
             from vmms.tashiSSH import TashiSSH
@@ -76,7 +81,7 @@ class TangoServer(object):
             # memory between processes. Otherwise, JobManager will
             # be initiated separately
             JobManager(self.jobQueue).start()
-        
+
         logging.basicConfig(
             filename=Config.LOGFILE,
             format="%(levelname)s|%(asctime)s|%(name)s|%(message)s",
@@ -194,7 +199,7 @@ class TangoServer(object):
         """ getInfo - return various statistics about the Tango daemon
         """
         stats = {}
-        stats['elapsed_secs'] = time.time() - self.start_time;
+        stats['elapsed_secs'] = time.time() - self.start_time
         stats['job_requests'] = Config.job_requests
         stats['job_retries'] = Config.job_retries
         stats['waitvm_timeouts'] = Config.waitvm_timeouts
@@ -203,7 +208,7 @@ class TangoServer(object):
         stats['runjob_errors'] = Config.runjob_errors
         stats['copyout_errors'] = Config.copyout_errors
         stats['num_threads'] = threading.activeCount()
-        
+
         return stats
 
     #
@@ -223,7 +228,8 @@ class TangoServer(object):
             for vmms_name in vmms:
                 vobj = vmms[vmms_name]
                 vms = vobj.getVMs()
-                self.log.debug("Pre-existing VMs: %s" % [vm.name for vm in vms])
+                self.log.debug("Pre-existing VMs: %s" %
+                               [vm.name for vm in vms])
                 namelist = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
@@ -233,7 +239,7 @@ class TangoServer(object):
                         namelist.append(vm.name)
                 if namelist:
                     self.log.warning("Killed these %s VMs on restart: %s" %
-                                (vmms_name, namelist))
+                                     (vmms_name, namelist))
 
             for _, job in self.jobQueue.liveJobs.items():
                 if not job.isNotAssigned():
@@ -242,9 +248,8 @@ class TangoServer(object):
                                (str(job.name), str(job.assigned)))
         except Exception as err:
             self.log.error("resetTango: Call to VMMS %s failed: %s" %
-                      (vmms_name, err))
+                           (vmms_name, err))
             os._exit(1)
-
 
     def __validateJob(self, job, vmms):
         """ validateJob - validate the input arguments in an addJob request.
@@ -279,7 +284,7 @@ class TangoServer(object):
                 imgList = vobj.getImages()
                 if job.vm.image not in imgList:
                     self.log.error("validateJob: Image not found: %s" %
-                              job.vm.image)
+                                   job.vm.image)
                     job.appendTrace("%s|validateJob: Image not found: %s" %
                                     (datetime.utcnow().ctime(), job.vm.image))
                     errors += 1
@@ -294,7 +299,8 @@ class TangoServer(object):
                 errors += 1
             else:
                 if job.vm.vmms not in vmms:
-                    self.log.error("validateJob: Invalid vmms name: %s" % job.vm.vmms)
+                    self.log.error(
+                        "validateJob: Invalid vmms name: %s" % job.vm.vmms)
                     job.appendTrace("%s|validateJob: Invalid vmms name: %s" %
                                     (datetime.utcnow().ctime(), job.vm.vmms))
                     errors += 1
@@ -302,11 +308,13 @@ class TangoServer(object):
         # Check the output file
         if not job.outputFile:
             self.log.error("validateJob: Missing job.outputFile")
-            job.appendTrace("%s|validateJob: Missing job.outputFile" % (datetime.utcnow().ctime()))           
+            job.appendTrace("%s|validateJob: Missing job.outputFile" %
+                            (datetime.utcnow().ctime()))
             errors += 1
         else:
             if not os.path.exists(os.path.dirname(job.outputFile)):
-                self.log.error("validateJob: Bad output path: %s", job.outputFile)
+                self.log.error(
+                    "validateJob: Bad output path: %s", job.outputFile)
                 job.appendTrace("%s|validateJob: Bad output path: %s" %
                                 (datetime.utcnow().ctime(), job.outputFile))
                 errors += 1
@@ -314,7 +322,7 @@ class TangoServer(object):
         # Check for max output file size parameter
         if not job.maxOutputFileSize:
             self.log.debug("validateJob: Setting job.maxOutputFileSize "
-                      "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
+                           "to default value: %d bytes", Config.MAX_OUTPUT_FILE_SIZE)
             job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
         # Check the list of input files
@@ -323,11 +331,12 @@ class TangoServer(object):
             if not inputFile.localFile:
                 self.log.error("validateJob: Missing inputFile.localFile")
                 job.appendTrace("%s|validateJob: Missing inputFile.localFile" %
-                            (datetime.utcnow().ctime()))
+                                (datetime.utcnow().ctime()))
                 errors += 1
             else:
                 if not os.path.exists(os.path.dirname(job.outputFile)):
-                    self.log.error("validateJob: Bad output path: %s", job.outputFile)
+                    self.log.error(
+                        "validateJob: Bad output path: %s", job.outputFile)
                     job.appendTrace("%s|validateJob: Bad output path: %s" %
                                     (datetime.utcnow().ctime(), job.outputFile))
                     errors += 1
@@ -338,20 +347,21 @@ class TangoServer(object):
         # Check if input files include a Makefile
         if not hasMakefile:
             self.log.error("validateJob: Missing Makefile in input files.")
-            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (datetime.utcnow().ctime()))
-            errors+=1    
+            job.appendTrace("%s|validateJob: Missing Makefile in input files." % (
+                datetime.utcnow().ctime()))
+            errors += 1
 
         # Check if job timeout has been set; If not set timeout to default
         if not job.timeout or job.timeout <= 0:
             self.log.debug("validateJob: Setting job.timeout to"
-                      " default config value: %d secs", Config.RUNJOB_TIMEOUT)
+                           " default config value: %d secs", Config.RUNJOB_TIMEOUT)
             job.timeout = Config.RUNJOB_TIMEOUT
 
         # Any problems, return an error status
         if errors > 0:
             self.log.error("validateJob: Job rejected: %d errors" % errors)
             job.appendTrace("%s|validateJob: Job rejected: %d errors" %
-                                (datetime.utcnow().ctime(), errors))
+                            (datetime.utcnow().ctime(), errors))
             return -1
         else:
             return 0

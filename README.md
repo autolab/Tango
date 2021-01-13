@@ -22,7 +22,7 @@ A brief overview of the Tango respository:
 * `worker.py` - Shepherds a job through its execution
 * `preallocator.py` - Manages pools of VMs
 * `vmms/` - VMMS library implementations
-* `restful-tango/` - HTTP server layer on the main Tango
+* `restful_tango/` - HTTP server layer on the main Tango
 
 Tango was developed as a distributed grading system for [Autolab](https://github.com/autolab/Autolab) at Carnegie Mellon University and has been extensively used for autograding programming assignments in CMU courses. 
 
