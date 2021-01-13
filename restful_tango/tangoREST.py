@@ -75,6 +75,7 @@ class TangoREST(object):
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
 
+
         self.tango = TangoServer()
         self.status = Status()
 

@@ -231,7 +231,7 @@ class Preallocator(object):
 
     def getAllPools(self):
         result = {}
-        for vmName in self.machines:
+        for vmName in self.machines.keys():
             result[vmName] = self.getPool(vmName)
         return result
 
