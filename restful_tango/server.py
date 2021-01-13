@@ -1,18 +1,28 @@
+import os
+import sys
+import inspect
+import hashlib
+
 import urllib.error
 import urllib.parse
 import urllib.request
-from config import Config
-from tangoREST import TangoREST
+
+import tornado.web
+
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
-import hashlib
 from tempfile import NamedTemporaryFile
-import os
-import sys
-import tornado.web
 from future import standard_library
+from tangoREST import TangoREST
+
 standard_library.install_aliases()
 
+currentdir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+
+from config import Config
 
 tangoREST = TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
