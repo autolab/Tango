@@ -2,6 +2,7 @@ from __future__ import print_function
 from config import Config
 from tangoObjects import TangoJob, TangoMachine, InputFile
 from tango import TangoServer
+
 # tangoREST.py
 #
 # Implements open, upload, addJob, and poll to be used for the RESTful
@@ -74,6 +75,7 @@ class TangoREST(object):
         )
         self.log = logging.getLogger("TangoREST")
         self.log.info("Starting RESTful Tango server")
+
 
         self.tango = TangoServer()
         self.status = Status()

@@ -13,7 +13,6 @@ import tornado.web
 from future import standard_library
 standard_library.install_aliases()
 
-
 tangoREST = TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
