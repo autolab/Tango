@@ -3,7 +3,10 @@
 #
 from builtins import object
 from builtins import range
-import threading, logging, time, copy
+import threading
+import logging
+import time
+import copy
 
 from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
 from config import Config
@@ -41,8 +44,8 @@ class Preallocator(object):
         to be preallocated.
 
         This function is called via the TangoServer HTTP interface.
-        It will validate the request,update the machine list, and 
-        then spawn child threads to do the creation and destruction 
+        It will validate the request,update the machine list, and
+        then spawn child threads to do the creation and destruction
         of machines as necessary.
         """
         self.lock.acquire()

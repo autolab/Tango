@@ -92,6 +92,8 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
 # User defined exceptions
 #
 # tashiCall() exception
+
+
 class tashiCallError(Exception):
     pass
 
@@ -256,11 +258,10 @@ class TashiSSH(object):
             self.log.debug("Copying file %s to VM %s" %
                            (file.localFile, domain_name))
 
-            ret = timeout(["scp",
-                           "-vvv"] + TashiSSH._SSH_FLAGS + [file.localFile,
-                                                            "autolab@%s:autolab/%s" % (domain_name,
-                                                                                       file.destFile)],
-                          config.Config.COPYIN_TIMEOUT)
+            ret = timeout(["scp", "-vvv"] +
+                          TashiSSH._SSH_FLAGS +
+                          [file.localFile, "autolab@%s:autolab/%s" %
+                           (domain_name, file.destFile)], config.Config.COPYIN_TIMEOUT)
 
             if ret == 0:
                 self.log.debug(
@@ -282,9 +283,9 @@ class TashiSSH(object):
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
             %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
-                                           config.Config.VM_ULIMIT_FILE_SIZE,
-                                           runTimeout,
-                                           config.Config.MAX_OUTPUT_FILE_SIZE)
+                                                config.Config.VM_ULIMIT_FILE_SIZE,
+                                                runTimeout,
+                                                config.Config.MAX_OUTPUT_FILE_SIZE)
         ret = timeout(["ssh", "-vvv"] + TashiSSH._SSH_FLAGS +
                       ["autolab@%s" % (domain_name), runcmd], runTimeout * 2)
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
@@ -415,4 +416,5 @@ class TashiSSH(object):
         """ getImages - Lists all images in TASHI_IMAGE_PATH that have the
         .img extension
         """
-        return [img for img in os.listdir(Config.TASHI_IMAGE_PATH) if img.endswith('.img')]
+        return [img for img in os.listdir(
+            Config.TASHI_IMAGE_PATH) if img.endswith('.img')]

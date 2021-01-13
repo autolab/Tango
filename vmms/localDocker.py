@@ -1,23 +1,32 @@
 #
-# localDocker.py - Implements the Tango VMMS interface to run Tango jobs in 
+# localDocker.py - Implements the Tango VMMS interface to run Tango jobs in
 #                docker containers. In this context, VMs are docker containers.
 #
 from builtins import object
 from builtins import str
-import random, subprocess, re, time, logging, threading, os, sys, shutil
+import random
+import subprocess
+import re
+import time
+import logging
+import threading
+import os
+import sys
+import shutil
 import config
 from tangoObjects import TangoMachine
+
 
 def timeout(command, time_out=1):
     """ timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
-    """ 
+    """
 
     # Launch the command
     p = subprocess.Popen(command,
-                        stdout=open("/dev/null", 'w'),
-                        stderr=subprocess.STDOUT)
+                         stdout=open("/dev/null", 'w'),
+                         stderr=subprocess.STDOUT)
 
     # Wait for the command to complete
     t = 0.0
@@ -36,14 +45,15 @@ def timeout(command, time_out=1):
         returncode = p.poll()
     return returncode
 
-def timeoutWithReturnStatus(command, time_out, returnValue = 0):
+
+def timeoutWithReturnStatus(command, time_out, returnValue=0):
     """ timeoutWithReturnStatus - Run a Unix command with a timeout,
     until the expected value is returned by the command; On timeout,
     return last error code obtained from the command.
     """
-    p = subprocess.Popen(command, 
-                        stdout=open("/dev/null", 'w'), 
-                        stderr=subprocess.STDOUT)
+    p = subprocess.Popen(command,
+                         stdout=open("/dev/null", 'w'),
+                         stderr=subprocess.STDOUT)
     t = 0.0
     while (t < time_out):
         ret = p.poll()
@@ -54,13 +64,14 @@ def timeoutWithReturnStatus(command, time_out, returnValue = 0):
             return ret
         else:
             p = subprocess.Popen(command,
-                            stdout=open("/dev/null", 'w'),
-                            stderr=subprocess.STDOUT)
+                                 stdout=open("/dev/null", 'w'),
+                                 stderr=subprocess.STDOUT)
     return ret
 
 #
 # User defined exceptions
 #
+
 
 class LocalDocker(object):
 
@@ -130,7 +141,8 @@ class LocalDocker(object):
             os.makedirs(os.path.dirname(volumePath), exist_ok=True)
 
             shutil.copy(file.localFile, volumePath + file.destFile)
-            self.log.debug('Copied in file %s to %s' % (file.localFile, volumePath + file.destFile))
+            self.log.debug('Copied in file %s to %s' %
+                           (file.localFile, volumePath + file.destFile))
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
@@ -151,20 +163,19 @@ class LocalDocker(object):
         args = args + ['sh', '-c']
 
         autodriverCmd = 'autodriver -u %d -f %d -t %d -o %d autolab > output/feedback 2>&1' % \
-                        (config.Config.VM_ULIMIT_USER_PROC, 
-                        config.Config.VM_ULIMIT_FILE_SIZE,
-                        runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
+                        (config.Config.VM_ULIMIT_USER_PROC,
+                         config.Config.VM_ULIMIT_FILE_SIZE,
+                         runTimeout, config.Config.MAX_OUTPUT_FILE_SIZE)
 
         args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; \
-                        cp output/feedback mount/feedback' % 
-                        autodriverCmd]
+                        cp output/feedback mount/feedback' %
+                       autodriverCmd]
 
         self.log.debug('Running job: %s' % str(args))
         ret = timeout(args, runTimeout * 2)
         self.log.debug('runJob returning %d' % ret)
 
         return ret
-
 
     def copyOut(self, vm, destFile):
         """ copyOut - Copy the autograder feedback from container to
@@ -187,7 +198,7 @@ class LocalDocker(object):
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
         timeout(['docker', 'rm', '-f', instanceName],
-            config.Config.DOCKER_RM_TIMEOUT)
+                config.Config.DOCKER_RM_TIMEOUT)
         # Destroy corresponding volume if it exists.
         if instanceName in os.listdir(volumePath):
             shutil.rmtree(volumePath + instanceName)
@@ -200,9 +211,9 @@ class LocalDocker(object):
         """
         start_time = time.time()
         while self.existsVM(vm):
-            if (time.time()-start_time > config.Config.DESTROY_SECS):
+            if (time.time() - start_time > config.Config.DESTROY_SECS):
                 self.log.error("Failed to safely destroy container %s"
-                    % vm.name)
+                               % vm.name)
                 return
             self.destroyVM(vm)
         return
@@ -235,12 +246,13 @@ class LocalDocker(object):
 
     def getImages(self):
         """ getImages - Executes `docker images` and returns a list of
-        images that can be used to boot a docker container with. This 
+        images that can be used to boot a docker container with. This
         function is a lot of parsing and so can break easily.
         """
         result = set()
         cmd = "docker images"
-        o = subprocess.check_output("docker images", shell=True).decode('utf-8')
+        o = subprocess.check_output(
+            "docker images", shell=True).decode('utf-8')
         o_l = o.split('\n')
         o_l.pop()
         o_l.reverse()
@@ -249,5 +261,3 @@ class LocalDocker(object):
             row_l = row.split(' ')
             result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
         return list(result)
-
-
