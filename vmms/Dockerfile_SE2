@@ -1,4 +1,4 @@
-# Autolab - autograding docker image
+# Autolab - autograding docker image for general software engineering
 
 FROM ubuntu:18.04
 MAINTAINER David Dobmeier <daviddob@buffalo.edu>
@@ -106,9 +106,3 @@ RUN which sml
 RUN which scalac
 RUN which scala
 RUN g++ --version
-
-
-ENV HOME /root
-WORKDIR /root
-
-COPY . .
