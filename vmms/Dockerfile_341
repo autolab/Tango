@@ -47,6 +47,4 @@ RUN rm -rf Tango/
 # Check installation
 RUN ls -l /home
 RUN which autodriver
-RUN which javac
-RUN which sml
 RUN g++ --version
