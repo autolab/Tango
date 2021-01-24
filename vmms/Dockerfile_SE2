@@ -1,0 +1,108 @@
+# Autolab - autograding docker image for general software engineering
+
+FROM ubuntu:18.04
+MAINTAINER David Dobmeier <daviddob@buffalo.edu>
+
+#C++ Setup
+RUN apt-get update
+RUN apt-get install -y gcc
+RUN apt-get install -y make
+RUN apt-get install -y build-essential
+RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
+
+#Python Setup
+RUN apt-get update --fix-missing && \
+    DEBIAN_FRONTEND=nointeractive apt-get install -y \
+    python3 python3-numpy python3-nose python3-pandas \
+    python python-numpy python-nose python-pandas \
+    pep8 python-pip python3-pip python-wheel \
+    python-sphinx && \
+    pip install --upgrade setuptools
+
+#Java 15 Setup
+RUN apt-get update --fix-missing
+RUN apt update
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository ppa:linuxuprising/java
+RUN apt update
+RUN echo "oracle-java15-installer shared/accepted-oracle-license-v1-2 select true" | debconf-set-selections
+RUN echo "oracle-java15-installer shared/accepted-oracle-license-v1-2 seen true" | debconf-set-selections
+RUN apt install -y --force-yes oracle-java15-installer
+
+
+#Valgrind Setup
+RUN apt-get update
+RUN apt-get install -y valgrind
+
+#SML Setup
+RUN mkdir -p /usr/local/bin/sml
+WORKDIR /usr/local/bin/sml
+RUN apt-get install -y gcc-multilib g++-multilib lib32z1 lib32ncurses5 wget
+RUN wget http://www.smlnj.org/dist/working/110.78/config.tgz
+RUN tar -xzvf config.tgz
+RUN config/install.sh
+RUN ln -s /usr/local/bin/sml/bin/sml /usr/local/sbin/sml
+RUN ln -s /usr/local/bin/sml/bin/ml-lex /usr/local/sbin/ml-lex
+RUN ln -s /usr/local/bin/sml/bin/ml-yacc /usr/local/sbin/ml-yacc
+
+#Flex setup
+RUN apt-get install -y flex
+
+#Bison Setup
+RUN apt-get install -y bison
+
+#Utility setup
+RUN apt-get install -y unzip
+
+#NodeJS setup
+RUN apt-get update --fix-missing
+RUN apt-get install -y nodejs
+RUN apt-get install -y npm
+
+#OCaml Setup
+RUN apt-get install -y ocaml
+
+#Scala setup
+RUN apt-get remove scala-library scala
+RUN wget http://scala-lang.org/files/archive/scala-2.13.4.deb
+RUN dpkg -i scala-2.13.4.deb
+RUN apt-get update
+RUN apt-get install -y scala
+
+RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+RUN apt-get update
+RUN apt-get install -y sbt
+
+#Maven Setup
+RUN apt-get install -y maven
+
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+RUN which javac
+RUN which sml
+RUN which scalac
+RUN which scala
+RUN g++ --version
