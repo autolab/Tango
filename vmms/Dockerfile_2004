@@ -55,6 +55,12 @@ RUN apt-get install -y npm
 #OCaml Setup
 RUN apt-get install -y ocaml
 
+#Golang Setup
+RUN apt-get install -y golang
+
+#Other Utils
+RUN apt-get install -y gawk
+
 # Install autodriver
 WORKDIR /home
 RUN useradd autolab
