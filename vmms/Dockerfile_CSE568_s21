@@ -1,0 +1,75 @@
+FROM ros:melodic-ros-core-bionic
+
+
+
+# install bootstrap tools
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    build-essential \
+    python-rosdep \
+    python-rosinstall \
+    python-vcstools \
+    && rm -rf /var/lib/apt/lists/*
+
+# bootstrap rosdep
+RUN rosdep init && \
+  rosdep update --rosdistro $ROS_DISTRO
+
+# install ros packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-melodic-ros-base=1.4.1-0* \
+    && rm -rf /var/lib/apt/lists/*
+    
+#initial work_dic
+RUN echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+RUN mkdir -p /home/catkin_ws/src
+WORKDIR /home/catkin_ws/src
+#RUN /opt/ros/melodic/bin/catkin_init_workspace
+RUN /bin/bash -c '. /opt/ros/melodic/setup.bash; catkin_init_workspace /home/catkin_ws/src'
+WORKDIR /home/catkin_ws
+RUN /bin/bash -c '. /opt/ros/melodic/setup.bash; cd /home/catkin_ws; catkin_make'
+RUN echo "source /home/catkin_ws/devel/setup.bash" >> ~/.bashrc
+#C++ Setup
+RUN apt-get update
+RUN apt-get install -y gcc
+RUN apt-get install -y make
+RUN apt-get install -y build-essential
+RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
+
+#Python Setup
+RUN apt-get update --fix-missing && \
+    DEBIAN_FRONTEND=nointeractive apt-get install -y \
+    python3 python3-numpy python3-nose python3-pandas \
+    python python-numpy python-nose python-pandas \
+    pep8 python-pip python3-pip python-wheel \
+    python-sphinx && \
+    pip install --upgrade setuptools
+	
+
+#Utility setup
+RUN apt-get install -y unzip
+
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo 
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+RUN g++ --version
