@@ -1,3 +1,4 @@
+from config import Config
 import os
 import sys
 import inspect
@@ -17,12 +18,10 @@ from tangoREST import TangoREST
 
 standard_library.install_aliases()
 
-currentdir = os.path.dirname(
-    os.path.abspath(inspect.getfile(inspect.currentframe())))
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from config import Config
 
 tangoREST = TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
@@ -47,11 +46,8 @@ def unblock(f):
             self.write(future.result())
             self.finish()
 
-        EXECUTOR.submit(
-            partial(f, *args, **kwargs)
-        ).add_done_callback(
-            lambda future:
-            tornado.ioloop.IOLoop.instance().add_callback(
+        EXECUTOR.submit(partial(f, *args, **kwargs)).add_done_callback(
+            lambda future: tornado.ioloop.IOLoop.instance().add_callback(
                 partial(callback, future)
             )
         )
@@ -60,15 +56,13 @@ def unblock(f):
 
 
 class MainHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self):
         """ get - Default route to check if RESTful Tango is up."""
-        return ("Hello, world! RESTful Tango here!\n")
+        return "Hello, world! RESTful Tango here!\n"
 
 
 class OpenHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self, key, courselab):
         """ get - Handles the get request to open."""
@@ -77,18 +71,15 @@ class OpenHandler(tornado.web.RequestHandler):
 
 @tornado.web.stream_request_body
 class UploadHandler(tornado.web.RequestHandler):
-
     def prepare(self):
         """ set up the temporary file"""
         tempdir = "%s/tmp" % (Config.COURSELABS,)
         if not os.path.exists(tempdir):
             os.mkdir(tempdir, 0o700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
-            tangoREST.log(
-                "Cannot process uploads, %s is not a directory" % (tempdir,))
+            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
             return self.send_error()
-        self.tempfile = NamedTemporaryFile(prefix='upload', dir=tempdir,
-                                           delete=False)
+        self.tempfile = NamedTemporaryFile(prefix="upload", dir=tempdir, delete=False)
         self.hasher = hashlib.md5()
 
     def data_received(self, chunk):
@@ -103,12 +94,13 @@ class UploadHandler(tornado.web.RequestHandler):
         return tangoREST.upload(
             key,
             courselab,
-            self.request.headers['Filename'],
-            name, self.hasher.hexdigest())
+            self.request.headers["Filename"],
+            name,
+            self.hasher.hexdigest(),
+        )
 
 
 class AddJobHandler(tornado.web.RequestHandler):
-
     @unblock
     def post(self, key, courselab):
         """ post - Handles the post request to add a job."""
@@ -116,16 +108,14 @@ class AddJobHandler(tornado.web.RequestHandler):
 
 
 class PollHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self, key, courselab, outputFile):
         """ get - Handles the get request to poll."""
-        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header("Content-Type", "application/octet-stream")
         return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
 
 
 class InfoHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self, key):
         """ get - Handles the get request to info."""
@@ -133,7 +123,6 @@ class InfoHandler(tornado.web.RequestHandler):
 
 
 class JobsHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self, key, deadJobs):
         """ get - Handles the get request to jobs."""
@@ -141,20 +130,18 @@ class JobsHandler(tornado.web.RequestHandler):
 
 
 class PoolHandler(tornado.web.RequestHandler):
-
     @unblock
     def get(self, key):
         """ get - Handles the get request to pool."""
-        image = ''
-        if '/' in key:
-            key_l = key.split('/')
+        image = ""
+        if "/" in key:
+            key_l = key.split("/")
             key = key_l[0]
             image = key_l[1]
         return tangoREST.pool(key, image)
 
 
 class PreallocHandler(tornado.web.RequestHandler):
-
     @unblock
     def post(self, key, image, num):
         """ post - Handles the post request to prealloc."""
@@ -162,18 +149,19 @@ class PreallocHandler(tornado.web.RequestHandler):
 
 
 # Routes
-application = tornado.web.Application([
-    (r"/", MainHandler),
-    (r"/open/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), OpenHandler),
-    (r"/upload/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), UploadHandler),
-    (r"/addJob/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), AddJobHandler),
-    (r"/poll/(%s)/(%s)/(%s)/" %
-     (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
-    (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
-    (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
-    (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
-    (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
-])
+application = tornado.web.Application(
+    [
+        (r"/", MainHandler),
+        (r"/open/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), OpenHandler),
+        (r"/upload/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), UploadHandler),
+        (r"/addJob/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), AddJobHandler),
+        (r"/poll/(%s)/(%s)/(%s)/" % (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
+        (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
+        (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
+        (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
+        (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
+    ]
+)
 
 
 if __name__ == "__main__":

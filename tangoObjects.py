@@ -10,6 +10,7 @@ from builtins import str
 from builtins import range
 from builtins import object
 from future import standard_library
+
 standard_library.install_aliases()
 
 redisConnection = None
@@ -19,7 +20,8 @@ def getRedisConnection():
     global redisConnection
     if redisConnection is None:
         redisConnection = redis.StrictRedis(
-            host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0)
+            host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0
+        )
 
     return redisConnection
 
@@ -27,8 +29,8 @@ def getRedisConnection():
 class InputFile(object):
 
     """
-        InputFile - Stores pointer to the path on the local machine and the
-        name of the file on the destination machine
+    InputFile - Stores pointer to the path on the local machine and the
+    name of the file on the destination machine
     """
 
     def __init__(self, localFile, destFile):
@@ -36,20 +38,33 @@ class InputFile(object):
         self.destFile = destFile
 
     def __repr__(self):
-        return "InputFile(localFile: %s, destFile: %s)" % (self.localFile,
-                                                           self.destFile)
+        return "InputFile(localFile: %s, destFile: %s)" % (
+            self.localFile,
+            self.destFile,
+        )
 
 
 class TangoMachine(object):
 
     """
-        TangoMachine - A description of the Autograding Virtual Machine
+    TangoMachine - A description of the Autograding Virtual Machine
     """
 
-    def __init__(self, name="DefaultTestVM", image=None, vmms=None,
-                 network=None, cores=None, memory=None, disk=None,
-                 domain_name=None, ec2_id=None, resume=None, id=None,
-                 instance_id=None):
+    def __init__(
+        self,
+        name="DefaultTestVM",
+        image=None,
+        vmms=None,
+        network=None,
+        cores=None,
+        memory=None,
+        disk=None,
+        domain_name=None,
+        ec2_id=None,
+        resume=None,
+        id=None,
+        instance_id=None,
+    ):
         self.name = name
         self.image = image
         self.network = network
@@ -70,14 +85,21 @@ class TangoMachine(object):
 class TangoJob(object):
 
     """
-        TangoJob - A job that is to be run on a TangoMachine
+    TangoJob - A job that is to be run on a TangoMachine
     """
 
-    def __init__(self, vm=None,
-                 outputFile=None, name=None, input=None,
-                 notifyURL=None, timeout=0,
-                 maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE,
-                 accessKeyId=None, accessKey=None):
+    def __init__(
+        self,
+        vm=None,
+        outputFile=None,
+        name=None,
+        input=None,
+        notifyURL=None,
+        timeout=0,
+        maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE,
+        accessKeyId=None,
+        accessKey=None,
+    ):
         self.assigned = False
         self.retries = 0
 
@@ -162,11 +184,10 @@ def TangoIntValue(object_name, obj):
 
 
 class TangoRemoteIntValue(object):
-
     def __init__(self, name, value, namespace="intvalue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
         self.__db = getRedisConnection()
-        self.key = '%s:%s' % (namespace, name)
+        self.key = "%s:%s" % (namespace, name)
         cur_val = self.__db.get(self.key)
         if cur_val is None:
             self.set(value)
@@ -182,9 +203,8 @@ class TangoRemoteIntValue(object):
 
 
 class TangoNativeIntValue(object):
-
     def __init__(self, name, value, namespace="intvalue"):
-        self.key = '%s:%s' % (namespace, name)
+        self.key = "%s:%s" % (namespace, name)
         self.val = value
 
     def increment(self):
@@ -225,7 +245,7 @@ class TangoRemoteQueue(object):
     def __init__(self, name, namespace="queue"):
         """The default connection parameters are: host='localhost', port=6379, db=0"""
         self.__db = getRedisConnection()
-        self.key = '%s:%s' % (namespace, name)
+        self.key = "%s:%s" % (namespace, name)
 
     def qsize(self):
         """Return the approximate size of the queue."""
@@ -265,7 +285,7 @@ class TangoRemoteQueue(object):
 
     def __getstate__(self):
         ret = {}
-        ret['key'] = self.key
+        ret["key"] = self.key
         return ret
 
     def __setstate__(self, dict):
@@ -280,6 +300,7 @@ class TangoRemoteQueue(object):
     def _clean(self):
         self.__db.delete(self.key)
 
+
 # This is an abstract class that decides on
 # if we should initiate a TangoRemoteDictionary or TangoNativeDictionary
 # Since there are no abstract classes in Python, we use a simple method
@@ -293,7 +314,6 @@ def TangoDictionary(object_name):
 
 
 class TangoRemoteDictionary(object):
-
     def __init__(self, object_name):
         self.r = getRedisConnection()
         self.hash_name = object_name
@@ -304,7 +324,7 @@ class TangoRemoteDictionary(object):
     def set(self, id, obj):
         pickled_obj = pickle.dumps(obj)
 
-        if hasattr(obj, '_remoteLocation'):
+        if hasattr(obj, "_remoteLocation"):
             obj._remoteLocation = self.hash_name + ":" + str(id)
 
         self.r.hset(self.hash_name, str(id), pickled_obj)
@@ -338,12 +358,16 @@ class TangoRemoteDictionary(object):
         self.r.delete(self.hash_name)
 
     def items(self):
-        return iter([(i, self.get(i)) for i in range(1, Config.MAX_JOBID + 1)
-                     if self.get(i) is not None])
+        return iter(
+            [
+                (i, self.get(i))
+                for i in range(1, Config.MAX_JOBID + 1)
+                if self.get(i) is not None
+            ]
+        )
 
 
 class TangoNativeDictionary(object):
-
     def __init__(self):
         self.dict = {}
 
@@ -370,8 +394,13 @@ class TangoNativeDictionary(object):
             del self.dict[str(id)]
 
     def items(self):
-        return iter([(i, self.get(i)) for i in range(1, Config.MAX_JOBID + 1)
-                     if self.get(i) is not None])
+        return iter(
+            [
+                (i, self.get(i))
+                for i in range(1, Config.MAX_JOBID + 1)
+                if self.get(i) is not None
+            ]
+        )
 
     def _clean(self):
         # only for testing
