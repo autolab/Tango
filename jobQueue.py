@@ -308,8 +308,12 @@ class JobQueue(object):
             # Remove the job from the live jobs dictionary
             self.liveJobs.delete(id)
 
-            # Remove the job from the unassigned live jobs queue
-            self.unassignedJobs.remove(int(id))
+            try:
+                # Remove the job from the unassigned live jobs queue, if it
+                # is yet to be assigned.
+                self.unassignedJobs.remove(int(id))
+            except ValueError:
+                self.log.info("makeDead| Job ID %s was already assigned" % (id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
