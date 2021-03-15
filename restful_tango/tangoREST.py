@@ -1,4 +1,3 @@
-from __future__ import print_function
 # tangoREST.py
 #
 # Implements open, upload, addJob, and poll to be used for the RESTful
@@ -11,9 +10,6 @@ import inspect
 import hashlib
 import json
 import logging
-
-from builtins import object
-from builtins import str
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))

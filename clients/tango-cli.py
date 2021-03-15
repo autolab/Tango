@@ -4,7 +4,6 @@
 # tango-cli.py - Command line client for the RESTful Tango.
 #
 
-from __future__ import print_function
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -13,11 +12,6 @@ import requests
 import argparse
 import sys
 import os
-from builtins import str
-from builtins import map
-from builtins import range
-from future import standard_library
-standard_library.install_aliases()
 
 sys.path.append('/usr/lib/python2.7/site-packages/')
 

@@ -12,10 +12,7 @@ import tornado.web
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 from tempfile import NamedTemporaryFile
-from future import standard_library
 from tangoREST import TangoREST
-
-standard_library.install_aliases()
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))

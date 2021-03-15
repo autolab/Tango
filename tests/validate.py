@@ -1,4 +1,3 @@
-from __future__ import print_function
 #
 # Recursively validates all python files with pyflakes that were modified
 # since the last validation, and provides basic stats. Ignores hidden

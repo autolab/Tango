@@ -2,7 +2,6 @@
 # config.py - Global configuration constants and runtime info
 #
 
-from builtins import object
 import logging
 import time
 

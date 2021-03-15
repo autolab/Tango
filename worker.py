@@ -1,7 +1,6 @@
 #
 # worker.py - Thread that shepherds a job through it execution sequence
 #
-from builtins import str
 import threading
 import time
 import logging
