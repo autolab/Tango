@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 #
 # JobManager - Thread that assigns jobs to worker threads
 #
@@ -17,10 +15,7 @@ import time
 import logging
 import threading
 
-from builtins import str
-from builtins import object
 from datetime import datetime
-from future import standard_library
 
 import tango  # Written this way to avoid circular imports
 from config import Config
@@ -28,9 +23,6 @@ from tangoObjects import TangoQueue
 from worker import Worker
 from preallocator import Preallocator
 from jobQueue import JobQueue
-
-standard_library.install_aliases()
-
 
 class JobManager(object):
 

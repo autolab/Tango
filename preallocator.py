@@ -1,8 +1,6 @@
 #
 # preallocator.py - maintains a pool of active virtual machines
 #
-from builtins import object
-from builtins import range
 import threading
 import logging
 import time

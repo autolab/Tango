@@ -8,8 +8,6 @@
 # `domain_name` attribtue of TangoMachine.
 #
 
-from builtins import object
-from builtins import str
 import random
 import subprocess
 import re

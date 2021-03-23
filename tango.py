@@ -41,8 +41,6 @@ import stat
 import re
 import os
 
-from builtins import object
-from builtins import str
 from datetime import datetime
 
 from jobManager import JobManager

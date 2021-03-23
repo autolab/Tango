@@ -10,8 +10,6 @@
 #
 # TODO: this currently probably does not work on Python 3 yet
 
-from builtins import object
-from builtins import str
 import subprocess
 import os
 import re
