@@ -465,6 +465,9 @@ if args.ssl:
     _tango_protocol = 'https'
     if args.port == 3000:
         args.port = 443
+    else:
+        print('SSL option ignored as custom port specified')
+
 
 try:
     response = requests.get('%s://%s:%d/' % (_tango_protocol, args.server, args.port))
