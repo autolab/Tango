@@ -6,11 +6,9 @@ from config import Config
 
 
 class TestDictionary(unittest.TestCase):
-
     def setUp(self):
         if Config.USE_REDIS:
-            __db = redis.StrictRedis(
-                Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            __db = redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
 
         self.test_entries = {
@@ -35,8 +33,8 @@ class TestDictionary(unittest.TestCase):
             self.assertEqual(self.test_entries.get(key), val)
 
         self.assertEqual(
-            test_dict.keys(), [
-                str(key) for key in self.test_entries.keys()])
+            test_dict.keys(), [str(key) for key in self.test_entries.keys()]
+        )
         self.assertEqual(test_dict.values(), list(self.test_entries.values()))
         self.assertTrue("key_not_present" not in test_dict)
         self.assertEqual(test_dict.get("key_not_present"), None)
@@ -59,8 +57,7 @@ class TestDictionary(unittest.TestCase):
 class TestQueue(unittest.TestCase):
     def setUp(self):
         if Config.USE_REDIS:
-            __db = redis.StrictRedis(
-                Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            __db = redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
         self.test_entries = [i for i in range(10)]
 
@@ -99,14 +96,14 @@ class TestQueue(unittest.TestCase):
 
         # Remove all the even entries
         for x in self.test_entries:
-            if (x % 2 == 0):
+            if x % 2 == 0:
                 self.testQueue.remove(x)
                 self.expectedSize -= 1
                 self.assertEqual(self.testQueue.qsize(), self.expectedSize)
 
         # Test that get only returns odd keys in order
         for x in self.test_entries:
-            if (x % 2 == 1):
+            if x % 2 == 1:
                 item = self.testQueue.get_nowait()
                 self.expectedSize -= 1
                 self.assertEqual(self.testQueue.qsize(), self.expectedSize)
@@ -121,5 +118,5 @@ class TestQueue(unittest.TestCase):
         self.runQueueTests()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

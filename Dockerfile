@@ -10,7 +10,7 @@ ENV HOME /root
 WORKDIR /opt
 
 # To avoid having a prompt on tzdata setup during installation
-ENV DEBIAN_FRONTEND=noninteractive 
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN chmod 1777 /tmp
 

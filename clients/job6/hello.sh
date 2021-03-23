@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Hello from" `hostname`:`pwd` 
+echo "Hello from" `hostname`:`pwd`
 
 f() {
 	while true

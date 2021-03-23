@@ -7,12 +7,10 @@ from config import Config
 
 
 class TestJobQueue(unittest.TestCase):
-
     def setUp(self):
 
         if Config.USE_REDIS:
-            __db = redis.StrictRedis(
-                Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            __db = redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
 
         self.job1 = TangoJob(
@@ -22,7 +20,8 @@ class TestJobQueue(unittest.TestCase):
             input=[],
             timeout=30,
             notifyURL="notifyMeUrl",
-            maxOutputFileSize=4096)
+            maxOutputFileSize=4096,
+        )
 
         self.job2 = TangoJob(
             name="sample_job_2",
@@ -31,7 +30,8 @@ class TestJobQueue(unittest.TestCase):
             input=[],
             timeout=30,
             notifyURL="notifyMeUrl",
-            maxOutputFileSize=4096)
+            maxOutputFileSize=4096,
+        )
 
         self.jobQueue = JobQueue(None)
         self.jobQueue.reset()
@@ -61,11 +61,11 @@ class TestJobQueue(unittest.TestCase):
 
     def test_add(self):
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size'], 2)
+        self.assertEqual(info["size"], 2)
 
     def test_addToUnassigned(self):
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_unassignedjobs'], 2)
+        self.assertEqual(info["size_unassignedjobs"], 2)
 
     def test_addDead(self):
         return self.assertEqual(1, 1)
@@ -73,15 +73,15 @@ class TestJobQueue(unittest.TestCase):
     def test_delJob(self):
         self.jobQueue.delJob(self.jobId1, 0)
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size'], 1)
-        self.assertEqual(info['size_deadjobs'], 1)
-        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.assertEqual(info["size"], 1)
+        self.assertEqual(info["size_deadjobs"], 1)
+        self.assertEqual(info["size_unassignedjobs"], 1)
 
         self.jobQueue.delJob(self.jobId1, 1)
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_deadjobs'], 0)
-        self.assertEqual(info['size'], 1)
-        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.assertEqual(info["size_deadjobs"], 0)
+        self.assertEqual(info["size"], 1)
+        self.assertEqual(info["size_unassignedjobs"], 1)
 
         return False
 
@@ -96,13 +96,13 @@ class TestJobQueue(unittest.TestCase):
         self.jobQueue.assignJob(self.jobId2)
         # job 2 should have been removed from unassigned queue
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.assertEqual(info["size_unassignedjobs"], 1)
         self.jobQueue.assignJob(self.jobId1)
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_unassignedjobs'], 0)
+        self.assertEqual(info["size_unassignedjobs"], 0)
         self.jobQueue.unassignJob(self.jobId1)
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.assertEqual(info["size_unassignedjobs"], 1)
         job = self.jobQueue.getNextPendingJob()
         self.assertMultiLineEqual(str(job.id), self.jobId1)
 
@@ -128,12 +128,12 @@ class TestJobQueue(unittest.TestCase):
 
     def test_makeDead(self):
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_deadjobs'], 0)
-        self.assertEqual(info['size_unassignedjobs'], 2)
+        self.assertEqual(info["size_deadjobs"], 0)
+        self.assertEqual(info["size_unassignedjobs"], 2)
         self.jobQueue.makeDead(self.jobId1, "test")
         info = self.jobQueue.getInfo()
-        self.assertEqual(info['size_deadjobs'], 1)
-        self.assertEqual(info['size_unassignedjobs'], 1)
+        self.assertEqual(info["size_deadjobs"], 1)
+        self.assertEqual(info["size_unassignedjobs"], 1)
 
     def test__getNextID(self):
         init_id = self.jobQueue.nextID
@@ -143,5 +143,5 @@ class TestJobQueue(unittest.TestCase):
         self.jobQueue.nextID = init_id
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -9,11 +9,8 @@ from tangoObjects import TangoMachine
 
 
 class TestPreallocator(unittest.TestCase):
-
-    def createTangoMachine(self, image, vmms,
-                           vmObj={'cores': 1, 'memory': 512}):
-        """ createTangoMachine - Creates a tango machine object from image
-        """
+    def createTangoMachine(self, image, vmms, vmObj={"cores": 1, "memory": 512}):
+        """createTangoMachine - Creates a tango machine object from image"""
         return TangoMachine(
             name=image,
             vmms=vmms,
@@ -21,7 +18,8 @@ class TestPreallocator(unittest.TestCase):
             cores=vmObj["cores"],
             memory=vmObj["memory"],
             disk=None,
-            network=None)
+            network=None,
+        )
 
     def setUp(self):
         # Add more machine types to test here in future
@@ -29,29 +27,32 @@ class TestPreallocator(unittest.TestCase):
 
     def createVM(self):
         if Config.USE_REDIS:
-            __db = redis.StrictRedis(
-                Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
+            __db = redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)
             __db.flushall()
 
         if Config.VMMS_NAME == "ec2SSH":
             from vmms.ec2SSH import Ec2SSH
+
             vmms = Ec2SSH()
             self.preallocator = Preallocator({"ec2SSH": vmms})
 
         elif Config.VMMS_NAME == "localDocker":
             from vmms.localDocker import LocalDocker
+
             vmms = LocalDocker()
             self.preallocator = Preallocator({"localDocker": vmms})
 
         elif Config.VMMS_NAME == "distDocker":
             from vmms.distDocker import DistDocker
+
             vmms = DistDocker()
             self.preallocator = Preallocator({"distDocker": vmms})
         else:
             vmms = None
             self.preallocator = Preallocator({"default": vmms})
         self.vm = self.createTangoMachine(
-            image="autograding_image", vmms=Config.VMMS_NAME)
+            image="autograding_image", vmms=Config.VMMS_NAME
+        )
 
     def test_poolSize(self):
         for machine in self.testMachines:
@@ -100,7 +101,7 @@ class TestPreallocator(unittest.TestCase):
             self.preallocator.update(self.vm, 1)
             vm = self.preallocator.allocVM(self.vm.name)
             self.preallocator.freeVM(vm)
-            free = self.preallocator.getPool(self.vm.name)['free']
+            free = self.preallocator.getPool(self.vm.name)["free"]
             self.assertFalse(free == [])
 
             # Revert pool for other tests
@@ -138,7 +139,7 @@ class TestPreallocator(unittest.TestCase):
             # Destroy existent VM
             self.preallocator.update(self.vm, 1)
             prevPool = self.preallocator.getPool(self.vm.name)
-            rand = random.choice(prevPool['total'])
+            rand = random.choice(prevPool["total"])
             res = self.preallocator.destroyVM(self.vm.name, rand)
             self.assertEqual(res, 0)
 
@@ -154,5 +155,5 @@ class TestPreallocator(unittest.TestCase):
             self.assertEqual(pool["free"], [])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

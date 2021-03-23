@@ -48,8 +48,7 @@ class Config(object):
     # It must be an absolute path with trailing slash, i.e
     # /opt/TangoService/Tango/volumes/
     DEFAULT_DOCKER_VOLUME_PATH = ""
-    DOCKER_VOLUME_PATH = os.getenv(
-        "DOCKER_VOLUME_PATH", DEFAULT_DOCKER_VOLUME_PATH)
+    DOCKER_VOLUME_PATH = os.getenv("DOCKER_VOLUME_PATH", DEFAULT_DOCKER_VOLUME_PATH)
 
     #####
     # Part 2: Constants that shouldn't need to change very often.
@@ -85,7 +84,7 @@ class Config(object):
     BOOT2DOCKER_ENV_TIMEOUT = 5
     DOCKER_IMAGE_BUILD_TIMEOUT = 300
     DOCKER_RM_TIMEOUT = 5
-    DOCKER_HOST_USER = ''
+    DOCKER_HOST_USER = ""
 
     # Maximum size for input files in bytes
     MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024  # 250MB
@@ -138,20 +137,19 @@ class Config(object):
     #
     USE_REDIS = True
     DEFAULT_REDIS_HOSTNAME = "127.0.0.1"
-    REDIS_HOSTNAME = os.getenv(
-        "DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
+    REDIS_HOSTNAME = os.getenv("DOCKER_REDIS_HOSTNAME", DEFAULT_REDIS_HOSTNAME).lower()
     REDIS_PORT = 6379
 
     ######
     # Part 5: EC2 Constants
     #
-    EC2_REGION = ''
-    EC2_USER_NAME = ''
-    DEFAULT_AMI = ''
-    DEFAULT_INST_TYPE = ''
-    DEFAULT_SECURITY_GROUP = ''
-    SECURITY_KEY_PATH = ''
-    DYNAMIC_SECURITY_KEY_PATH = ''
-    SECURITY_KEY_NAME = ''
-    TANGO_RESERVATION_ID = ''
+    EC2_REGION = ""
+    EC2_USER_NAME = ""
+    DEFAULT_AMI = ""
+    DEFAULT_INST_TYPE = ""
+    DEFAULT_SECURITY_GROUP = ""
+    SECURITY_KEY_PATH = ""
+    DYNAMIC_SECURITY_KEY_PATH = ""
+    SECURITY_KEY_NAME = ""
+    TANGO_RESERVATION_ID = ""
     INSTANCE_RUNNING = 16  # Status code of a instance that is running
