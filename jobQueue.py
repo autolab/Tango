@@ -208,10 +208,19 @@ class JobQueue(object):
         dead queue. If non-zero, remove the job from the dead queue
         and discard.
         """
+        status = -1
         if deadjob == 0:
+            try:
+                # Remove the job from the unassigned live jobs queue, if it
+                # is yet to be assigned.
+                self.unassignedJobs.remove(int(id))
+            except ValueError:
+                # Forbid deleting a job that has already been assigned
+                self.log.info("delJob | Job ID %s was already assigned" % (id))
+                return status
+
             return self.makeDead(id, "Requested by operator")
         else:
-            status = -1
             self.queueLock.acquire()
             self.log.debug("delJob| Acquired lock to job queue.")
             if id in self.deadJobs:
@@ -302,9 +311,6 @@ class JobQueue(object):
             self.deadJobs.set(id, job)
             # Remove the job from the live jobs dictionary
             self.liveJobs.delete(id)
-
-            # Remove the job from the unassigned live jobs queue
-            self.unassignedJobs.remove(int(id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()

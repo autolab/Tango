@@ -20,7 +20,36 @@ sys.path.append("/usr/lib/python2.7/site-packages/")
 #
 # Set up the command line parser
 #
-parser = argparse.ArgumentParser(description="")
+parser = argparse.ArgumentParser(description='')
+parser.add_argument('-s', '--server', default='localhost',
+                    help='Tango server endpoint (default = localhost)')
+parser.add_argument('-P', '--port', default=3000, type=int,
+                    help='Tango server port number (default = 3000)')
+parser.add_argument('-S', '--ssl', default=False, action='store_true',
+                    help='Use ssl to communicate with tango (and change port to 443)')
+parser.add_argument('-k', '--key',
+                    help='Key of client')
+parser.add_argument('-l', '--courselab',
+                    help='Lab of client')
+
+open_help = 'Opens directory for lab. Creates new one if it does not exist. Must specify key with -k and courselab with -l.'
+parser.add_argument('-o', '--open', action='store_true', help=open_help)
+upload_help = 'Uploads a file. Must specify key with -k, courselab with -l, and filename with --filename.'
+parser.add_argument('-u', '--upload', action='store_true', help=upload_help)
+addJob_help = 'Submit a job. Must specify key with -k, courselab with -l, and input files with --infiles. Modify defaults with --image (autograding_image), --outputFile (result.out), --jobname (test_job), --maxsize(0), --timeout (0).'
+parser.add_argument('-a', '--addJob', action='store_true', help=addJob_help)
+poll_help = 'Poll a given output file. Must specify key with -k, courselab with -l. Modify defaults with --outputFile (result.out).'
+parser.add_argument('-p', '--poll', action='store_true', help=poll_help)
+info_help = 'Obtain basic stats about the service such as uptime, number of jobs, number of threads etc. Must specify key with -k.'
+parser.add_argument('-i', '--info', action='store_true', help=info_help)
+jobs_help = 'Obtain information of live jobs (deadJobs == 0) or dead jobs (deadJobs == 1). Must specify key with -k. Modify defaults with --deadJobs (0).'
+parser.add_argument('-j', '--jobs', action='store_true', help=jobs_help)
+pool_help = 'Obtain information about a pool of VMs spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image).'
+parser.add_argument('--pool', action='store_true', help=pool_help)
+prealloc_help = 'Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image), --num (2), --vmms (localDocker), --cores (1), and --memory (512).'
+parser.add_argument('--prealloc', action='store_true', help=prealloc_help)
+
+parser.add_argument('--runJob', help='Run a job from a specific directory')
 parser.add_argument(
     "-s",
     "--server",
@@ -143,6 +172,8 @@ def checkDeadjobs():
     return 0
 
 
+_tango_protocol='http'
+
 # open
 
 
@@ -153,13 +184,10 @@ def tango_open():
             raise Exception("Invalid usage: [open] " + open_help)
 
         response = requests.get(
-            "http://%s:%d/open/%s/%s/"
-            % (args.server, args.port, args.key, args.courselab)
-        )
-        print(
-            "Sent request to %s:%d/open/%s/%s/"
-            % (args.server, args.port, args.key, args.courselab)
-        )
+            '%s://%s:%d/open/%s/%s/' %
+            (_tango_protocol, args.server, args.port, args.key, args.courselab))
+        print("Sent request to %s:%d/open/%s/%s/" %
+              (args.server, args.port, args.key, args.courselab))
         print(response.text)
 
     except Exception as err:
@@ -186,8 +214,12 @@ def tango_upload():
         header = {"Filename": filename}
 
         response = requests.post(
-            "http://%s:%d/upload/%s/%s/"
-            % (args.server, args.port, args.key, args.courselab),
+            '%s://%s:%d/upload/%s/%s/' %
+            (_tango_protocol,
+             args.server,
+             args.port,
+             args.key,
+             args.courselab),
             data=f.read(),
             headers=header,
         )
@@ -231,10 +263,13 @@ def tango_addJob():
         requestObj["accessKey"] = args.accessKey
 
         response = requests.post(
-            "http://%s:%d/addJob/%s/%s/"
-            % (args.server, args.port, args.key, args.courselab),
-            data=json.dumps(requestObj),
-        )
+            '%s://%s:%d/addJob/%s/%s/' %
+            (_tango_protocol,
+             args.server,
+             args.port,
+             args.key,
+             args.courselab),
+            data=json.dumps(requestObj))
         print(
             "Sent request to %s:%d/addJob/%s/%s/ \t jobObj=%s"
             % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
@@ -260,15 +295,14 @@ def tango_poll():
             raise Exception("Invalid usage: [poll] " + poll_help)
 
         response = requests.get(
-            "http://%s:%d/poll/%s/%s/%s/"
-            % (
-                args.server,
-                args.port,
-                args.key,
-                args.courselab,
-                urllib.parse.quote(args.outputFile),
-            )
-        )
+            '%s://%s:%d/poll/%s/%s/%s/' %
+            (_tango_protocol,
+             args.server,
+             args.port,
+             args.key,
+             args.courselab,
+             urllib.parse.quote(
+                 args.outputFile)))
         print(
             "Sent request to %s:%d/poll/%s/%s/%s/"
             % (
@@ -306,9 +340,9 @@ def tango_info():
             raise Exception("Invalid usage: [info] " + info_help)
 
         response = requests.get(
-            "http://%s:%d/info/%s/" % (args.server, args.port, args.key)
-        )
-        print("Sent request to %s:%d/info/%s/" % (args.server, args.port, args.key))
+            '%s://%s:%d/info/%s/' % (_tango_protocol, args.server, args.port, args.key))
+        print("Sent request to %s:%d/info/%s/" %
+              (args.server, args.port, args.key))
         print(response.text)
 
     except Exception as err:
@@ -330,13 +364,10 @@ def tango_jobs():
             raise Exception("Invalid usage: [jobs] " + jobs_help)
 
         response = requests.get(
-            "http://%s:%d/jobs/%s/%d/"
-            % (args.server, args.port, args.key, args.deadJobs)
-        )
-        print(
-            "Sent request to %s:%d/jobs/%s/%d/"
-            % (args.server, args.port, args.key, args.deadJobs)
-        )
+            '%s://%s:%d/jobs/%s/%d/' %
+            (_tango_protocol, args.server, args.port, args.key, args.deadJobs))
+        print("Sent request to %s:%d/jobs/%s/%d/" %
+              (args.server, args.port, args.key, args.deadJobs))
         print(response.text)
 
     except Exception as err:
@@ -356,14 +387,11 @@ def tango_pool():
         res = checkKey()
         if res != 0:
             raise Exception("Invalid usage: [pool] " + pool_help)
-
-        response = requests.get(
-            "http://%s:%d/pool/%s/%s/" % (args.server, args.port, args.key, args.image)
-        )
-        print(
-            "Sent request to %s:%d/pool/%s/%s/"
-            % (args.server, args.port, args.key, args.image)
-        )
+            
+        response = requests.get('%s://%s:%d/pool/%s/%s/' %
+                                (_tango_protocol, args.server, args.port, args.key, args.image))
+        print("Sent request to %s:%d/pool/%s/%s/" %
+              (args.server, args.port, args.key, args.image))
         print(response.text)
 
     except Exception as err:
@@ -390,10 +418,14 @@ def tango_prealloc():
         vmObj["memory"] = args.memory
 
         response = requests.post(
-            "http://%s:%d/prealloc/%s/%s/%s/"
-            % (args.server, args.port, args.key, args.image, args.num),
-            data=json.dumps(vmObj),
-        )
+            '%s://%s:%d/prealloc/%s/%s/%s/' %
+            (_tango_protocol,
+             args.server,
+             args.port,
+             args.key,
+             args.image,
+             args.num),
+            data=json.dumps(vmObj))
         print(
             "Sent request to %s:%d/prealloc/%s/%s/%s/ \t vmObj=%s"
             % (
@@ -510,8 +542,15 @@ if (
     parser.print_help()
     sys.exit(0)
 
+if args.ssl:
+    _tango_protocol = 'https'
+    if args.port == 3000:
+        args.port = 443
+
+
 try:
-    response = requests.get("http://%s:%d/" % (args.server, args.port))
+    response = requests.get('%s://%s:%d/' % (_tango_protocol, args.server, args.port))
+    response.raise_for_status()
 except BaseException:
     print("Tango not reachable on %s:%d!\n" % (args.server, args.port))
     sys.exit(0)
