@@ -24,15 +24,15 @@ from tangoObjects import TangoMachine
 
 
 def timeout(command, time_out=1):
-    """ timeout - Run a unix command with a timeout. Return -1 on
+    """timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
     """
 
     # Launch the command
-    p = subprocess.Popen(command,
-                         stdout=open("/dev/null", 'w'),
-                         stderr=subprocess.STDOUT)
+    p = subprocess.Popen(
+        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
+    )
 
     # Wait for the command to complete
     t = 0.0
@@ -53,14 +53,15 @@ def timeout(command, time_out=1):
 
 
 def timeoutWithReturnStatus(command, time_out, returnValue=0):
-    """ timeoutWithReturnStatus - Run a Unix command with a timeout,
+    """timeoutWithReturnStatus - Run a Unix command with a timeout,
     until the expected value is returned by the command; On timeout,
     return last error code obtained from the command.
     """
     p = subprocess.Popen(
-        command, stdout=open("/dev/null", 'w'), stderr=subprocess.STDOUT)
+        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
+    )
     t = 0.0
-    while (t < time_out):
+    while t < time_out:
         ret = p.poll()
         if ret is None:
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
@@ -68,10 +69,11 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
         elif ret == returnValue:
             return ret
         else:
-            p = subprocess.Popen(command,
-                                 stdout=open("/dev/null", 'w'),
-                                 stderr=subprocess.STDOUT)
+            p = subprocess.Popen(
+                command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
+            )
             return ret
+
 
 #
 # User defined exceptions
@@ -84,12 +86,17 @@ class ec2CallError(Exception):
 
 
 class Ec2SSH(object):
-    _SSH_FLAGS = ["-i", config.Config.SECURITY_KEY_PATH,
-                  "-o", "StrictHostKeyChecking no",
-                  "-o", "GSSAPIAuthentication no"]
+    _SSH_FLAGS = [
+        "-i",
+        config.Config.SECURITY_KEY_PATH,
+        "-o",
+        "StrictHostKeyChecking no",
+        "-o",
+        "GSSAPIAuthentication no",
+    ]
 
     def __init__(self, accessKeyId=None, accessKey=None):
-        """ log - logger for the instance
+        """log - logger for the instance
         connection - EC2Connection object that stores the connection
         info to the EC2 network
         instance - Instance object that stores information about the
@@ -100,7 +107,8 @@ class Ec2SSH(object):
             self.connection = ec2.connect_to_region(
                 config.Config.EC2_REGION,
                 aws_access_key_id=accessKeyId,
-                aws_secret_access_key=accessKey)
+                aws_secret_access_key=accessKey,
+            )
             self.useDefaultKeyPair = False
         else:
             self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
@@ -108,28 +116,28 @@ class Ec2SSH(object):
         self.log = logging.getLogger("Ec2SSH")
 
     def instanceName(self, id, name):
-        """ instanceName - Constructs a VM instance name. Always use
+        """instanceName - Constructs a VM instance name. Always use
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
     def keyPairName(self, id, name):
-        """ keyPairName - Constructs a unique key pair name.
-        """
+        """keyPairName - Constructs a unique key pair name."""
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
     def domainName(self, vm):
-        """ Returns the domain name that is stored in the vm
+        """Returns the domain name that is stored in the vm
         instance.
         """
         return vm.domain_name
+
     #
     # VMMS helper methods
     #
 
     def tangoMachineToEC2Instance(self, vm):
-        """ tangoMachineToEC2Instance - returns an object with EC2 instance
+        """tangoMachineToEC2Instance - returns an object with EC2 instance
         type and AMI. Only general-purpose instances are used. Defalt AMI
         is currently used.
         """
@@ -138,29 +146,31 @@ class Ec2SSH(object):
         memory = vm.memory  # in Kbytes
         cores = vm.cores
 
-        if (cores == 1 and memory <= 613 * 1024):
-            ec2instance['instance_type'] = 't2.micro'
-        elif (cores == 1 and memory <= 1.7 * 1024 * 1024):
-            ec2instance['instance_type'] = 'm1.small'
-        elif (cores == 1 and memory <= 3.75 * 1024 * 1024):
-            ec2instance['instance_type'] = 'm3.medium'
-        elif (cores == 2):
-            ec2instance['instance_type'] = 'm3.large'
-        elif (cores == 4):
-            ec2instance['instance_type'] = 'm3.xlarge'
-        elif (cores == 8):
-            ec2instance['instance_type'] = 'm3.2xlarge'
+        if cores == 1 and memory <= 613 * 1024:
+            ec2instance["instance_type"] = "t2.micro"
+        elif cores == 1 and memory <= 1.7 * 1024 * 1024:
+            ec2instance["instance_type"] = "m1.small"
+        elif cores == 1 and memory <= 3.75 * 1024 * 1024:
+            ec2instance["instance_type"] = "m3.medium"
+        elif cores == 2:
+            ec2instance["instance_type"] = "m3.large"
+        elif cores == 4:
+            ec2instance["instance_type"] = "m3.xlarge"
+        elif cores == 8:
+            ec2instance["instance_type"] = "m3.2xlarge"
         else:
-            ec2instance['instance_type'] = config.Config.DEFAULT_INST_TYPE
+            ec2instance["instance_type"] = config.Config.DEFAULT_INST_TYPE
 
-        ec2instance['ami'] = config.Config.DEFAULT_AMI
+        ec2instance["ami"] = config.Config.DEFAULT_AMI
 
         return ec2instance
 
     def createKeyPair(self):
         # try to delete the key to avoid collision
-        self.key_pair_path = "%s/%s.pem" % \
-            (config.Config.DYNAMIC_SECURITY_KEY_PATH, self.key_pair_name)
+        self.key_pair_path = "%s/%s.pem" % (
+            config.Config.DYNAMIC_SECURITY_KEY_PATH,
+            self.key_pair_name,
+        )
         self.deleteKeyPair()
         key = self.connection.create_key_pair(self.key_pair_name)
         key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
@@ -180,13 +190,12 @@ class Ec2SSH(object):
         try:
             security_group = self.connection.create_security_group(
                 config.Config.DEFAULT_SECURITY_GROUP,
-                "Autolab security group - allowing all traffic")
+                "Autolab security group - allowing all traffic",
+            )
             # All ports, all traffics, all ips
             security_group.authorize(
-                from_port=None,
-                to_port=None,
-                ip_protocol='-1',
-                cidr_ip='0.0.0.0/0')
+                from_port=None, to_port=None, ip_protocol="-1", cidr_ip="0.0.0.0/0"
+            )
         except boto.exception.EC2ResponseError:
             pass
 
@@ -194,7 +203,7 @@ class Ec2SSH(object):
     # VMMS API functions
     #
     def initializeVM(self, vm):
-        """ initializeVM - Tell EC2 to create a new VM instance.
+        """initializeVM - Tell EC2 to create a new VM instance.
 
         Returns a boto.ec2.instance.Instance object.
         """
@@ -212,11 +221,11 @@ class Ec2SSH(object):
                 self.createKeyPair()
 
             reservation = self.connection.run_instances(
-                ec2instance['ami'],
+                ec2instance["ami"],
                 key_name=self.key_pair_name,
-                security_groups=[
-                    config.Config.DEFAULT_SECURITY_GROUP],
-                instance_type=ec2instance['instance_type'])
+                security_groups=[config.Config.DEFAULT_SECURITY_GROUP],
+                instance_type=ec2instance["instance_type"],
+            )
 
             # Wait for instance to reach 'running' state
             state = -1
@@ -229,29 +238,33 @@ class Ec2SSH(object):
 
                 state = newInstance.state_code
                 self.log.debug(
-                    "VM %s: Waiting to reach 'running' state. Current state: %s (%d)" %
-                    (instanceName, newInstance.state, state))
+                    "VM %s: Waiting to reach 'running' state. Current state: %s (%d)"
+                    % (instanceName, newInstance.state, state)
+                )
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
                 elapsed_secs = time.time() - start_time
-                if (elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT):
+                if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
                     self.log.debug(
-                        "VM %s: Did not reach 'running' state before timeout period of %d" %
-                        (instanceName, config.Config.TIMER_POLL_INTERVAL))
+                        "VM %s: Did not reach 'running' state before timeout period of %d"
+                        % (instanceName, config.Config.TIMER_POLL_INTERVAL)
+                    )
 
             self.log.info(
-                "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s" %
-                (instanceName,
-                 newInstance.state,
-                 reservation.id,
-                 newInstance.public_dns_name,
-                 newInstance.ip_address))
+                "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s"
+                % (
+                    instanceName,
+                    newInstance.state,
+                    reservation.id,
+                    newInstance.public_dns_name,
+                    newInstance.ip_address,
+                )
+            )
 
             # Save domain and id ssigned by EC2 in vm object
             vm.domain_name = newInstance.ip_address
             vm.ec2_id = newInstance.id
             # Assign name to EC2 instance
-            self.connection.create_tags(
-                [newInstance.id], {"Name": instanceName})
+            self.connection.create_tags([newInstance.id], {"Name": instanceName})
             self.log.debug("VM %s: %s" % (instanceName, newInstance))
             return vm
 
@@ -261,7 +274,7 @@ class Ec2SSH(object):
             return None
 
     def waitVM(self, vm, max_secs):
-        """ waitVM - Wait at most max_secs for a VM to become
+        """waitVM - Wait at most max_secs for a VM to become
         ready. Return error if it takes too long.
 
         VM is a boto.ec2.instance.Instance object.
@@ -273,42 +286,46 @@ class Ec2SSH(object):
         start_time = time.time()
         domain_name = self.domainName(vm)
         while instance_down:
-            instance_down = subprocess.call("ping -c 1 %s" % (domain_name),
-                                            shell=True,
-                                            stdout=open('/dev/null', 'w'),
-                                            stderr=subprocess.STDOUT)
+            instance_down = subprocess.call(
+                "ping -c 1 %s" % (domain_name),
+                shell=True,
+                stdout=open("/dev/null", "w"),
+                stderr=subprocess.STDOUT,
+            )
 
             # Wait a bit and then try again if we haven't exceeded
             # timeout
             if instance_down:
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
                 elapsed_secs = time.time() - start_time
-                if (elapsed_secs > max_secs):
+                if elapsed_secs > max_secs:
                     return -1
 
         # The ping worked, so now wait for SSH to work before
         # declaring that the VM is ready
         self.log.debug("VM %s: ping completed" % (vm.name))
-        while(True):
+        while True:
 
             elapsed_secs = time.time() - start_time
 
             # Give up if the elapsed time exceeds the allowable time
             if elapsed_secs > max_secs:
                 self.log.info(
-                    "VM %s: SSH timeout after %d secs" %
-                    (instanceName, elapsed_secs))
+                    "VM %s: SSH timeout after %d secs" % (instanceName, elapsed_secs)
+                )
                 return -1
 
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
-            ret = timeout(["ssh"] + self.ssh_flags +
-                          ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
-                           "(:)"], max_secs - elapsed_secs)
+            ret = timeout(
+                ["ssh"]
+                + self.ssh_flags
+                + ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), "(:)"],
+                max_secs - elapsed_secs,
+            )
 
-            self.log.debug("VM %s: ssh returned with %d" %
-                           (instanceName, ret))
+            self.log.debug("VM %s: ssh returned with %d" % (instanceName, ret))
 
             if (ret != -1) and (ret != 255):
                 return 0
@@ -317,47 +334,63 @@ class Ec2SSH(object):
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles):
-        """ copyIn - Copy input files to VM
-        """
+        """copyIn - Copy input files to VM"""
         domain_name = self.domainName(vm)
 
         # Create a fresh input directory
-        ret = subprocess.call(["ssh"] + self.ssh_flags +
-                              ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
-                               "(rm -rf autolab; mkdir autolab)"])
+        ret = subprocess.call(
+            ["ssh"]
+            + self.ssh_flags
+            + [
+                "%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
+                "(rm -rf autolab; mkdir autolab)",
+            ]
+        )
 
         # Copy the input files to the input directory
         for file in inputFiles:
-            ret = timeout(["scp"] +
-                          self.ssh_flags +
-                          [file.localFile, "%s@%s:autolab/%s" %
-                           (config.Config.EC2_USER_NAME, domain_name, file.destFile)],
-                          config.Config.COPYIN_TIMEOUT)
+            ret = timeout(
+                ["scp"]
+                + self.ssh_flags
+                + [
+                    file.localFile,
+                    "%s@%s:autolab/%s"
+                    % (config.Config.EC2_USER_NAME, domain_name, file.destFile),
+                ],
+                config.Config.COPYIN_TIMEOUT,
+            )
             if ret != 0:
                 return ret
 
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
-        """ runJob - Run the make command on a VM using SSH and
+        """runJob - Run the make command on a VM using SSH and
         redirect output to file "output".
         """
         domain_name = self.domainName(vm)
-        self.log.debug("runJob: Running job on VM %s" %
-                       self.instanceName(vm.id, vm.name))
+        self.log.debug(
+            "runJob: Running job on VM %s" % self.instanceName(vm.id, vm.name)
+        )
         # Setting ulimits for VM and running job
         runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-                %d -o %d autolab > output 2>&1 " % (config.Config.VM_ULIMIT_USER_PROC,
-                                                    config.Config.VM_ULIMIT_FILE_SIZE,
-                                                    runTimeout,
-                                                    maxOutputFileSize)
-        ret = timeout(["ssh"] + self.ssh_flags + ["%s@%s" %
-                                                  (config.Config.EC2_USER_NAME, domain_name), runcmd], runTimeout * 2)
+                %d -o %d autolab > output 2>&1 " % (
+            config.Config.VM_ULIMIT_USER_PROC,
+            config.Config.VM_ULIMIT_FILE_SIZE,
+            runTimeout,
+            maxOutputFileSize,
+        )
+        ret = timeout(
+            ["ssh"]
+            + self.ssh_flags
+            + ["%s@%s" % (config.Config.EC2_USER_NAME, domain_name), runcmd],
+            runTimeout * 2,
+        )
         return ret
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
 
     def copyOut(self, vm, destFile):
-        """ copyOut - Copy the file output on the VM to the file
+        """copyOut - Copy the file output on the VM to the file
         outputFile on the Tango host.
         """
         domain_name = self.domainName(vm)
@@ -367,14 +400,20 @@ class Ec2SSH(object):
         if config.Config.LOG_TIMING:
             try:
                 # regular expression matcher for error message from cat
-                no_file = re.compile('No such file or directory')
+                no_file = re.compile("No such file or directory")
 
-                time_info = subprocess.check_output(
-                    ['ssh'] +
-                    self.ssh_flags +
-                    [
-                        "%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
-                        'cat time.out']).decode('utf-8').rstrip('\n')
+                time_info = (
+                    subprocess.check_output(
+                        ["ssh"]
+                        + self.ssh_flags
+                        + [
+                            "%s@%s" % (config.Config.EC2_USER_NAME, domain_name),
+                            "cat time.out",
+                        ]
+                    )
+                    .decode("utf-8")
+                    .rstrip("\n")
+                )
 
                 # If the output is empty, then ignore it (timing info wasn't
                 # collected), otherwise let's log it!
@@ -385,8 +424,8 @@ class Ec2SSH(object):
                 else:
                     # remove newline character printed in timing info
                     # replaces first '\n' character with a space
-                    time_info = re.sub('\n', ' ', time_info, count=1)
-                    self.log.info('Timing (%s): %s' % (domain_name, time_info))
+                    time_info = re.sub("\n", " ", time_info, count=1)
+                    self.log.info("Timing (%s): %s" % (domain_name, time_info))
 
             except subprocess.CalledProcessError as xxx_todo_changeme:
                 # Error copying out the timing data (probably runJob failed)
@@ -394,14 +433,15 @@ class Ec2SSH(object):
                 # Error copying out the timing data (probably runJob failed)
                 pass
 
-        return timeout(["scp"] + self.ssh_flags +
-                       ["%s@%s:output" %
-                           (config.Config.EC2_USER_NAME, domain_name), destFile],
-                       config.Config.COPYOUT_TIMEOUT)
+        return timeout(
+            ["scp"]
+            + self.ssh_flags
+            + ["%s@%s:output" % (config.Config.EC2_USER_NAME, domain_name), destFile],
+            config.Config.COPYOUT_TIMEOUT,
+        )
 
     def destroyVM(self, vm):
-        """ destroyVM - Removes a VM from the system
-        """
+        """destroyVM - Removes a VM from the system"""
         ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:
@@ -412,7 +452,7 @@ class Ec2SSH(object):
         return self.destroyVM(vm)
 
     def getVMs(self):
-        """ getVMs - Returns the complete list of VMs on this account. Each
+        """getVMs - Returns the complete list of VMs on this account. Each
         list entry is a boto.ec2.instance.Instance object.
         """
         # TODO: Find a way to return vm objects as opposed ec2 instance
@@ -428,16 +468,14 @@ class Ec2SSH(object):
         for inst in instances:
             vm = TangoMachine()
             vm.ec2_id = inst.id
-            vm.name = str(inst.tags.get('Name'))
-            self.log.debug('getVMs: Instance - %s, EC2 Id - %s' %
-                           (vm.name, vm.ec2_id))
+            vm.name = str(inst.tags.get("Name"))
+            self.log.debug("getVMs: Instance - %s, EC2 Id - %s" % (vm.name, vm.ec2_id))
             vms.append(vm)
 
         return vms
 
     def existsVM(self, vm):
-        """ existsVM - Checks whether a VM exists in the vmms.
-        """
+        """existsVM - Checks whether a VM exists in the vmms."""
         instances = self.connection.get_all_instances()
 
         for inst in instances:
@@ -446,6 +484,5 @@ class Ec2SSH(object):
         return False
 
     def getImages(self):
-        """ getImages - return a constant; actually use the ami specified in config
-        """
+        """getImages - return a constant; actually use the ami specified in config"""
         return ["default.img"]

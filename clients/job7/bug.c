@@ -5,11 +5,11 @@
 
 char array[SIZE];
 
-int main() 
+int main()
 {
    int i;
 
    for (i=0; i<SIZE; i++)
-       array[i] = 0; 
+       array[i] = 0;
    return 0;
 }

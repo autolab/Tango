@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This script is to set up a shark machine to host docker
-# containers for autograding. System must be running ubuntu 
+# containers for autograding. System must be running ubuntu
 # kernel version 3.13 or higher. Check with `uname -r`
 #
 # Run as root

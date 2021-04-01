@@ -10,7 +10,4 @@ job3 	  - realistic autograding example from 15-213
 job4 	  - example that returns non-zero return code
 job5 	  - example that produces infinite output
 job6	  - fork bomb example
-job7      - example that exceeds VM 512MB memory size 
-
-
-
+job7      - example that exceeds VM 512MB memory size
