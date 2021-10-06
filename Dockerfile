@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /opt/TangoService/Tango/
 
 # Install Docker from Docker Inc. repositories.
-RUN curl -sSL https://get.docker.com/ | sh
+RUN curl -sSL https://get.docker.com/ -o get_docker.sh && sh get_docker.sh
 
 # Install the magic wrapper.
 ADD ./wrapdocker /usr/local/bin/wrapdocker
