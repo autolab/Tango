@@ -1,24 +1,34 @@
 FROM ros:melodic-ros-core-bionic
-MAINTAINER Zijian an <zijianan@buffalo.edu>
-
+LABEL authors="Zijian an <zijianan@buffalo.edu>; Elvis Rodrigues <elvisdav@buffalo.edu>"
 
 # install bootstrap tools
 RUN apt-get update && apt-get install --no-install-recommends -y \
     build-essential \
     python-rosdep \
     python-rosinstall \
-    python-vcstools \
-    && rm -rf /var/lib/apt/lists/*
+    python-vcstools
 
 # bootstrap rosdep
 RUN rosdep init && \
   rosdep update --rosdistro $ROS_DISTRO
 
 # install ros packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-melodic-ros-base=1.4.1-0* \
-    && rm -rf /var/lib/apt/lists/*
-    
+RUN apt-get install -y --no-install-recommends \
+    ros-melodic-desktop
+# ros-melodic-ros-base=1.4.1-0* \
+	
+RUN apt-get install -y \
+	ros-melodic-tf2-tools \
+	ros-melodic-tf \
+	ros-melodic-tf2-geometry-msgs \
+	ros-melodic-ackermann-msgs \
+	ros-melodic-interactive-markers \
+	ros-melodic-map-server \
+	ros-melodic-joy \
+	ros-melodic-stage \
+	ros-melodic-stage-ros \
+	&& rm -fr /var/lib/apt/lists/*
+
 #initial work_dic
 RUN echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
 RUN mkdir -p /home/catkin_ws/src
