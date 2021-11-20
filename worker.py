@@ -6,6 +6,8 @@ import time
 import logging
 import tempfile
 import requests
+from requests.packages.urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 import os
 import shutil
 
@@ -134,9 +136,13 @@ class Worker(threading.Thread):
                 files = {"file": str(fh.read(), errors="ignore")}
                 hdrs = {"Filename": outputFileName}
                 self.log.debug("Sending request to %s" % job.notifyURL)
-                response = requests.post(
-                    job.notifyURL, files=files, headers=hdrs, verify=False
-                )
+                with requests.session() as s:
+                    # urllib3 retry, allow POST to be retried, use backoffs
+                    r = Retry(total=10, allowed_methods=False, backoff_factor=1)
+                    s.mount("http://", HTTPAdapter(max_retries=r))
+                    s.mount("https://", HTTPAdapter(max_retries=r))
+                    response = s.post(
+                        job.notifyURL, files=files, headers=hdrs, verify=False)
                 self.log.info(
                     "Response from callback to %s:%s"
                     % (job.notifyURL, response.content)
