@@ -142,7 +142,8 @@ class Worker(threading.Thread):
                     s.mount("http://", HTTPAdapter(max_retries=r))
                     s.mount("https://", HTTPAdapter(max_retries=r))
                     response = s.post(
-                        job.notifyURL, files=files, headers=hdrs, verify=False)
+                        job.notifyURL, files=files, headers=hdrs, verify=False
+                    )
                 self.log.info(
                     "Response from callback to %s:%s"
                     % (job.notifyURL, response.content)

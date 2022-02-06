@@ -221,7 +221,7 @@ def TangoQueue(object_name):
 
 
 class ExtendedQueue(Queue):
-    """ Python Thread safe Queue with the remove and clean function added """
+    """Python Thread safe Queue with the remove and clean function added"""
 
     def remove(self, value):
         with self.mutex:
