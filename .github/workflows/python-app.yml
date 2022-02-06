@@ -20,8 +20,6 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.8
-
-      - name: Linting
-        run: |
-          pip install pre-commit
-          pre-commit run --all-files
+          
+      - name: pre-commit
+        uses: pre-commit/action@v2.0.3
