@@ -34,8 +34,8 @@ DEADJOBS = ".+"
 
 
 def unblock(f):
-    @tornado.web.asynchronous
-    @wraps(f)
+        @tornado.web.asynchronous
+        @wraps(f)
     def wrapper(*args, **kwargs):
         self = args[0]
 
