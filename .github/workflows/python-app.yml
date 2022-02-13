@@ -21,5 +21,7 @@ jobs:
         with:
           python-version: 3.8
           
-      - name: hadenlabs-action-pre-commit
-        uses: hadenlabs/action-pre-commit@0.2.0
+      - name: Linting
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
