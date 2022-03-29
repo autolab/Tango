@@ -24,7 +24,7 @@ tangoREST = TangoREST()
 EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Regex for the resources
-SHA1_KEY = ".+"  # So that we can have better error messages
+     SHA1_KEY = ".+"  # So that we can have better error messages
 COURSELAB = ".+"
 OUTPUTFILE = ".+"
 IMAGE = ".+"
