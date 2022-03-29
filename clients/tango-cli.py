@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python3
 #
 #
 # tango-cli.py - Command line client for the RESTful Tango.

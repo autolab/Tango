@@ -373,12 +373,15 @@ class Ec2SSH(object):
             "runJob: Running job on VM %s" % self.instanceName(vm.id, vm.name)
         )
         # Setting ulimits for VM and running job
-        runcmd = "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
-                %d -o %d autolab > output 2>&1 " % (
-            config.Config.VM_ULIMIT_USER_PROC,
-            config.Config.VM_ULIMIT_FILE_SIZE,
-            runTimeout,
-            maxOutputFileSize,
+        runcmd = (
+            "/usr/bin/time --output=time.out autodriver -u %d -f %d -t \
+                %d -o %d autolab > output 2>&1 "
+            % (
+                config.Config.VM_ULIMIT_USER_PROC,
+                config.Config.VM_ULIMIT_FILE_SIZE,
+                runTimeout,
+                maxOutputFileSize,
+            )
         )
         ret = timeout(
             ["ssh"]

@@ -44,12 +44,13 @@ We will not be backporting new features from `master` to `master-python2`.
 
 1. [Fork the Tango repository](https://github.com/autolab/Tango).
 2. Create a local clone of the forked repo.
-3. Make a branch for your feature and start committing changes.
-3. Create a pull request (PR).
-4. Address any comments by updating the PR and wait for it to be accepted.
-5. Once your PR is accepted, a reviewer will ask you to squash the commits on your branch into one well-worded commit.
-6. Squash your commits into one and push to your branch on your forked repo.
-7. A reviewer will fetch from your repo, rebase your commit, and push to Tango.
+3. Install [pre-commit](https://pre-commit.com/) from pip, and run `pre-commit install` to set up Git pre-commit linting scripts.
+4. Make a branch for your feature and start committing changes.
+5. Create a pull request (PR).
+6. Address any comments by updating the PR and wait for it to be accepted.
+7. Once your PR is accepted, a reviewer will ask you to squash the commits on your branch into one well-worded commit.
+8. Squash your commits into one and push to your branch on your forked repo.
+9. A reviewer will fetch from your repo, rebase your commit, and push to Tango.
 
 Please see [the git linear development guide](https://github.com/edx/edx-platform/wiki/How-to-Rebase-a-Pull-Request) for a more in-depth explanation of the version control model that we use.
 
