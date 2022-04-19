@@ -164,10 +164,12 @@ static int parse_user(char *name, struct passwd *user_info, char **buf) {
  * @return 0 on success, -1 on failure
  */
 static int dump_file(int fd, size_t bytes, off_t offset) {
-    char buffer[BUFSIZE];
+    char buffer[BUFSIZE + 1]; // keep the last byte as string terminator
     char *write_base;
     ssize_t nread, nwritten;
     size_t read_rem, write_rem;
+
+    memset(buffer, 0, BUFSIZE + 1);
 
     // Flush stdout so our writes here don't race with buffer flushes
     if (fflush(stdout) != 0) {
