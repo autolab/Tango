@@ -40,11 +40,11 @@ RUN mv pintos-anon/* $PINTOSDIR
 #RUN mv pintos/* $PINTOSDIR
 
 WORKDIR $SRCDIR/
-RUN wget http://www.oldlinux.org/Linux.old/bochs/Bochs/bochs-2.2.6/bochs-2.2.6.tar.gz
+# RUN wget http://www.oldlinux.org/Linux.old/bochs/Bochs/bochs-2.2.6/bochs-2.2.6.tar.gz
 #RUN wget http://web.stanford.edu/class/cs140/projects/pintos/bochs-2.2.6.tar.gz
 
 WORKDIR $PINTOSDIR/src/misc/
-RUN ./bochs-2.2.6-build.sh
+RUN ./bochs-2.6.11-build.sh /usr/local
 
 WORKDIR $PINTOSDIR/src/utils/
 RUN sed -i "5i GDBMACROS=$PINTOSDIR/src/misc/gdb-macros" pintos-gdb
