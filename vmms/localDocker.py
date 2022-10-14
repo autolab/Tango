@@ -253,7 +253,7 @@ class LocalDocker(object):
         """
         result = set()
         cmd = "docker images"
-        o = subprocess.check_output("docker images", shell=True).decode("utf-8")
+        o = subprocess.check_output(cmd, shell=True).decode("utf-8")
         o_l = o.split("\n")
         o_l.pop()
         o_l.reverse()
@@ -262,3 +262,11 @@ class LocalDocker(object):
             row_l = row.split(" ")
             result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
         return list(result)
+
+    def getPartialOutput(self, jobid, image):
+        "getPartialOutput - Get the partial output of the job"
+        # todo: add size limit to partial output
+        instanceName = self.instanceName(jobid, image)
+        cmd = "docker exec -it %s cat autograde/output.log" % instanceName
+        o = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        return o
