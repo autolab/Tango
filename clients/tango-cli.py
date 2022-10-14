@@ -61,6 +61,11 @@ parser.add_argument("--pool", action="store_true", help=pool_help)
 prealloc_help = "Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image), --num (2), --vmms (localDocker), --cores (1), and --memory (512)."
 parser.add_argument("--prealloc", action="store_true", help=prealloc_help)
 
+parser.add_argument(
+    "--getPartialOutput", action="store_true", help="Get partial output"
+)
+parser.add_argument("--jobid", help="Job ID")
+
 parser.add_argument("--runJob", help="Run a job from a specific directory")
 parser.add_argument("--numJobs", type=int, default=1, help="Number of jobs to run")
 
@@ -254,6 +259,45 @@ def tango_addJob():
         print(
             "Failed to send request to %s:%d/addJob/%s/%s/ \t jobObj=%s"
             % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
+        )
+        print(str(err))
+        sys.exit(0)
+
+
+# getPartialOutput
+
+
+def tango_getPartialOutput():
+    try:
+        response = requests.get(
+            "%s://%s:%d/getPartialOutput/%s/%s/"
+            % (
+                _tango_protocol,
+                args.server,
+                args.port,
+                args.key,
+                args.jobid,
+            )
+        )
+        print(
+            "Sent request to %s:%d/getPartialOutput/%s/%s/"
+            % (
+                args.server,
+                args.port,
+                args.key,
+                args.jobid,
+            )
+        )
+        print(response.text)
+    except Exception as err:
+        print(
+            "Failed to send request to %s:%d/getPartialOutput/%s/%s/"
+            % (
+                args.server,
+                args.port,
+                args.key,
+                args.jobid,
+            )
         )
         print(str(err))
         sys.exit(0)
@@ -501,6 +545,8 @@ def router():
         tango_prealloc()
     elif args.runJob:
         tango_runJob()
+    elif args.getPartialOutput:
+        tango_getPartialOutput()
 
 
 #
@@ -517,6 +563,7 @@ if (
     and not args.pool
     and not args.prealloc
     and not args.runJob
+    and not args.getPartialOutput
 ):
     parser.print_help()
     sys.exit(0)
