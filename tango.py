@@ -210,7 +210,7 @@ class TangoServer(object):
     def getPartialOutput(self, jobid):
         """getPartialOutput - Return the partial output of a job"""
         try:
-            jobInfo = self.jobQueue.getJobInfo(jobid)
+            jobInfo = self.jobQueue.liveJobs.get(jobid)
             if jobInfo:
                 vm = self.jobQueue.liveJobs.get(jobid).vm
                 if vm:
