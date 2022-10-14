@@ -112,6 +112,14 @@ class PollHandler(tornado.web.RequestHandler):
         return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
 
 
+class GetPartialHandler(tornado.web.RequestHandler):
+    @unblock
+    def get(self, key, jobId):
+        """get - Handles the get request to partialOutput"""
+        self.set_header("Content-Type", "application/octet-stream")
+        return tangoREST.getPartialOutput(key, jobId)
+
+
 class InfoHandler(tornado.web.RequestHandler):
     @unblock
     def get(self, key):
@@ -153,6 +161,7 @@ application = tornado.web.Application(
         (r"/upload/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), UploadHandler),
         (r"/addJob/(%s)/(%s)/" % (SHA1_KEY, COURSELAB), AddJobHandler),
         (r"/poll/(%s)/(%s)/(%s)/" % (SHA1_KEY, COURSELAB, OUTPUTFILE), PollHandler),
+        (r"/getPartialOutput/(%s)/(%s)/" % (SHA1_KEY, JOBID), GetPartialHandler),
         (r"/info/(%s)/" % (SHA1_KEY), InfoHandler),
         (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
         (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
