@@ -1,0 +1,3 @@
+autograde:
+	gcc -o print print.c
+	bash print
