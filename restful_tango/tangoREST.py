@@ -316,6 +316,22 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
+    def getPartialOutput(self, key, jobId):
+        """getPartialOutput - Return the partial output of the job"""
+        self.log.debug("Received getPartialOutput request(%s, %s)" % (key, jobId))
+        if self.validateKey(key):
+            try:
+                output = self.tango.getPartialOutput(jobId)
+                result = {}
+                result["output"] = output
+                return result
+            except Exception as e:
+                self.log.error("getPartialOutput request failed: %s" % str(e))
+                return self.status.create(-1, str(e))
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+
     def poll(self, key, courselab, outputFile):
         """poll - Poll for the output file in key-courselab"""
         self.log.debug(
