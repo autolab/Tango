@@ -264,9 +264,18 @@ class LocalDocker(object):
         return list(result)
 
     def getPartialOutput(self, jobid, image):
-        "getPartialOutput - Get the partial output of the job"
-        # todo: add size limit to partial output
+        """getPartialOutput - Get the partial output of a job.
+        It does not check if the docker container exists before executing
+        as the command will not fail even if the container does not exist.
+        Gets the first MAX_OUTPUT_FILE_SIZE bytes of the feedback file
+        """
+
         instanceName = self.instanceName(jobid, image)
-        cmd = "docker exec -it %s cat autograde/output.log" % instanceName
-        o = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        return o
+        cmd = "docker exec -it %s head -c %s autograde/output.log" % (
+            instanceName,
+            config.Config.MAX_OUTPUT_FILE_SIZE,
+        )
+        output = subprocess.check_output(
+            cmd, stderr=subprocess.STDOUT, shell=True
+        ).decode("utf-8")
+        return output
