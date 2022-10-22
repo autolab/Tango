@@ -211,14 +211,25 @@ class TangoServer(object):
         """getPartialOutput - Return the partial output of a job"""
         try:
             jobInfo = self.jobQueue.liveJobs.get(jobid)
-            if jobInfo:
-                vm = self.jobQueue.liveJobs.get(jobid).vm
-                if vm:
-                    vmms = self.preallocator.vmms[Config.VMMS_NAME]
-                    return vmms.getPartialOutput(vm.id, vm.image)
+
+            if jobInfo is None:
+                return "Invalid job id"
+
+            vm = self.jobQueue.liveJobs.get(jobid).vm
+
+            if vm is None:
+                return "Job %s not running" % jobid
+
+            vmms = self.preallocator.vmms[Config.VMMS_NAME]
+            return vmms.getPartialOutput(vm.id, vm.image)
+        except NotImplementedError:
+            self.log.error(
+                "getPartialOutput not implemented for VMMS %s" % Config.VMMS_NAME
+            )
+            raise "getPartialOutput not implemented for this VMMS %s" % Config.VMMS_NAME
         except Exception as err:
             self.log.error("getPartialOutput request failed: %s" % err)
-            return "getPartialOutput request failed: %s" % err
+            raise "getPartialOutput request failed: %s" % err
 
     #
     # Helper functions
