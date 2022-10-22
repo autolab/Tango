@@ -1,8 +1,7 @@
 backports.ssl-match-hostname==3.7.0.1
 boto==2.49.0 # used only by ec2SSH.py
-plumbum==1.6.9
 pyflakes==2.1.1
 redis==3.4.1
 requests==2.26.0
-rpyc==4.1.4
+# needed for tashi, rpyc==4.1.4
 tornado==4.5.3
