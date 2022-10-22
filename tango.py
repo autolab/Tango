@@ -213,23 +213,18 @@ class TangoServer(object):
             jobInfo = self.jobQueue.liveJobs.get(jobid)
 
             if jobInfo is None:
-                return "Invalid job id"
+                raise Exception("Invalid job id")
 
-            vm = self.jobQueue.liveJobs.get(jobid).vm
+            vm = jobInfo.vm
 
-            if vm is None:
-                return "Job %s not running" % jobid
+            if not jobInfo.assigned or vm is None:
+                raise Exception("Job %s is not running yet" % jobid)
 
             vmms = self.preallocator.vmms[Config.VMMS_NAME]
             return vmms.getPartialOutput(vm.id, vm.image)
-        except NotImplementedError:
-            self.log.error(
-                "getPartialOutput not implemented for VMMS %s" % Config.VMMS_NAME
-            )
-            raise "getPartialOutput not implemented for this VMMS %s" % Config.VMMS_NAME
         except Exception as err:
             self.log.error("getPartialOutput request failed: %s" % err)
-            raise "getPartialOutput request failed: %s" % err
+            raise Exception("getPartialOutput request failed: %s" % err)
 
     #
     # Helper functions
