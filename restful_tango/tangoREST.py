@@ -32,6 +32,7 @@ class Status(object):
         self.preallocated = self.create(0, "VMs preallocated")
         self.obtained_pool = self.create(0, "Found pool")
         self.obtained_all_pools = self.create(0, "Found all pools")
+        self.partial_output_obtained = self.create(0, "Partial output obtained")
 
         self.wrong_key = self.create(-1, "Key not recognized")
         self.wrong_courselab = self.create(-1, "Courselab not found")
@@ -322,7 +323,7 @@ class TangoREST(object):
         if self.validateKey(key):
             try:
                 output = self.tango.getPartialOutput(jobId)
-                result = {}
+                result = self.status.partial_output_obtained
                 result["output"] = output
                 return result
             except Exception as e:
