@@ -221,7 +221,7 @@ class TangoServer(object):
                 raise Exception("Job %s is not running yet" % jobid)
 
             vmms = self.preallocator.vmms[Config.VMMS_NAME]
-            return vmms.getPartialOutput(vm.id, vm.image)
+            return vmms.getPartialOutput(vm)
         except Exception as err:
             self.log.error("getPartialOutput request failed: %s" % err)
             raise Exception("getPartialOutput request failed: %s" % err)
