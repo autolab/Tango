@@ -207,6 +207,25 @@ class TangoServer(object):
 
         return stats
 
+    def getPartialOutput(self, jobid):
+        """getPartialOutput - Return the partial output of a job"""
+        try:
+            jobInfo = self.jobQueue.liveJobs.get(jobid)
+
+            if jobInfo is None:
+                raise Exception("Invalid job id")
+
+            vm = jobInfo.vm
+
+            if not jobInfo.assigned or vm is None:
+                raise Exception("Job %s is not running yet" % jobid)
+
+            vmms = self.preallocator.vmms[Config.VMMS_NAME]
+            return vmms.getPartialOutput(vm)
+        except Exception as err:
+            self.log.error("getPartialOutput request failed: %s" % err)
+            raise Exception("getPartialOutput request failed: %s" % err)
+
     #
     # Helper functions
     #

@@ -32,6 +32,7 @@ class Status(object):
         self.preallocated = self.create(0, "VMs preallocated")
         self.obtained_pool = self.create(0, "Found pool")
         self.obtained_all_pools = self.create(0, "Found all pools")
+        self.partial_output_obtained = self.create(0, "Partial output obtained")
 
         self.wrong_key = self.create(-1, "Key not recognized")
         self.wrong_courselab = self.create(-1, "Courselab not found")
@@ -311,6 +312,22 @@ class TangoREST(object):
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("addJob request failed: %s" % str(e))
+                return self.status.create(-1, str(e))
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+
+    def getPartialOutput(self, key, jobId):
+        """getPartialOutput - Return the partial output of the job"""
+        self.log.debug("Received getPartialOutput request(%s, %s)" % (key, jobId))
+        if self.validateKey(key):
+            try:
+                output = self.tango.getPartialOutput(jobId)
+                result = self.status.partial_output_obtained
+                result["output"] = output
+                return result
+            except Exception as e:
+                self.log.error("getPartialOutput request failed: %s" % str(e))
                 return self.status.create(-1, str(e))
         else:
             self.log.info("Key not recognized: %s" % key)

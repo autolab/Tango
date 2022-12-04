@@ -1,0 +1,2 @@
+autograde:
+	bash hello.sh
