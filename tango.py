@@ -221,8 +221,9 @@ class TangoServer(object):
 
             if not jobInfo.assigned or vm is None:
                 self.log.info(
-                        "job %s %d is assigned ?: %d %s]"
-                        % (jobInfo.name, jobInfo.id, jobInfo.assigned)
+                        "job %s %d is assigned ?: %d %s ID: %s]"
+                        % (jobInfo.name, jobInfo.id, jobInfo.assigned,
+                          str(jobInfo.__dict__), jobInfo.vm.id)
                 )
                 raise Exception("Job %s is not running yet" % jobid)
 
