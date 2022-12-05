@@ -271,11 +271,12 @@ class LocalDocker(object):
         """
 
         instanceName = self.instanceName(vm.id, vm.image)
-        cmd = "docker exec -it %s head -c %s autograde/output.log" % (
+        cmd = "docker exec %s head -c %s autograde/output.log" % (
             instanceName,
             config.Config.MAX_OUTPUT_FILE_SIZE,
         )
         output = subprocess.check_output(
             cmd, stderr=subprocess.STDOUT, shell=True
         ).decode("utf-8")
+
         return output
