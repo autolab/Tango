@@ -93,11 +93,11 @@ class TestJobQueue(unittest.TestCase):
         self.assertEqual(str(ret_job_2.id), self.jobId2)
 
     def test_getNextPendingJob(self):
-        self.jobQueue.assignJob(self.jobId2, None)
+        self.jobQueue.assignJob(self.jobId2)
         # job 2 should have been removed from unassigned queue
         info = self.jobQueue.getInfo()
         self.assertEqual(info["size_unassignedjobs"], 1)
-        self.jobQueue.assignJob(self.jobId1, None)
+        self.jobQueue.assignJob(self.jobId1)
         info = self.jobQueue.getInfo()
         self.assertEqual(info["size_unassignedjobs"], 0)
         self.jobQueue.unassignJob(self.jobId1)
@@ -113,12 +113,12 @@ class TestJobQueue(unittest.TestCase):
         self.assertMultiLineEqual(str(job.id), self.jobId2)
 
     def test_assignJob(self):
-        self.jobQueue.assignJob(self.jobId1, None)
+        self.jobQueue.assignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
         self.assertFalse(job.isNotAssigned())
 
     def test_unassignJob(self):
-        self.jobQueue.assignJob(self.jobId1, None)
+        self.jobQueue.assignJob(self.jobId1)
         job = self.jobQueue.get(self.jobId1)
         self.assertTrue(job.assigned)
 
