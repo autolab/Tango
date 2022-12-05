@@ -73,8 +73,7 @@ class JobManager(object):
                     time.sleep(Config.DISPATCH_PERIOD)
 
             try:
-                # Mark the job assigned
-                job.makeAssigned()
+
                 # if the job has specified an account
                 # create an VM on the account and run on that instance
                 if job.accessKeyId:
@@ -108,7 +107,8 @@ class JobManager(object):
                     "%s|Dispatched job %s:%d [try %d]"
                     % (datetime.utcnow().ctime(), job.name, job.id, job.retries)
                 )
-
+                # Mark the job assigned
+                self.jobQueue.assignJob(job.id, preVM)
                 Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
 
             except Exception as err:

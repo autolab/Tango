@@ -259,6 +259,7 @@ class JobQueue(object):
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
         job.makeAssigned()
+        job.makeVM()
 
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()

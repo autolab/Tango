@@ -91,6 +91,8 @@ class TangoServer(object):
         self.start_time = time.time()
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
+        if Config.USE_REDIS:
+            self.log.info("BRUHRUWEHUASERH")
 
     def addJob(self, job):
         """addJob - Add a job to the job queue"""
@@ -218,6 +220,10 @@ class TangoServer(object):
             vm = jobInfo.vm
 
             if not jobInfo.assigned or vm is None:
+                self.log.info(
+                        "job %s %d is assigned ?: %d %s]"
+                        % (jobInfo.name, jobInfo.id, jobInfo.assigned)
+                )
                 raise Exception("Job %s is not running yet" % jobid)
 
             vmms = self.preallocator.vmms[Config.VMMS_NAME]
