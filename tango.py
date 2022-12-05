@@ -226,7 +226,9 @@ class TangoServer(object):
                           str(jobInfo.__dict__), jobInfo.vm.id)
                 )
                 raise Exception("Job %s is not running yet" % jobid)
-
+            elif vm.id is None:
+                raise Exception("Job %s does not have a vm id set" % jobid)
+            
             vmms = self.preallocator.vmms[Config.VMMS_NAME]
             return vmms.getPartialOutput(vm)
         except Exception as err:
