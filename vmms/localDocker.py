@@ -275,11 +275,8 @@ class LocalDocker(object):
             instanceName,
             config.Config.MAX_OUTPUT_FILE_SIZE,
         )
-        try:
-            output = subprocess.check_output(
-                cmd, stderr=subprocess.STDOUT, shell=True
-            ).decode("utf-8")
-        except subprocess.CalledProcessError as e:
-            output = str(e)
+        output = subprocess.check_output(
+            cmd, stderr=subprocess.STDOUT, shell=True
+        ).decode("utf-8")
 
         return output
