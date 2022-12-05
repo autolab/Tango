@@ -246,7 +246,7 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def assignJob(self, jobId, vm = None):
+    def assignJob(self, jobId, vm=None):
         """assignJob - marks a job to be assigned"""
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
