@@ -246,7 +246,7 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def assignJob(self, jobId):
+    def assignJob(self, jobId, vm=None):
         """assignJob - marks a job to be assigned"""
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
@@ -259,10 +259,12 @@ class JobQueue(object):
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
         job.makeAssigned()
+        job.makeVM(vm)
 
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
+        # return job
 
     def unassignJob(self, jobId):
         """unassignJob - marks a job to be unassigned
@@ -306,11 +308,14 @@ class JobQueue(object):
             status = 0
             job = self.liveJobs.get(id)
             self.log.info("Terminated job %s:%s: %s" % (job.name, job.id, reason))
-
             # Add the job to the dead jobs dictionary
             self.deadJobs.set(id, job)
             # Remove the job from the live jobs dictionary
             self.liveJobs.delete(id)
+
+            # unassign, remove from unassigned jobs queue
+            job.makeUnassigned()
+            self.unassignedJobs.remove(int(id))
 
             job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()

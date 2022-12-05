@@ -118,6 +118,11 @@ class TangoJob(object):
         self.assigned = True
         self.updateRemote()
 
+    def makeVM(self, vm):
+        self.syncRemote()
+        self.vm = vm
+        self.updateRemote()
+
     def makeUnassigned(self):
         self.syncRemote()
         self.assigned = False
