@@ -497,7 +497,7 @@ class DistDocker(object):
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        cmd = "(docker exec -it %s head -c %s autograde/output.log)" % (
+        cmd = "(docker exec %s head -c %s autograde/output.log)" % (
             instanceName,
             config.Config.MAX_OUTPUT_FILE_SIZE,
         )
