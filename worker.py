@@ -197,7 +197,9 @@ class Worker(threading.Thread):
             # Assigning job to a new VM
             else:
                 self.log.debug("Assigning job to a new VM")
-                self.job.makeVM(self.job.id)
+                self.job.syncRemote()
+                self.job.vm.id = self.job.id
+                self.job.updateRemote()
 
                 self.log.info(
                     "Assigned job %s:%d new VM %s"
