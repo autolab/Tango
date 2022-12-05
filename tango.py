@@ -91,8 +91,6 @@ class TangoServer(object):
         self.start_time = time.time()
         self.log = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
-        if Config.USE_REDIS:
-            self.log.info("BRUHRUWEHUASERH")
 
     def addJob(self, job):
         """addJob - Add a job to the job queue"""
@@ -221,7 +219,7 @@ class TangoServer(object):
 
             if not jobInfo.assigned or vm is None:
                 self.log.info(
-                        "job %s %d is assigned ?: %d %s ID: %s]"
+                        "job %s %d is assigned %d, job dict: %s ID: %s]"
                         % (jobInfo.name, jobInfo.id, jobInfo.assigned,
                           str(jobInfo.__dict__), jobInfo.vm.id)
                 )
