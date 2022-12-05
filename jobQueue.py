@@ -264,7 +264,7 @@ class JobQueue(object):
         self.log.debug("assignJob| Releasing lock to job queue.")
         self.queueLock.release()
         self.log.debug("assignJob| Released lock to job queue.")
-        #return job
+        # return job
 
     def unassignJob(self, jobId):
         """unassignJob - marks a job to be unassigned
@@ -313,7 +313,7 @@ class JobQueue(object):
             # Remove the job from the live jobs dictionary
             self.liveJobs.delete(id)
 
-            #unassign, remove from unassigned jobs queue
+            # unassign, remove from unassigned jobs queue
             job.makeUnassigned()
             self.unassignedJobs.remove(int(id))
 
