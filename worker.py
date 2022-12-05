@@ -175,8 +175,7 @@ class Worker(threading.Thread):
             # Assigning job to a preallocated VM
             if self.preVM:  # self.preVM:
                 self.log.debug("Assigning job to preallocated VM")
-                self.job.vm = self.preVM
-                self.job.updateRemote()
+                self.job.makeVM(self.preVM)
                 self.log.info(
                     "Assigned job %s:%d existing VM %s"
                     % (
@@ -198,8 +197,7 @@ class Worker(threading.Thread):
             # Assigning job to a new VM
             else:
                 self.log.debug("Assigning job to a new VM")
-                self.job.vm.id = self.job.id
-                self.job.updateRemote()
+                self.job.makeVM(self.job.id)
 
                 self.log.info(
                     "Assigned job %s:%d new VM %s"
