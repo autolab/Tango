@@ -230,7 +230,8 @@ class ExtendedQueue(Queue):
 
     def remove(self, value):
         with self.mutex:
-            self.queue.remove(value)
+            if value in self.queue:
+                self.queue.remove(value)
 
     def _clean(self):
         with self.mutex:
