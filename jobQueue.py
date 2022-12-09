@@ -253,11 +253,10 @@ class JobQueue(object):
 
         job = self.liveJobs.get(jobId)
 
-        # Remove the current job from the queue
-        self.unassignedJobs.remove(int(jobId))
 
         self.log.debug("assignJob| Retrieved job.")
         self.log.info("assignJob|Assigning job ID: %s" % str(job.id))
+        
         job.makeAssigned()
         job.makeVM(vm)
 
