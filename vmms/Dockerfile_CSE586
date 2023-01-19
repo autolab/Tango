@@ -55,8 +55,11 @@ RUN apt-get install -y npm
 #OCaml Setup
 RUN apt-get install -y ocaml
 
-#Golang Setup
-RUN apt-get install -y golang
+#Golang Setup (v1.19.5)
+RUN wget https://go.dev/dl/go1.19.5.linux-amd64.tar.gz
+RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.19.5.linux-amd64.tar.gz
+# Update the PATH manually within the image setup
+ENV PATH="$PATH:/usr/local/go/bin"
 
 #Other Utils
 RUN apt-get install -y gawk
