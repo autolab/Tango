@@ -1,0 +1,81 @@
+# Autolab - autograding docker image
+
+FROM ubuntu:20.04
+MAINTAINER Zhuoyue Zhao <zzhao35@buffalo.edu>
+
+#C++ Setup
+RUN apt-get update
+RUN apt-get install -y gcc
+RUN apt-get install -y g++
+RUN apt-get install -y make
+RUN apt-get install -y cmake
+RUN apt-get install -y build-essential
+
+#Python Setup
+RUN apt-get install -y python3 python-is-python3
+
+
+#Utility setup
+RUN apt-get install -y dos2unix
+RUN apt-get install -y xzip
+RUN apt-get install -y postgresql-client
+RUN apt-get install -y curl
+RUN apt-get install -y git
+RUN apt-get install -y gawk
+RUN apt-get install -y pkg-config
+RUN apt-get install -y jq
+
+#Install libs
+RUN apt-get install -y libjemalloc-dev
+
+WORKDIR /tmp
+RUN git clone https://github.com/abseil/abseil-cpp.git
+WORKDIR /tmp/abseil-cpp
+RUN git checkout 20210324.2
+RUN cmake -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=11 \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DABSL_PROPAGATE_CXX_STD=ON \
+    -DABSL_ENABLE_INSTALL=ON
+RUN cmake --build build --target install
+
+WORKDIR /tmp
+RUN rm -rf abseil-cpp
+RUN git clone https://github.com/google/googletest.git
+WORKDIR googletest
+RUN git checkout release-1.11.0
+RUN cmake -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=11 \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_GMOCK=ON
+RUN cmake --build build --target install
+WORKDIR /tmp
+RUN rm -rf googletest
+
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo 
+RUN apt-get install -y git
+RUN git clone https://github.com/UBAutograding/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+RUN g++ --version
