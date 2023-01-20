@@ -335,7 +335,7 @@ class DistDocker:
             timeout(["ssh"] + DistDocker._SSH_FLAGS + vm.ssh_flags +
                     DistDocker._SSH_MASTER_EXIT_FLAG +
                     ["%s@%s" % (self.hostUser, vm.domain_name)])
-            shutil.rmtree(vm.ssh_control_dir, ignore_errors=True)
+        shutil.rmtree(vm.ssh_control_dir, ignore_errors=True)
         return
 
     def safeDestroyVM(self, vm):
