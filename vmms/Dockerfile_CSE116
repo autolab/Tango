@@ -1,0 +1,63 @@
+# Autolab - autograding docker image for general software engineering
+
+FROM ubuntu:20.04
+MAINTAINER David Dobmeier <daviddob@buffalo.edu>
+
+#C++ Setup
+RUN apt-get update
+RUN apt-get install -y gcc
+RUN apt-get install -y make
+RUN apt-get install -y build-essential
+RUN apt-get install -y libcunit1-dev libcunit1-doc libcunit1
+
+#Python Setup
+RUN apt-get update --fix-missing && \
+    DEBIAN_FRONTEND=nointeractive apt-get install -y \
+    python3 python3-numpy python3-nose python3-pandas \
+    python python-numpy python-nose \
+    pep8 python3-pip \
+    && \
+    pip install --upgrade setuptools
+
+#Java 19 Setup
+RUN apt update
+RUN apt-get install -y wget
+RUN wget https://download.oracle.com/java/19/latest/jdk-19_linux-x64_bin.deb
+RUN apt install -y libc6-x32 libc6-i386 libasound2 libxi6 libxtst6
+RUN dpkg -i jdk-19_linux-x64_bin.deb
+RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-19/bin/java 3000
+RUN update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-19/bin/javac 3000
+
+#Utility setup
+RUN apt-get install -y unzip
+
+#Maven Setup
+RUN apt-get install -y maven
+
+
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
+
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+
+# Check installation
+RUN ls -l /home
+RUN which autodriver
+RUN which java
+RUN which javac
