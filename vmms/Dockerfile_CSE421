@@ -29,7 +29,7 @@ RUN chmod +s /usr/bin/autodriver
 ###############################################
 ENV PINTOSDIR /home/autograde/pintos_base
 ENV DSTDIR /usr/local
-ENV SRCDIR /home/source
+ENV SRCDIR $PINTOSDIR/sources
 RUN mkdir -p $SRCDIR
 RUN mkdir -p $PINTOSDIR
 RUN mkdir -p $DSTDIR/bin
@@ -55,11 +55,13 @@ RUN sed -i "s/$sim = \"bochs\" if \!defined $sim/$sim = \"qemu\" if \!defined $s
 RUN make
 RUN cp backtrace pintos pintos-gdb pintos-mkdisk Pintos.pm pintos-set-cmdline squish-pty squish-unix $DSTDIR/bin
 
-WORKDIR /
-
-# Uncomment thse lines for local testing only
-#RUN mkdir -p $PINTOSDIR/submission
-#WORKDIR $PINTOSDIR/src/threads/
-#ADD test-autograder /home/submission
-#WORKDIR /home/submission
-#RUN make
+RUN chown -R autograde:autograde /home/autograde
+RUN chown -R autograde:autograde $BXSHARE
+RUN chown -R autograde:autograde $DSTDIR/bin
+# Clean up
+WORKDIR /home
+RUN apt-get -y autoremove
+RUN rm -rf Tango/
+# Check installation
+RUN ls -l /home
+RUN which autodriver
