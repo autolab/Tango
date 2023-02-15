@@ -8,11 +8,26 @@ RUN apt-get update --fix-missing
 RUN apt-get update && apt-get install -y apt-utils
 RUN apt-get install -y gcc make build-essential libcunit1-dev libcunit1-doc libcunit1 wget python qemu xorg-dev libncurses5-dev gdb git
 
+# Install autodriver
+WORKDIR /home
+RUN useradd autolab
+RUN useradd autograde
+RUN mkdir autolab autograde output
+RUN chown autolab:autolab autolab
+RUN chown autolab:autolab output
+RUN chown autograde:autograde autograde
+RUN apt-get update && apt-get install -y sudo
+RUN apt-get install -y git
+RUN git clone https://github.com/autolab/Tango.git
+WORKDIR Tango/autodriver
+RUN make clean && make
+RUN cp autodriver /usr/bin/autodriver
+RUN chmod +s /usr/bin/autodriver
 
 ###############################################
 # configuraion and setup for bochs and pintos #
 ###############################################
-ENV PINTOSDIR /home/pintos
+ENV PINTOSDIR /home/autograde/pintos_base
 ENV DSTDIR /usr/local
 ENV SRCDIR /home/source
 RUN mkdir -p $SRCDIR
