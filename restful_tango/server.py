@@ -153,6 +153,13 @@ class PreallocHandler(tornado.web.RequestHandler):
         return tangoREST.prealloc(key, image, num, self.request.body)
 
 
+class BuildHandler(tornado.web.RequestHandler):
+    @unblock
+    def post(self, key, image):
+        """post - Handles the post request to build."""
+        return tangoREST.build(key, image, self.request.body)
+
+
 # Routes
 application = tornado.web.Application(
     [
@@ -166,6 +173,7 @@ application = tornado.web.Application(
         (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
         (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
         (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
+        (r"/build/(%s)/" % (SHA1_KEY), BuildHandler)
     ]
 )
 

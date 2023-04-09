@@ -10,6 +10,7 @@ import inspect
 import hashlib
 import json
 import logging
+import docker
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -436,6 +437,29 @@ class TangoREST(object):
                 return self.status.invalid_image
             self.log.info("Successfully preallocated VMs")
             return self.status.preallocated
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+    
+    def build(self, key, imageStr):
+        self.log.debug("Received build request(%s)" % (key))
+        if self.validateKey(key):
+            if imageStr == "":
+                self.log.error("Invalid image tar")
+                return self.status.invalid_image_tar
+            
+            image_tar = json.loads(imageStr)['image']
+            client = docker.from_env()
+            
+            try:
+                images = client.images.load(image_tar)
+                id_list = ', '.join(image.short_id for image in images)
+            except docker.errors.APIError as err:
+                self.log.error("Build failed")
+                return self.status.build_failed
+            
+            self.log.info("Successfully loaded images: %s" % (id_list))
+            return self.status.build
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
