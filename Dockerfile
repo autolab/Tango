@@ -37,8 +37,8 @@ RUN apt-get update --fix-missing && DEBIAN_FRONTEND=nointeractive apt-get instal
  && rm -rf /var/lib/apt/lists/*
 
 # Install Redis
-RUN wget http://download.redis.io/releases/redis-stable.tar.gz && tar xzf redis-stable.tar.gz
-WORKDIR /opt/redis-stable
+RUN wget http://download.redis.io/releases/redis-3.2.6.tar.gz && tar xzf redis-3.2.6.tar.gz
+WORKDIR /opt/redis-3.2.6
 RUN make && make install 
 WORKDIR /opt/TangoService/Tango/
 
