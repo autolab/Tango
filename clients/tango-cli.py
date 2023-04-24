@@ -60,7 +60,9 @@ pool_help = "Obtain information about a pool of VMs spawned from a specific imag
 parser.add_argument("--pool", action="store_true", help=pool_help)
 prealloc_help = "Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image), --num (2), --vmms (localDocker), --cores (1), and --memory (512)."
 parser.add_argument("--prealloc", action="store_true", help=prealloc_help)
-build_help = "Build a docker image. Must specify key with -k and filename with --filename."
+build_help = (
+    "Build a docker image. Must specify key with -k and filename with --filename."
+)
 parser.add_argument("--build", action="store_true", help=build_help)
 
 parser.add_argument(
