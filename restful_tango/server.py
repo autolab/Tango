@@ -31,10 +31,10 @@ IMAGE = ".+"
 NUM = "[0-9]+"
 JOBID = "[0-9]+"
 DEADJOBS = ".+"
-
+io_loop_current = None
 
 def unblock(f):
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     @wraps(f)
     def wrapper(*args, **kwargs):
         self = args[0]
@@ -53,17 +53,19 @@ def unblock(f):
 
 
 class MainHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self):
         """get - Default route to check if RESTful Tango is up."""
-        return "Hello, world! RESTful Tango here!\n"
+        self.write("Hello, world! RESTful Tango here!\n")
+        self.finish()
 
 
 class OpenHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key, courselab):
         """get - Handles the get request to open."""
-        return tangoREST.open(key, courselab)
+        self.write(tangoREST.open(key, courselab))
+        self.finish()
 
 
 @tornado.web.stream_request_body
@@ -83,59 +85,62 @@ class UploadHandler(tornado.web.RequestHandler):
         self.hasher.update(chunk)
         self.tempfile.write(chunk)
 
-    @unblock
     def post(self, key, courselab):
         """post - Handles the post request to upload."""
         name = self.tempfile.name
         self.tempfile.close()
-        return tangoREST.upload(
+        self.write(tangoREST.upload(
             key,
             courselab,
             self.request.headers["Filename"],
             name,
             self.hasher.hexdigest(),
-        )
+        ))
+        self.finish()
 
 
 class AddJobHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def post(self, key, courselab):
         """post - Handles the post request to add a job."""
-        return tangoREST.addJob(key, courselab, self.request.body)
+        self.write(tangoREST.addJob(key, courselab, self.request.body))
+        self.finish()
 
 
 class PollHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key, courselab, outputFile):
         """get - Handles the get request to poll."""
         self.set_header("Content-Type", "application/octet-stream")
-        return tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
+        self.write(tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile)))
 
 
 class GetPartialHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key, jobId):
         """get - Handles the get request to partialOutput"""
         self.set_header("Content-Type", "application/octet-stream")
-        return tangoREST.getPartialOutput(key, jobId)
+        self.write(tangoREST.getPartialOutput(key, jobId))
 
 
 class InfoHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key):
         """get - Handles the get request to info."""
-        return tangoREST.info(key)
+        self.write(tangoREST.info(key))
+        self.finish()
 
 
 class JobsHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key, deadJobs):
         """get - Handles the get request to jobs."""
-        return tangoREST.jobs(key, deadJobs)
+        self.write(tangoREST.jobs(key, deadJobs))
+        self.finish()
 
 
 class PoolHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def get(self, key):
         """get - Handles the get request to pool."""
         image = ""
@@ -143,14 +148,16 @@ class PoolHandler(tornado.web.RequestHandler):
             key_l = key.split("/")
             key = key_l[0]
             image = key_l[1]
-        return tangoREST.pool(key, image)
+        self.write(tangoREST.pool(key, image))
+        self.finish()
 
 
 class PreallocHandler(tornado.web.RequestHandler):
-    @unblock
+    @tornado.gen.coroutine
     def post(self, key, image, num):
         """post - Handles the post request to prealloc."""
-        return tangoREST.prealloc(key, image, num, self.request.body)
+        self.write(tangoREST.prealloc(key, image, num, self.request.body))
+        self.finish()
 
 
 # Routes
@@ -178,4 +185,5 @@ if __name__ == "__main__":
 
     tangoREST.tango.resetTango(tangoREST.tango.preallocator.vmms)
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
-    tornado.ioloop.IOLoop.instance().start()
+    io_loop_current = tornado.ioloop.IOLoop.current()
+    tornado.ioloop.IOLoop.current().start()
