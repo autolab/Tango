@@ -502,30 +502,19 @@ def tango_build():
         response = requests.post(
             "%s://%s:%d/build/%s/"
             % (_tango_protocol, args.server, args.port, args.key),
-            data=f.read()
+            data=f.read(),
         )
-        print(
-            "Sent request to %s:%d/build/%s/"
-            % (
-                args.server,
-                args.port,
-                args.key
-            )
-        )
+        print("Sent request to %s:%d/build/%s/" % (args.server, args.port, args.key))
         print(response.text)
 
     except Exception as err:
         print(
             "Failed to send request to %s:%d/build/%s/"
-            % (
-                args.server,
-                args.port,
-                args.key
-            )
+            % (args.server, args.port, args.key)
         )
         print(str(err))
         sys.exit(0)
-    
+
 
 # runJob
 

@@ -442,20 +442,20 @@ class TangoREST(object):
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
-    
+
     def build(self, key, tempfile):
         self.log.debug("Received build request(%s)" % (key))
-        if self.validateKey(key):   
+        if self.validateKey(key):
             try:
                 client = docker.from_env()
                 imageTarStr = open(tempfile, "rb").read()
                 images = client.images.load(imageTarStr)
-                id_list = ', '.join(image.short_id for image in images)
+                id_list = ", ".join(image.short_id for image in images)
             except Exception as e:
                 self.log.error("Image build failed")
                 os.unlink(tempfile)
                 return self.status.image_build_failed
-            
+
             self.log.info("Successfully loaded images: %s" % (id_list))
             os.unlink(tempfile)
             return self.status.image_built
