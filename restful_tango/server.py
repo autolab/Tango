@@ -153,11 +153,27 @@ class PreallocHandler(tornado.web.RequestHandler):
         return tangoREST.prealloc(key, image, num, self.request.body)
 
 
+@tornado.web.stream_request_body
 class BuildHandler(tornado.web.RequestHandler):
+    def prepare(self):
+        """set up the temporary file"""
+        tempdir = "dockerTmp"
+        if not os.path.exists(tempdir):
+            os.mkdir(tempdir, 0o700)
+        if os.path.exists(tempdir) and not os.path.isdir(tempdir):
+            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+            return self.send_error()
+        self.tempfile = NamedTemporaryFile(prefix="docker", dir=tempdir, delete=False)
+
+    def data_received(self, chunk):
+        self.tempfile.write(chunk)
+
     @unblock
-    def post(self, key, image):
+    def post(self, key):
         """post - Handles the post request to build."""
-        return tangoREST.build(key, image, self.request.body)
+        name = self.tempfile.name
+        self.tempfile.close()
+        return tangoREST.build(key, name)
 
 
 # Routes

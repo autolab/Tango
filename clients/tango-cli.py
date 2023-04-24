@@ -60,6 +60,8 @@ pool_help = "Obtain information about a pool of VMs spawned from a specific imag
 parser.add_argument("--pool", action="store_true", help=pool_help)
 prealloc_help = "Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image), --num (2), --vmms (localDocker), --cores (1), and --memory (512)."
 parser.add_argument("--prealloc", action="store_true", help=prealloc_help)
+build_help = "Build a docker image. Must specify key with -k and filename with --filename."
+parser.add_argument("--build", action="store_true", help=build_help)
 
 parser.add_argument(
     "--getPartialOutput", action="store_true", help="Get partial output"
@@ -487,6 +489,44 @@ def file_to_dict(file):
         return {"localFile": file, "destFile": file}
 
 
+# build
+
+
+def tango_build():
+    try:
+        res = checkKey() + checkFilename()
+        if res != 0:
+            raise Exception("Invalid usage: [build] " + build_help)
+
+        f = open(args.filename, "rb")
+        response = requests.post(
+            "%s://%s:%d/build/%s/"
+            % (_tango_protocol, args.server, args.port, args.key),
+            data=f.read()
+        )
+        print(
+            "Sent request to %s:%d/build/%s/"
+            % (
+                args.server,
+                args.port,
+                args.key
+            )
+        )
+        print(response.text)
+
+    except Exception as err:
+        print(
+            "Failed to send request to %s:%d/build/%s/"
+            % (
+                args.server,
+                args.port,
+                args.key
+            )
+        )
+        print(str(err))
+        sys.exit(0)
+    
+
 # runJob
 
 
@@ -547,6 +587,8 @@ def router():
         tango_runJob()
     elif args.getPartialOutput:
         tango_getPartialOutput()
+    elif args.build:
+        tango_build()
 
 
 #
@@ -564,6 +606,7 @@ if (
     and not args.prealloc
     and not args.runJob
     and not args.getPartialOutput
+    and not args.build
 ):
     parser.print_help()
     sys.exit(0)

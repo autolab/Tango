@@ -34,6 +34,7 @@ class Status(object):
         self.obtained_pool = self.create(0, "Found pool")
         self.obtained_all_pools = self.create(0, "Found all pools")
         self.partial_output_obtained = self.create(0, "Partial output obtained")
+        self.image_built = self.create(0, "Docker image built")
 
         self.wrong_key = self.create(-1, "Key not recognized")
         self.wrong_courselab = self.create(-1, "Courselab not found")
@@ -42,6 +43,7 @@ class Status(object):
         self.invalid_prealloc_size = self.create(-1, "Invalid prealloc size")
         self.pool_not_found = self.create(-1, "Pool not found")
         self.prealloc_failed = self.create(-1, "Preallocate VM failed")
+        self.image_build_failed = self.create(-1, "Image build failed")
 
     def create(self, id, msg):
         """create - Constructs a dict with the given ID and message"""
@@ -441,25 +443,23 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
     
-    def build(self, key, imageStr):
+    def build(self, key, tempfile):
         self.log.debug("Received build request(%s)" % (key))
-        if self.validateKey(key):
-            if imageStr == "":
-                self.log.error("Invalid image tar")
-                return self.status.invalid_image_tar
-            
-            image_tar = json.loads(imageStr)['image']
-            client = docker.from_env()
-            
+        if self.validateKey(key):   
             try:
-                images = client.images.load(image_tar)
+                client = docker.from_env()
+                imageTarStr = open(tempfile, "rb").read()
+                images = client.images.load(imageTarStr)
                 id_list = ', '.join(image.short_id for image in images)
-            except docker.errors.APIError as err:
-                self.log.error("Build failed")
-                return self.status.build_failed
+            except Exception as e:
+                self.log.error("Image build failed")
+                os.unlink(tempfile)
+                return self.status.image_build_failed
             
             self.log.info("Successfully loaded images: %s" % (id_list))
-            return self.status.build
+            os.unlink(tempfile)
+            return self.status.image_built
         else:
             self.log.info("Key not recognized: %s" % key)
+            os.unlink(tempfile)
             return self.status.wrong_key
