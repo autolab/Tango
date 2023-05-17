@@ -1,5 +1,5 @@
 # Start with empty ubuntu machine
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 MAINTAINER Autolab Development Team "autolab-dev@andrew.cmu.edu"
 
@@ -24,9 +24,9 @@ RUN apt-get update && apt-get install -y \
 	python3 \
 	python3-pip \
 	build-essential \
-	tcl8.5 \
+	tcl8.6 \
 	wget \
-	libgcrypt11-dev \
+	libgcrypt20-dev \
 	zlib1g-dev \
 	apt-transport-https \
 	ca-certificates \
