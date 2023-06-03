@@ -8,8 +8,6 @@ import urllib.parse
 import urllib.request
 
 import tornado.web
-
-from concurrent.futures import ThreadPoolExecutor
 from tempfile import NamedTemporaryFile
 from tangoREST import TangoREST
 import asyncio
@@ -21,7 +19,6 @@ sys.path.insert(0, parentdir)
 from config import Config
 
 tangoREST = TangoREST()
-EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 # Regex for the resources
 SHA1_KEY = ".+"  # So that we can have better error messages
@@ -31,7 +28,6 @@ IMAGE = ".+"
 NUM = "[0-9]+"
 JOBID = "[0-9]+"
 DEADJOBS = ".+"
-io_loop_current = None
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -76,7 +72,6 @@ class UploadHandler(tornado.web.RequestHandler):
                 self.hasher.hexdigest(),
             )
         )
-        self.finish()
 
 
 class AddJobHandler(tornado.web.RequestHandler):
