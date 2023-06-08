@@ -4,4 +4,4 @@ pyflakes==2.1.1
 redis==4.4.4
 requests==2.31.0
 # needed for tashi, rpyc==4.1.4
-tornado==4.5.3
+tornado==6.3.2
