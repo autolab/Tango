@@ -81,12 +81,10 @@ class AddJobHandler(tornado.web.RequestHandler):
 
 
 class PollHandler(tornado.web.RequestHandler):
-    async def get(self, key, courselab, outputFile):
+    def get(self, key, courselab, outputFile):
         """get - Handles the get request to poll."""
         self.set_header("Content-Type", "application/octet-stream")
-        pollResults = await tangoREST.poll(
-            key, courselab, urllib.parse.unquote(outputFile)
-        )
+        pollResults = tangoREST.poll(key, courselab, urllib.parse.unquote(outputFile))
         self.write(pollResults)
 
 
