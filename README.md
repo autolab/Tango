@@ -30,7 +30,7 @@ Tango was developed as a distributed grading system for [Autolab](https://github
 
 Please feel free to use Tango at your school/organization. If you run into any problems with the steps below, you can reach the core developers at `autolab-dev@andrew.cmu.edu` and we would be happy to help.
 
-1. [Follow the steps to set up Tango](https://docs.autolabproject.com/tango/).
+1. [Follow the steps to set up Tango](https://docs.autolabproject.com/installation/tango/).
 2. [Read the documentation for the REST API](https://docs.autolabproject.com/tango-rest/).
 3. [Read the documentation for the VMMS API](https://docs.autolabproject.com/tango-vmms/).
 4. [Test whether Tango is set up properly and can process jobs](https://docs.autolabproject.com/tango-cli/).
