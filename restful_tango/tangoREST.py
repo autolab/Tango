@@ -452,7 +452,7 @@ class TangoREST(object):
                 images = client.images.load(imageTarStr)
                 id_list = ", ".join(image.short_id for image in images)
             except Exception as e:
-                self.log.error("Image build failed")
+                self.log.error("Image build failed: " + str(e))
                 os.unlink(tempfile)
                 return self.status.image_build_failed
 
