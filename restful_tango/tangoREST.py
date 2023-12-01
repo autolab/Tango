@@ -445,11 +445,11 @@ class TangoREST(object):
 
     def build(self, key, tempfile):
         self.log.debug("Received build request(%s)" % (key))
-        if Config.VMMS_NAME != "localDocker":
-            self.log.error("Not using Docker backend, so cannot build image")
-            os.unlink(tempfile)
-            return "test"
         if self.validateKey(key):
+            if Config.VMMS_NAME != "localDocker":
+                self.log.error("Not using Docker backend, so cannot build image")
+                os.unlink(tempfile)
+                return self.status.image_build_failed
             try:
                 client = docker.from_env()
                 imageTarStr = open(tempfile, "rb").read()
