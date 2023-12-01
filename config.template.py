@@ -87,7 +87,7 @@ class Config(object):
     DOCKER_HOST_USER = ""
 
     # Maximum size for input files in bytes
-    MAX_INPUT_FILE_SIZE = 250 * 1024 * 1024  # 250MB
+    MAX_INPUT_FILE_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
 
     # Maximum size for output file in bytes
     MAX_OUTPUT_FILE_SIZE = 1000 * 1024

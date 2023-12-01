@@ -125,6 +125,28 @@ class PreallocHandler(tornado.web.RequestHandler):
         self.write(instances)
 
 
+@tornado.web.stream_request_body
+class BuildHandler(tornado.web.RequestHandler):
+    def prepare(self):
+        """set up the temporary file"""
+        tempdir = "dockerTmp"
+        if not os.path.exists(tempdir):
+            os.mkdir(tempdir, 0o700)
+        if os.path.exists(tempdir) and not os.path.isdir(tempdir):
+            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+            return self.send_error()
+        self.tempfile = NamedTemporaryFile(prefix="docker", dir=tempdir, delete=False)
+
+    def data_received(self, chunk):
+        self.tempfile.write(chunk)
+
+    def post(self, key):
+        """post - Handles the post request to build."""
+        name = self.tempfile.name
+        self.tempfile.close()
+        self.write(tangoREST.build(key, name))
+
+
 async def main(port: int):
     # Routes
     application = tornado.web.Application(
@@ -139,6 +161,7 @@ async def main(port: int):
             (r"/jobs/(%s)/(%s)/" % (SHA1_KEY, DEADJOBS), JobsHandler),
             (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
             (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
+            (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
