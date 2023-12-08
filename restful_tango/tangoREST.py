@@ -111,16 +111,19 @@ class TangoREST(object):
                 except IOError:
                     continue
 
-    def createTangoMachine(
-        self, image, vmms=Config.VMMS_NAME, vmObj={"cores": 1, "memory": 512}
-    ):
+    def createTangoMachine(self, image, vmms=Config.VMMS_NAME, vmObj=None):
         """createTangoMachine - Creates a tango machine object from image"""
+        cores = Config.DOCKER_CORES_LIMIT
+        memory = Config.DOCKER_MEMORY_LIMIT
+        if vmObj and "cores" in vmObj and "memory" in vmObj:
+            cores = vmObj["cores"]
+            memory = vmObj["memory"]
         return TangoMachine(
             name=image,
             vmms=vmms,
             image="%s" % (image),
-            cores=vmObj["cores"],
-            memory=vmObj["memory"],
+            cores=cores,
+            memory=memory,
             disk=None,
             network=None,
         )
@@ -153,16 +156,7 @@ class TangoREST(object):
             input.append(handinfile)
 
         # VM object
-        if "cores" in jobObj and "memory" in jobObj:
-            vm = self.createTangoMachine(
-                jobObj["image"],
-                vmObj={
-                    "cores": jobObj["cores"],
-                    "memory": jobObj["memory"],
-                },
-            )
-        else:
-            vm = self.createTangoMachine(jobObj["image"])
+        vm = self.createTangoMachine(jobObj["image"])
 
         # for backward compatibility
         accessKeyId = None
