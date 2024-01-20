@@ -113,8 +113,8 @@ class TangoREST(object):
 
     def createTangoMachine(self, image, vmms=Config.VMMS_NAME, vmObj=None):
         """createTangoMachine - Creates a tango machine object from image"""
-        cores = Config.DOCKER_CORES_LIMIT
-        memory = Config.DOCKER_MEMORY_LIMIT
+        cores = getattr(Config, "DOCKER_CORES_LIMIT", None)
+        memory = getattr(Config, "DOCKER_MEMORY_LIMIT", None)
         if vmObj and "cores" in vmObj and "memory" in vmObj:
             cores = vmObj["cores"]
             memory = vmObj["memory"]
