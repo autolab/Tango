@@ -419,7 +419,7 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def prealloc(self, key, image, num, vmStr):
+    async def prealloc(self, key, image, num, vmStr):
         """prealloc - Create a pool of num instances spawned from image"""
         self.log.debug("Received prealloc request(%s, %s, %s)" % (key, image, num))
         if self.validateKey(key):
