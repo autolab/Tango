@@ -144,7 +144,7 @@ class BuildHandler(tornado.web.RequestHandler):
         """post - Handles the post request to build."""
         name = self.tempfile.name
         self.tempfile.close()
-        self.write(tangoREST.build(key, name))
+        self.write(tangoREST.build(key, name, self.request.headers["imageName"]))
 
 
 async def main(port: int):
