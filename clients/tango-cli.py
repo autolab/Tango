@@ -60,9 +60,7 @@ pool_help = "Obtain information about a pool of VMs spawned from a specific imag
 parser.add_argument("--pool", action="store_true", help=pool_help)
 prealloc_help = "Create a pool of instances spawned from a specific image. Must specify key with -k. Modify defaults with --image (autograding_image), --num (2), --vmms (localDocker), --cores (1), and --memory (512)."
 parser.add_argument("--prealloc", action="store_true", help=prealloc_help)
-build_help = (
-    "Build a docker image. Must specify key with -k and filename with --filename."
-)
+build_help = "Build a docker image. Must specify key with -k, image filename with --filename, and image name with --imageName."
 parser.add_argument("--build", action="store_true", help=build_help)
 
 parser.add_argument(
@@ -81,6 +79,7 @@ parser.add_argument(
 parser.add_argument(
     "--image", default="", help='VM image name (default "autograding_image")'
 )
+parser.add_argument("--imageName", help="Name for new VM image to be built")
 parser.add_argument(
     "--infiles",
     nargs="+",
@@ -155,6 +154,13 @@ def checkInfiles():
 def checkDeadjobs():
     if args.deadJobs is None:
         print("Deadjobs must be specified with --deadJobs")
+        return -1
+    return 0
+
+
+def checkImageName():
+    if args.imageName is None:
+        print("Image name must be specified with --imageName")
         return -1
     return 0
 
@@ -496,15 +502,17 @@ def file_to_dict(file):
 
 def tango_build():
     try:
-        res = checkKey() + checkFilename()
+        res = checkKey() + checkFilename() + checkImageName()
         if res != 0:
             raise Exception("Invalid usage: [build] " + build_help)
 
         f = open(args.filename, "rb")
+        header = {"imageName": args.imageName}
         response = requests.post(
             "%s://%s:%d/build/%s/"
             % (_tango_protocol, args.server, args.port, args.key),
             data=f.read(),
+            headers=header,
         )
         print("Sent request to %s:%d/build/%s/" % (args.server, args.port, args.key))
         print(response.text)
