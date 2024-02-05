@@ -157,6 +157,10 @@ class LocalDocker(object):
             )
         args = ["docker", "run", "--name", instanceName, "-v"]
         args = args + ["%s:%s" % (volumePath, "/home/mount")]
+        if vm.cores:
+            args = args + [f"--cpus={vm.cores}"]
+        if vm.memory:
+            args = args + ["-m", f"{vm.memory}m"]
         args = args + [vm.image]
         args = args + ["sh", "-c"]
 

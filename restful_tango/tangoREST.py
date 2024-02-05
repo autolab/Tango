@@ -111,16 +111,19 @@ class TangoREST(object):
                 except IOError:
                     continue
 
-    def createTangoMachine(
-        self, image, vmms=Config.VMMS_NAME, vmObj={"cores": 1, "memory": 512}
-    ):
+    def createTangoMachine(self, image, vmms=Config.VMMS_NAME, vmObj=None):
         """createTangoMachine - Creates a tango machine object from image"""
+        cores = getattr(Config, "DOCKER_CORES_LIMIT", None)
+        memory = getattr(Config, "DOCKER_MEMORY_LIMIT", None)
+        if vmObj and "cores" in vmObj and "memory" in vmObj:
+            cores = vmObj["cores"]
+            memory = vmObj["memory"]
         return TangoMachine(
             name=image,
             vmms=vmms,
             image="%s" % (image),
-            cores=vmObj["cores"],
-            memory=vmObj["memory"],
+            cores=cores,
+            memory=memory,
             disk=None,
             network=None,
         )
@@ -416,7 +419,7 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def prealloc(self, key, image, num, vmStr):
+    async def prealloc(self, key, image, num, vmStr):
         """prealloc - Create a pool of num instances spawned from image"""
         self.log.debug("Received prealloc request(%s, %s, %s)" % (key, image, num))
         if self.validateKey(key):
