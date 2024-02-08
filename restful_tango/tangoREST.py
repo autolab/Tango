@@ -459,7 +459,7 @@ class TangoREST(object):
                 images = client.images.load(imageTarStr)
                 if len(images) != 1:
                     for image in images:
-                        client.images.remove(image.id, force=true)
+                        client.images.remove(image.id, force=True)
                     raise Exception(
                         "Wrong number of images built:  %s" % str(len(images))
                     )
