@@ -446,7 +446,7 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
 
-    def build(self, key, tempfile):
+    def build(self, key, tempfile, imageName):
         self.log.debug("Received build request(%s)" % (key))
         if self.validateKey(key):
             if Config.VMMS_NAME != "localDocker":
@@ -457,13 +457,24 @@ class TangoREST(object):
                 client = docker.from_env()
                 imageTarStr = open(tempfile, "rb").read()
                 images = client.images.load(imageTarStr)
-                id_list = ", ".join(image.short_id for image in images)
+                if len(images) != 1:
+                    for image in images:
+                        client.images.remove(image.id, force=True)
+                    raise Exception(
+                        "Wrong number of images built:  %s" % str(len(images))
+                    )
+                image = images[0]
+                imageName = imageName + ":latest"
+                image.tag(imageName)
+                for tag in image.tags:
+                    if tag != imageName:
+                        client.images.remove(tag)
             except Exception as e:
                 self.log.error("Image build failed: " + str(e))
                 os.unlink(tempfile)
                 return self.status.image_build_failed
 
-            self.log.info("Successfully loaded images: %s" % (id_list))
+            self.log.info("Successfully loaded image: %s" % (imageName))
             os.unlink(tempfile)
             return self.status.image_built
         else:
