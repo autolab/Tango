@@ -165,6 +165,10 @@ class TangoREST(object):
             accessKeyId = jobObj["accessKeyId"]
             accessKey = jobObj["accessKey"]
 
+        disableNetwork = False
+        if "disable_network" in jobObj and isinstance(jobObj["disable_network"], bool):
+            disableNetwork = jobObj["disable_network"]
+
         job = TangoJob(
             name=name,
             vm=vm,
@@ -175,6 +179,7 @@ class TangoREST(object):
             maxOutputFileSize=maxOutputFileSize,
             accessKey=accessKey,
             accessKeyId=accessKeyId,
+            disableNetwork=disableNetwork,
         )
 
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])

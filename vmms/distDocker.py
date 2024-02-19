@@ -249,7 +249,7 @@ class DistDocker(object):
 
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize):
+    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -290,9 +290,12 @@ class DistDocker(object):
             % autodriverCmd
         )
 
-        args = "(docker run --name %s -v %s:/home/mount %s sh -c '%s')" % (
+        disableNetworkArg = "--network none" if disableNetwork else ""
+
+        args = "(docker run --name %s -v %s:/home/mount %s %s sh -c '%s')" % (
             instanceName,
             volumePath,
+            disableNetworkArg,
             vm.image,
             setupCmd,
         )

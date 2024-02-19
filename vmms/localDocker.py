@@ -142,7 +142,7 @@ class LocalDocker(object):
             )
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize):
+    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -161,6 +161,8 @@ class LocalDocker(object):
             args = args + [f"--cpus={vm.cores}"]
         if vm.memory:
             args = args + ["-m", f"{vm.memory}m"]
+        if disableNetwork:
+            args = args + ["--network", "none"]
         args = args + [vm.image]
         args = args + ["sh", "-c"]
 
