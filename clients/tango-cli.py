@@ -116,10 +116,15 @@ parser.add_argument(
     "--notifyURL",
     help="Complete URL for Tango to give callback to once job is complete.",
 )
+parser.add_argument(
+    "--disableNetwork",
+    action="store_true",
+    default=False,
+    help="Disable network access for autograding containers.",
+)
 
 # add for aws student accounts
 parser.add_argument("--accessKeyId", default="", help="AWS account access key ID")
-
 parser.add_argument("--accessKey", default="", help="AWS account access key content")
 
 
@@ -253,6 +258,7 @@ def tango_addJob():
 
         requestObj["accessKeyId"] = args.accessKeyId
         requestObj["accessKey"] = args.accessKey
+        requestObj["disable_network"] = args.disableNetwork
 
         response = requests.post(
             "%s://%s:%d/addJob/%s/%s/"
