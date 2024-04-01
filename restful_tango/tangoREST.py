@@ -169,6 +169,8 @@ class TangoREST(object):
         if "disable_network" in jobObj and isinstance(jobObj["disable_network"], bool):
             disableNetwork = jobObj["disable_network"]
 
+        allowedOutgoingIPs = jobObj["allowed_outgoing_ips"]
+
         job = TangoJob(
             name=name,
             vm=vm,
@@ -180,6 +182,7 @@ class TangoREST(object):
             accessKey=accessKey,
             accessKeyId=accessKeyId,
             disableNetwork=disableNetwork,
+            allowedOutgoingIPs=allowedOutgoingIPs,
         )
 
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])

@@ -142,7 +142,9 @@ class LocalDocker(object):
             )
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
+    def runJob(
+        self, vm, runTimeout, maxOutputFileSize, disableNetwork, allowedOutgoingIPs
+    ):
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -176,10 +178,16 @@ class LocalDocker(object):
             )
         )
 
+        iptablesCmd = ""
+        if not disableNetwork and allowedOutgoingIPs:
+            for IP in allowedOutgoingIPs:
+                iptablesCmd += f"iptables -A OUTPUT -d {IP} -j ACCEPT; "
+            iptablesCmd += "iptables -A OUTPUT -j DROP;"
+
         args = args + [
-            'cp -r mount/* autolab/; su autolab -c "%s"; \
+            '%s cp -r mount/* autolab/; su autolab -c "%s"; \
                         cp output/feedback mount/feedback'
-            % autodriverCmd
+            % (iptablesCmd, autodriverCmd)
         ]
 
         self.log.debug("Running job: %s" % str(args))
