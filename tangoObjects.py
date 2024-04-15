@@ -115,7 +115,7 @@ class TangoJob(object):
         self.accessKeyId = accessKeyId
         self.accessKey = accessKey
         self.disableNetwork = disableNetwork
-        self.allowedOutgoingIPs = (allowedOutgoingIPs,)
+        self.allowedOutgoingIPs = allowedOutgoingIPs
 
     def makeAssigned(self):
         self.syncRemote()

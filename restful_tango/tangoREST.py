@@ -169,7 +169,11 @@ class TangoREST(object):
         if "disable_network" in jobObj and isinstance(jobObj["disable_network"], bool):
             disableNetwork = jobObj["disable_network"]
 
-        allowedOutgoingIPs = jobObj["allowed_outgoing_ips"]
+        allowedOutgoingIPs = None
+        if "allowed_outgoing_ips" in jobObj and isinstance(
+            jobObj["allowed_outgoing_ips"], list
+        ):
+            allowedOutgoingIPs = jobObj["allowed_outgoing_ips"]
 
         job = TangoJob(
             name=name,

@@ -165,6 +165,8 @@ class LocalDocker(object):
             args = args + ["-m", f"{vm.memory}m"]
         if disableNetwork:
             args = args + ["--network", "none"]
+        if not disableNetwork and allowedOutgoingIPs:
+            args = args + ["--dns", "8.8.8.8", "--cap-add=NET_ADMIN"]
         args = args + [vm.image]
         args = args + ["sh", "-c"]
 
@@ -180,6 +182,7 @@ class LocalDocker(object):
 
         iptablesCmd = ""
         if not disableNetwork and allowedOutgoingIPs:
+            iptablesCmd += f"iptables -A OUTPUT -d 8.8.8.8 -j ACCEPT; "
             for IP in allowedOutgoingIPs:
                 iptablesCmd += f"iptables -A OUTPUT -d {IP} -j ACCEPT; "
             iptablesCmd += "iptables -A OUTPUT -j DROP;"
