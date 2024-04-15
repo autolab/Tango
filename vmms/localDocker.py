@@ -182,7 +182,7 @@ class LocalDocker(object):
 
         iptablesCmd = ""
         if not disableNetwork and allowedOutgoingIPs:
-            iptablesCmd += f"iptables -A OUTPUT -d 8.8.8.8 -j ACCEPT; "
+            iptablesCmd += "iptables -A OUTPUT -d 8.8.8.8 -j ACCEPT; "
             for IP in allowedOutgoingIPs:
                 iptablesCmd += f"iptables -A OUTPUT -d {IP} -j ACCEPT; "
             iptablesCmd += "iptables -A OUTPUT -j DROP;"
