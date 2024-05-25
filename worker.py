@@ -292,6 +292,7 @@ class Worker(threading.Thread):
                 self.job.timeout,
                 self.job.maxOutputFileSize,
                 self.job.disableNetwork,
+                self.job.allowedOutgoingIPs,
             )
             if ret["runjob"] != 0:
                 Config.runjob_errors += 1

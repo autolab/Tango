@@ -94,6 +94,7 @@ class TangoJob(object):
         accessKeyId=None,
         accessKey=None,
         disableNetwork=None,
+        allowedOutgoingIPs=None,
     ):
         self.assigned = False
         self.retries = 0
@@ -114,6 +115,7 @@ class TangoJob(object):
         self.accessKeyId = accessKeyId
         self.accessKey = accessKey
         self.disableNetwork = disableNetwork
+        self.allowedOutgoingIPs = allowedOutgoingIPs
 
     def makeAssigned(self):
         self.syncRemote()
