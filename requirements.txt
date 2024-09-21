@@ -7,3 +7,4 @@ requests==2.31.0
 tornado==6.4.1
 urllib3==1.26.19
 docker==5.0.3
+python-dotenv==1.0.1

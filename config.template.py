@@ -8,6 +8,9 @@ import time
 # Config - defines
 import os
 
+# loads environment variables from a .env file into os.environ
+from dotenv import load_dotenv
+load_dotenv() 
 
 class Config(object):
     #####
