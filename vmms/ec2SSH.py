@@ -18,8 +18,8 @@ import logging
 
 import config
 
-import boto
-from boto import ec2
+import boto3
+from boto3 import ec2
 from tangoObjects import TangoMachine
 
 
@@ -102,16 +102,26 @@ class Ec2SSH(object):
         instance - Instance object that stores information about the
         VM created
         """
+        print("INITIALIZING EC2 SSh")
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
-            self.connection = ec2.connect_to_region(
-                config.Config.EC2_REGION,
-                aws_access_key_id=accessKeyId,
-                aws_secret_access_key=accessKey,
+            # self.connection = ec2.connect_to_region(
+            #     config.Config.EC2_REGION,
+            #     aws_access_key_id=accessKeyId,
+            #     aws_secret_access_key=accessKey,
+            # )
+            self.connection = boto3.client(
+                "ec2", region_name=config.Config.EC2_REGION
             )
+            print("CONNECTION:")
+            print(self.connection)
             self.useDefaultKeyPair = False
         else:
-            self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
+            self.connection = boto3.client(
+                "ec2", region_name=config.Config.EC2_REGION
+            )
+            print("CONNECTION 2:")
+            print(self.connection)
             self.useDefaultKeyPair = True
         self.log = logging.getLogger("Ec2SSH")
 
@@ -153,7 +163,7 @@ class Ec2SSH(object):
         elif cores == 1 and memory <= 3.75 * 1024 * 1024:
             ec2instance["instance_type"] = "m3.medium"
         elif cores == 2:
-            ec2instance["instance_type"] = "m3.large"
+            ec2instance["instance_type"] = "t3a.medium"
         elif cores == 4:
             ec2instance["instance_type"] = "m3.xlarge"
         elif cores == 8:
@@ -196,7 +206,7 @@ class Ec2SSH(object):
             security_group.authorize(
                 from_port=None, to_port=None, ip_protocol="-1", cidr_ip="0.0.0.0/0"
             )
-        except boto.exception.EC2ResponseError:
+        except:
             pass
 
     #
@@ -220,12 +230,22 @@ class Ec2SSH(object):
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
                 self.createKeyPair()
 
+            print("SUP ")
+            print(instanceName)
+            print(ec2instance)
+            print(self.key_pair_name)
+            print(self.key_pair_path)
+
             reservation = self.connection.run_instances(
-                ec2instance["ami"],
-                key_name=self.key_pair_name,
-                security_groups=[config.Config.DEFAULT_SECURITY_GROUP],
-                instance_type=ec2instance["instance_type"],
+                ImageId=ec2instance["ami"],
+                KeyName="Evan-laptop",
+                SecurityGroupIds=[config.Config.DEFAULT_SECURITY_GROUP],  # Use SecurityGroupIds instead of SecurityGroups
+                InstanceType=ec2instance["instance_type"],
+                MinCount=1,  # Minimum number of instances to launch
+                MaxCount=1   # Maximum number of instances to launch
             )
+            print("RESERVATION: ")
+            print(reservation)
 
             # Wait for instance to reach 'running' state
             state = -1
@@ -461,17 +481,27 @@ class Ec2SSH(object):
         # TODO: Find a way to return vm objects as opposed ec2 instance
         # objects.
         instances = list()
-        for i in self.connection.get_all_instances():
-            if i.id is not config.Config.TANGO_RESERVATION_ID:
-                inst = i.instances.pop()
-                if inst.state_code is config.Config.INSTANCE_RUNNING:
-                    instances.append(inst)
+        reservations = self.connection.describe_instances()['Reservations']
+        for reservation in reservations:
+            for inst in reservation['Instances']:
+                if inst['InstanceId'] != config.Config.TANGO_RESERVATION_ID:
+                    if inst['State']['Code'] == config.Config.INSTANCE_RUNNING:
+                        instances.append(inst)
+
+        print("INSTACES:")
+        print(instances)
+        # for i in self.connection.get_all_instances():
+        #     if i.id is not config.Config.TANGO_RESERVATION_ID:
+        #         inst = i.instances.pop()
+        #         if inst.state_code is config.Config.INSTANCE_RUNNING:
+        #             instances.append(inst)
 
         vms = list()
         for inst in instances:
+            print(inst['ImageId'])
             vm = TangoMachine()
-            vm.ec2_id = inst.id
-            vm.name = str(inst.tags.get("Name"))
+            vm.ec2_id = inst["InstanceId"]
+            vm.name = str(inst["Tags"][0]["Value"])
             self.log.debug("getVMs: Instance - %s, EC2 Id - %s" % (vm.name, vm.ec2_id))
             vms.append(vm)
 
@@ -488,4 +518,4 @@ class Ec2SSH(object):
 
     def getImages(self):
         """getImages - return a constant; actually use the ami specified in config"""
-        return ["default.img"]
+        return ["autograding_image"]
