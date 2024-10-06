@@ -73,7 +73,7 @@ class TangoMachine(object):
         self.instance_id = id
 
     def __repr__(self):
-        return "TangoMachine(image: %s, vmms: %s)" % (self.image, self.vmms)
+        return "TangoMachine(image: %s, vmms: %s) %s" % (self.image, self.vmms, self.domain_name)
 
 
 class TangoJob(object):

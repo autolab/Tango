@@ -259,10 +259,12 @@ class TangoServer(object):
                 namelist = []
                 for vm in vms:
                     if re.match("%s-" % Config.PREFIX, vm.name):
+                        print("AYO1")
                         vobj.destroyVM(vm)
                         # Need a consistent abstraction for a vm between
                         # interfaces
                         namelist.append(vm.name)
+                        print("AYO2")
                 if namelist:
                     self.log.warning(
                         "Killed these %s VMs on restart: %s" % (vmms_name, namelist)

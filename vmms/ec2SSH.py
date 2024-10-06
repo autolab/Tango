@@ -105,23 +105,26 @@ class Ec2SSH(object):
         print("INITIALIZING EC2 SSh")
         self.ssh_flags = Ec2SSH._SSH_FLAGS
         if accessKeyId:
-            # self.connection = ec2.connect_to_region(
+            # self.boto3resource = ec2.connect_to_region(
             #     config.Config.EC2_REGION,
             #     aws_access_key_id=accessKeyId,
             #     aws_secret_access_key=accessKey,
             # )
-            self.connection = boto3.client(
+            self.boto3resource = boto3.client(
                 "ec2", region_name=config.Config.EC2_REGION
             )
             print("CONNECTION:")
-            print(self.connection)
+            print(self.boto3resource)
             self.useDefaultKeyPair = False
         else:
-            self.connection = boto3.client(
+            self.boto3client = boto3.client(
+                "ec2", region_name=config.Config.EC2_REGION
+            )
+            self.boto3resource = boto3.resource(
                 "ec2", region_name=config.Config.EC2_REGION
             )
             print("CONNECTION 2:")
-            print(self.connection)
+            print(self.boto3resource)
             self.useDefaultKeyPair = True
         self.log = logging.getLogger("Ec2SSH")
 
@@ -182,13 +185,13 @@ class Ec2SSH(object):
             self.key_pair_name,
         )
         self.deleteKeyPair()
-        key = self.connection.create_key_pair(self.key_pair_name)
+        key = self.boto3resource.create_key_pair(self.key_pair_name)
         key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
         # change the SSH_FLAG accordingly
         self.ssh_flags[1] = self.key_pair_path
 
     def deleteKeyPair(self):
-        self.connection.delete_key_pair(self.key_pair_name)
+        self.boto3resource.delete_key_pair(self.key_pair_name)
         # try to delete may not exist key file
         try:
             os.remove(self.key_pair_path)
@@ -198,7 +201,7 @@ class Ec2SSH(object):
     def createSecurityGroup(self):
         # Create may-exist security group
         try:
-            security_group = self.connection.create_security_group(
+            security_group = self.boto3resource.create_security_group(
                 config.Config.DEFAULT_SECURITY_GROUP,
                 "Autolab security group - allowing all traffic",
             )
@@ -236,7 +239,7 @@ class Ec2SSH(object):
             print(self.key_pair_name)
             print(self.key_pair_path)
 
-            reservation = self.connection.run_instances(
+            reservation = self.boto3resource.create_instances(
                 ImageId=ec2instance["ami"],
                 KeyName="Evan-laptop",
                 SecurityGroupIds=[config.Config.DEFAULT_SECURITY_GROUP],  # Use SecurityGroupIds instead of SecurityGroups
@@ -248,44 +251,94 @@ class Ec2SSH(object):
             print(reservation)
 
             # Wait for instance to reach 'running' state
-            state = -1
+            # state = -1
             start_time = time.time()
-            while state is not config.Config.INSTANCE_RUNNING:
 
-                for inst in self.connection.get_all_instances():
-                    if inst.id == reservation.id:
-                        newInstance = inst.instances.pop()
+            newInstance = reservation[0]
+            # instance_id = reservation['Instances'][0]['InstanceId']
+            # newInstance = self.boto3resource.Instance(instance_id)
 
-                state = newInstance.state_code
+            # Check the initial state of the instance
+            state = newInstance.state['Code']
+
+            while state != config.Config.INSTANCE_RUNNING:
+                # Reload the instance to get the updated state
+                newInstance.reload()
+                
+                # Get the current state of the instance
+                state = newInstance.state['Code']
+                
                 self.log.debug(
                     "VM %s: Waiting to reach 'running' state. Current state: %s (%d)"
-                    % (instanceName, newInstance.state, state)
+                    % (instanceName, newInstance.state['Name'], state)
                 )
+
+                # Sleep for the poll interval
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
+
+                # Calculate the elapsed time
                 elapsed_secs = time.time() - start_time
+                
+                # Check if we exceed the timeout
                 if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
                     self.log.debug(
                         "VM %s: Did not reach 'running' state before timeout period of %d"
-                        % (instanceName, config.Config.TIMER_POLL_INTERVAL)
+                        % (instanceName, config.Config.INITIALIZEVM_TIMEOUT)
                     )
+                    break
+
+            # instance_id = reservation['Instances'][0]['InstanceId']
+
+            # while state is not config.Config.INSTANCE_RUNNING:
+
+            #     response = self.boto3resource.describe_instances(InstanceIds=[instance_id])
+
+            #     newInstance = response['Reservations'][0]['Instances'][0]
+            #     state = newInstance['State']['Code']
+
+            #     self.log.debug(
+            #         "VM %s: Waiting to reach 'running' state. Current state: %s (%d)"
+            #         % (instanceName, newInstance['State']['Name'], state)
+            #     )
+            #     time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            #     elapsed_secs = time.time() - start_time
+            #     if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
+            #         self.log.debug(
+            #             "VM %s: Did not reach 'running' state before timeout period of %d"
+            #             % (instanceName, config.Config.TIMER_POLL_INTERVAL)
+            #         )
 
             self.log.info(
                 "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s"
                 % (
                     instanceName,
-                    newInstance.state,
-                    reservation.id,
+                    state,
+                    newInstance.id,
                     newInstance.public_dns_name,
-                    newInstance.ip_address,
+                    newInstance.public_ip_address,
                 )
             )
 
             # Save domain and id ssigned by EC2 in vm object
-            vm.domain_name = newInstance.ip_address
+            vm.domain_name = newInstance.public_ip_address
+            print("INSTANCE DETAILS")
+            print(newInstance)
+            print(
+                "DOMAIN NAME", vm.domain_name
+            )
+
+
             vm.ec2_id = newInstance.id
             # Assign name to EC2 instance
-            self.connection.create_tags([newInstance.id], {"Name": instanceName})
+            # self.boto3resource.create_tags([instance_id], {"Name": instanceName})
+
+            self.boto3resource.create_tags(
+                Resources=[newInstance.id],
+                Tags=[{'Key': 'Name', 'Value': instanceName}]
+            )
+
             self.log.debug("VM %s: %s" % (instanceName, newInstance))
+            print("FINISHED VM", vm)
             return vm
 
         except Exception as e:
@@ -305,6 +358,11 @@ class Ec2SSH(object):
         instanceName = self.instanceName(vm.id, vm.name)
         start_time = time.time()
         domain_name = self.domainName(vm)
+        print("WAIT VM", vm)
+        print("DONKEY NAME", vm.domain_name)
+
+        print(f"DOMAIN NAME {domain_name}")
+
         while instance_down:
             instance_down = subprocess.call(
                 "ping -c 1 %s" % (domain_name),
@@ -465,7 +523,7 @@ class Ec2SSH(object):
 
     def destroyVM(self, vm):
         """destroyVM - Removes a VM from the system"""
-        ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
+        ret = self.boto3client.terminate_instances(InstanceIds=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
@@ -481,7 +539,7 @@ class Ec2SSH(object):
         # TODO: Find a way to return vm objects as opposed ec2 instance
         # objects.
         instances = list()
-        reservations = self.connection.describe_instances()['Reservations']
+        reservations = self.boto3client.describe_instances()['Reservations']
         for reservation in reservations:
             for inst in reservation['Instances']:
                 if inst['InstanceId'] != config.Config.TANGO_RESERVATION_ID:
@@ -490,7 +548,7 @@ class Ec2SSH(object):
 
         print("INSTACES:")
         print(instances)
-        # for i in self.connection.get_all_instances():
+        # for i in self.boto3resource.get_all_instances():
         #     if i.id is not config.Config.TANGO_RESERVATION_ID:
         #         inst = i.instances.pop()
         #         if inst.state_code is config.Config.INSTANCE_RUNNING:
@@ -499,17 +557,20 @@ class Ec2SSH(object):
         vms = list()
         for inst in instances:
             print(inst['ImageId'])
+            print(inst)
             vm = TangoMachine()
             vm.ec2_id = inst["InstanceId"]
             vm.name = str(inst["Tags"][0]["Value"])
             self.log.debug("getVMs: Instance - %s, EC2 Id - %s" % (vm.name, vm.ec2_id))
             vms.append(vm)
 
+        print("GETVMS SAFE")
+
         return vms
 
     def existsVM(self, vm):
         """existsVM - Checks whether a VM exists in the vmms."""
-        instances = self.connection.get_all_instances()
+        instances = self.boto3resource.get_all_instances()
 
         for inst in instances:
             if inst.instances[0].id is vm.ec2_id:
