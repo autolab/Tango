@@ -117,9 +117,7 @@ class Ec2SSH(object):
             print(self.boto3resource)
             self.useDefaultKeyPair = False
         else:
-            self.boto3client = boto3.client(
-                "ec2", region_name=config.Config.EC2_REGION
-            )
+            self.boto3client = boto3.client("ec2", region_name=config.Config.EC2_REGION)
             self.boto3resource = boto3.resource(
                 "ec2", region_name=config.Config.EC2_REGION
             )
@@ -241,11 +239,13 @@ class Ec2SSH(object):
 
             reservation = self.boto3resource.create_instances(
                 ImageId=ec2instance["ami"],
-                KeyName="Evan-laptop",
-                SecurityGroupIds=[config.Config.DEFAULT_SECURITY_GROUP],  # Use SecurityGroupIds instead of SecurityGroups
+                KeyName="Evan",
+                SecurityGroupIds=[
+                    config.Config.DEFAULT_SECURITY_GROUP
+                ],  # Use SecurityGroupIds instead of SecurityGroups
                 InstanceType=ec2instance["instance_type"],
                 MinCount=1,  # Minimum number of instances to launch
-                MaxCount=1   # Maximum number of instances to launch
+                MaxCount=1,  # Maximum number of instances to launch
             )
             print("RESERVATION: ")
             print(reservation)
@@ -259,18 +259,18 @@ class Ec2SSH(object):
             # newInstance = self.boto3resource.Instance(instance_id)
 
             # Check the initial state of the instance
-            state = newInstance.state['Code']
+            state = newInstance.state["Code"]
 
             while state != config.Config.INSTANCE_RUNNING:
                 # Reload the instance to get the updated state
                 newInstance.reload()
-                
+
                 # Get the current state of the instance
-                state = newInstance.state['Code']
-                
+                state = newInstance.state["Code"]
+
                 self.log.debug(
                     "VM %s: Waiting to reach 'running' state. Current state: %s (%d)"
-                    % (instanceName, newInstance.state['Name'], state)
+                    % (instanceName, newInstance.state["Name"], state)
                 )
 
                 # Sleep for the poll interval
@@ -278,7 +278,7 @@ class Ec2SSH(object):
 
                 # Calculate the elapsed time
                 elapsed_secs = time.time() - start_time
-                
+
                 # Check if we exceed the timeout
                 if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
                     self.log.debug(
@@ -323,10 +323,7 @@ class Ec2SSH(object):
             vm.domain_name = newInstance.public_ip_address
             print("INSTANCE DETAILS")
             print(newInstance)
-            print(
-                "DOMAIN NAME", vm.domain_name
-            )
-
+            print("DOMAIN NAME", vm.domain_name)
 
             vm.ec2_id = newInstance.id
             # Assign name to EC2 instance
@@ -334,7 +331,7 @@ class Ec2SSH(object):
 
             self.boto3resource.create_tags(
                 Resources=[newInstance.id],
-                Tags=[{'Key': 'Name', 'Value': instanceName}]
+                Tags=[{"Key": "Name", "Value": instanceName}],
             )
 
             self.log.debug("VM %s: %s" % (instanceName, newInstance))
@@ -539,11 +536,11 @@ class Ec2SSH(object):
         # TODO: Find a way to return vm objects as opposed ec2 instance
         # objects.
         instances = list()
-        reservations = self.boto3client.describe_instances()['Reservations']
+        reservations = self.boto3client.describe_instances()["Reservations"]
         for reservation in reservations:
-            for inst in reservation['Instances']:
-                if inst['InstanceId'] != config.Config.TANGO_RESERVATION_ID:
-                    if inst['State']['Code'] == config.Config.INSTANCE_RUNNING:
+            for inst in reservation["Instances"]:
+                if inst["InstanceId"] != config.Config.TANGO_RESERVATION_ID:
+                    if inst["State"]["Code"] == config.Config.INSTANCE_RUNNING:
                         instances.append(inst)
 
         print("INSTACES:")
@@ -556,7 +553,7 @@ class Ec2SSH(object):
 
         vms = list()
         for inst in instances:
-            print(inst['ImageId'])
+            print(inst["ImageId"])
             print(inst)
             vm = TangoMachine()
             vm.ec2_id = inst["InstanceId"]

@@ -83,6 +83,17 @@ class Preallocator(object):
 
         return vm
 
+    # def addToFreePool(self, vm):
+    #     """ addToFreePool - Returns a VM instance to the free list
+    #     """
+
+    #     self.lock.acquire()
+    #     machine = self.machines.get(vm.pool)
+    #     self.log.info("addToFreePool: add vm %s to free pool" % vm.name)
+    #     machine[1].put(vm)
+    #     self.machines.set(vm.pool, machine)
+    #     self.lock.release()
+
     def freeVM(self, vm):
         """freeVM - Returns a VM instance to the free list"""
         # Sanity check: Return a VM to the free list only if it is
@@ -150,8 +161,11 @@ class Preallocator(object):
             self.log.debug("__create|done with initializeVM")
             time.sleep(Config.CREATEVM_SECS)
 
+            print("NEWVM SHIT", newVM)
+
             self.addVM(newVM)
             self.freeVM(newVM)
+            # self.addToFreePool(newVM)
             self.log.debug("__create: Added vm %s to pool %s " % (newVM.id, newVM.name))
 
     def __destroy(self, vm):

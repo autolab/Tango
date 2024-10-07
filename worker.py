@@ -175,6 +175,8 @@ class Worker(threading.Thread):
             # Assigning job to a preallocated VM
             if self.preVM:  # self.preVM:
                 self.log.debug("Assigning job to preallocated VM")
+                print("PREVM", self.preVM)
+
                 self.job.makeVM(self.preVM)
                 self.log.info(
                     "Assigned job %s:%d existing VM %s"

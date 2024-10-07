@@ -77,6 +77,7 @@ class JobManager(object):
                 # if the job has specified an account
                 # create an VM on the account and run on that instance
                 if job.accessKeyId:
+                    print("CHECK1")
                     from vmms.ec2SSH import Ec2SSH
 
                     vmms = Ec2SSH(job.accessKeyId, job.accessKey)
@@ -84,12 +85,14 @@ class JobManager(object):
                     newVM.id = self._getNextID()
                     preVM = vmms.initializeVM(newVM)
                 else:
+                    print("CHECK2")
                     # Try to find a vm on the free list and allocate it to
                     # the worker if successful.
                     if Config.REUSE_VMS:
                         preVM = vm
                     else:
                         preVM = self.preallocator.allocVM(job.vm.name)
+                        print("ALLOC CHECK")
                     vmms = self.vmms[job.vm.vmms]  # Create new vmms object
 
                 if preVM.name is not None:
