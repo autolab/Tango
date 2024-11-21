@@ -651,3 +651,19 @@ class Ec2SSH(object):
                 if tag["Key"] == tagKey:
                     return tag["Value"]
         return None
+    
+    def getPartialOutput(self, vm):
+        domain_name = self.domainName(vm)
+
+        runcmd = "head -c %s /home/autograde/output.log" % (config.Config.MAX_OUTPUT_FILE_SIZE)
+
+        sshcmd = ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd]
+
+        output = subprocess.check_output(
+            sshcmd, stderr=subprocess.STDOUT
+        ).decode("utf-8")
+
+        self.log.debug(output)
+
+        return output
+
