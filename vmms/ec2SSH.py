@@ -663,7 +663,5 @@ class Ec2SSH(object):
             sshcmd, stderr=subprocess.STDOUT
         ).decode("utf-8")
 
-        self.log.debug(output)
-
         return output
 
