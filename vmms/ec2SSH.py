@@ -346,22 +346,39 @@ class Ec2SSH(object):
                 "(rm -rf autolab; mkdir autolab)",
             ]
         )
+        
+        if ret != 0:
+            self.log.error(f"Failed to prepare directory autolab on {domain_name}")
+            return ret
+        
+        # Validate inputFiles structure
+        if not inputFiles or not all(hasattr(file, 'localFile') and hasattr(file, 'destFile') for file in inputFiles):
+            self.log.error("Invalid inputFiles structure")
+            return -1
+        
+        max_retries = 3
 
         # Copy the input files to the input directory
         for file in inputFiles:
-            ret = timeout(
-                ["scp"]
-                + self.ssh_flags
-                + [
-                    file.localFile,
-                    "%s@%s:autolab/%s"
-                    % (config.Config.EC2_USER_NAME, domain_name, file.destFile),
-                ],
-                config.Config.COPYIN_TIMEOUT,
-            )
+            for attempt in range(max_retries):
+                ret = timeout(
+                    ["scp"]
+                    + self.ssh_flags
+                    + [
+                        file.localFile,
+                        "%s@%s:autolab/%s"
+                        % (config.Config.EC2_USER_NAME, domain_name, file.destFile),
+                    ],
+                    config.Config.COPYIN_TIMEOUT,
+                )
+                if ret == 0:
+                    break
+                self.log.warning(f"Retrying file transfer {file.localFile} (attempt {attempt+1})")
             if ret != 0:
+                self.log.error(f"Failed to copy {file.localFile} after {max_retries} attempts")
                 return ret
 
+        self.log.info(f"Successfully copied files to {domain_name}:autolab")
         return 0
 
     def runJob(self, vm, runTimeout, maxOutputFileSize):
