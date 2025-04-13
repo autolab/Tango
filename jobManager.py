@@ -81,7 +81,7 @@ class JobManager(object):
                     newVM = copy.deepcopy(job.vm)
                     newVM.id = self._getNextID()
                     try:
-                        preVM = vmms.initializeVM(newVM)
+                        preVM = vmms.initializeVM(newVM, ami = job.ami, security_group = job.security_group)
                     except Exception as e:
                         self.log.error("ERROR initialization VM: %s", e)
                         self.log.error(traceback.format_exc())

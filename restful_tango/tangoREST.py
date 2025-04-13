@@ -165,8 +165,10 @@ class TangoREST(object):
             input.append(handinfile)
 
         ec2_vmms = False
-        if "ec2Vmms" in jobObj:
+        if Config.VMMS_NAME == "ec2SSH":
             ec2_vmms = True
+        if "ec2Vmms" in jobObj:
+            ec2_vmms = jobObj["ec2Vmms"]
 
         instance_type = None
         if "instanceType" in jobObj and len(jobObj["instanceType"]) > 0:
@@ -182,6 +184,14 @@ class TangoREST(object):
         if "accessKey" in jobObj and len(jobObj["accessKey"]) > 0:
             accessKeyId = jobObj["accessKeyId"]
             accessKey = jobObj["accessKey"]
+        
+        ami = None
+        if "ami" in jobObj and len(jobObj["ami"]) > 0:
+            ami = jobObj["ami"]
+            
+        security_group = None
+        if "security_group" in jobObj and len(jobObj["security_group"]) > 0:
+            security_group = jobObj["security_group"]
 
         disableNetwork = False
         if "disable_network" in jobObj and isinstance(jobObj["disable_network"], bool):
@@ -197,6 +207,8 @@ class TangoREST(object):
             maxOutputFileSize=maxOutputFileSize,
             accessKey=accessKey,
             accessKeyId=accessKeyId,
+            ami = ami,
+            security_group = security_group,
             disableNetwork=disableNetwork,
         )
 

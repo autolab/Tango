@@ -99,6 +99,8 @@ class TangoJob(object):
         maxOutputFileSize=Config.MAX_OUTPUT_FILE_SIZE,
         accessKeyId=None,
         accessKey=None,
+        ami = None,
+        security_group = None,
         disableNetwork=None,
     ):
         self.assigned = False
@@ -119,6 +121,8 @@ class TangoJob(object):
         self._remoteLocation = None
         self.accessKeyId = accessKeyId
         self.accessKey = accessKey
+        self.ami = ami
+        self.security_group = security_group
         self.disableNetwork = disableNetwork
 
     def __repr__(self):

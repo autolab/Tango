@@ -48,6 +48,7 @@ from preallocator import Preallocator
 from jobQueue import JobQueue
 from tangoObjects import TangoJob
 from config import Config
+from vmms.ec2SSH import Ec2SSH
 
 
 class TangoServer(object):
@@ -204,7 +205,19 @@ class TangoServer(object):
         stats["runjob_errors"] = Config.runjob_errors
         stats["copyout_errors"] = Config.copyout_errors
         stats["num_threads"] = threading.activeCount()
-
+        
+        # Fetch tagged AMIs and security groups from Ec2SSH
+        try:
+            ec2_ssh = Ec2SSH()
+            stats["tagged_amis"] = [
+                {"name": key, "id": ec2_ssh.img2ami[key].id} for key in ec2_ssh.img2ami
+            ]
+            stats["security_groups"] = ec2_ssh.security_groups
+        except Exception as e:
+            stats["tagged_amis"] = []
+            stats["security_groups"] = []
+            logging.error(f"Failed to fetch tagged AMIs or security groups: {e}")
+            
         return stats
 
     def getPartialOutput(self, jobid):

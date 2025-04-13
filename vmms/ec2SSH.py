@@ -192,16 +192,30 @@ class Ec2SSH(object):
 
         self.img2ami = {}
         self.images = []
+        self.security_groups = []
         try:
             self.boto3resource = boto3.resource("ec2", config.Config.EC2_REGION)
             self.boto3client = boto3.client("ec2", config.Config.EC2_REGION)
 
             # Get images from ec2
             images = self.boto3resource.images.filter(Owners=["self"])
+            
+            # Get all existing security groups
+            response = self.boto3client.describe_security_groups()
+            for sg in response["SecurityGroups"]:
+                self.security_groups.append({
+                    "name": sg["GroupName"],
+                    "id": sg["GroupId"],
+                    "description": sg.get("Description", "")
+                })
         except Exception as e:
             self.log.error("EC2SSH failed initialization: %s" % (e))
             raise
-
+        
+        self.log.info("Existing Security Groups:")
+        for sg in self.security_groups:
+            self.log.info(f"Group Name: {sg['name']}, Group ID: {sg['id']}, Description: {sg['description']}")
+    
         for image in images:
             if image.tags:
                 for tag in image.tags:
@@ -256,10 +270,10 @@ class Ec2SSH(object):
     # VMMS helper methods
     #
 
-    def tangoMachineToEC2Instance(self, vm: TangoMachine):
+    def tangoMachineToEC2Instance(self, vm: TangoMachine, ami = None):
         """tangoMachineToEC2Instance - returns an object with EC2 instance
-        type and AMI. Only general-purpose instances are used. Defalt AMI
-        is currently used.
+        type and AMI. Only general-purpose instances are used.
+        Allow user to select AMI on Autolab or default is used if nothing selected.
         """
         ec2instance = dict()
 
@@ -274,8 +288,12 @@ class Ec2SSH(object):
         else:
             ec2instance["instance_type"] = config.Config.DEFAULT_INST_TYPE
 
-        # for now, ami is config default
-        ec2instance["ami"] = self.img2ami[vm.image].id
+        if((ami is None) or ami == ""):
+            # use ami associated with image if user did not specify preference
+            ec2instance["ami"] = self.img2ami[vm.image].id
+        else:
+            # use ami user specified
+            ec2instance["ami"] = ami
 
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
         return ec2instance
@@ -304,14 +322,16 @@ class Ec2SSH(object):
         except OSError:
             pass
 
-    def createSecurityGroup(self):
+    def createSecurityGroup(self, security_group = None):
+        # if security_group entered, try it; otherwise, try default
+        first_group = security_group or config.Config.DEFAULT_SECURITY_GROUP
         try:
             # Check if the security group already exists
             response = self.boto3client.describe_security_groups(
                 Filters=[
                     {
                         "Name": "group-name",
-                        "Values": [config.Config.DEFAULT_SECURITY_GROUP],
+                        "Values": [first_group],
                     }
                 ]
             )
@@ -319,8 +339,27 @@ class Ec2SSH(object):
                 security_group_id = response["SecurityGroups"][0]["GroupId"]
                 return
         except Exception as e:
-            self.log.debug("ERROR checking for existing security group: %s", e)
+            self.log.debug("ERROR checking for existing security group '%s': %s", first_group, e)
 
+        # if security_group passed in but fails, try Config file's DEFAULT_SECURITY_GROUP
+        if security_group and security_group != config.Config.DEFAULT_SECURITY_GROUP:
+            try:
+                # Check if the security group already exists
+                response = self.boto3client.describe_security_groups(
+                    Filters=[
+                        {
+                            "Name": "group-name",
+                            "Values": [config.Config.DEFAULT_SECURITY_GROUP],
+                        }
+                    ]
+                )
+                if response["SecurityGroups"]:
+                    security_group_id = response["SecurityGroups"][0]["GroupId"]
+                    return
+            except Exception as e:
+                self.log.debug("ERROR checking for existing security group '%s': %s", config.Config.DEFAULT_SECURITY_GROUP, e)
+        
+        # if neither exists, credit with default's name and allow all traffic
         try:
             response = self.boto3resource.create_security_group(
                 GroupName=config.Config.DEFAULT_SECURITY_GROUP,
@@ -336,7 +375,7 @@ class Ec2SSH(object):
     #
     # VMMS API functions
     #
-    def initializeVM(self, vm):
+    def initializeVM(self, vm, ami=None, security_group=None):
         """initializeVM - Tell EC2 to create a new VM instance.
 
         Returns a boto.ec2.instance.Instance object.
@@ -345,10 +384,10 @@ class Ec2SSH(object):
         # Create the instance and obtain the reservation
         try:
             instanceName = self.instanceName(vm.id, vm.name)
-            ec2instance = self.tangoMachineToEC2Instance(vm)
+            ec2instance = self.tangoMachineToEC2Instance(vm, ami)
             self.log.debug("instanceName: %s" % instanceName)
             # ensure that security group exists
-            self.createSecurityGroup()
+            self.createSecurityGroup(security_group)
             if self.useDefaultKeyPair:
                 self.key_pair_name = config.Config.SECURITY_KEY_NAME
                 self.key_pair_path = config.Config.SECURITY_KEY_PATH
