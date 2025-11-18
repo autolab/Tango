@@ -371,8 +371,6 @@ class TangoQueue(Protocol):
         ...
     def remove(self, item) -> None:
         ...
-    def _clean(self) -> None:
-        ...
     def make_empty(self) -> None:
         ...
 
@@ -391,14 +389,10 @@ class ExtendedQueue(Queue, TangoQueue):
         with self.mutex:
             self.queue.remove(value)
 
-    def _clean(self):
+    def make_empty(self):
         with self.mutex:
             self.queue.clear()
             
-    def make_empty(self):
-        self._clean()
-            
-
 class TangoRemoteQueue(TangoQueue):
 
     """Simple Queue with Redis Backend"""
@@ -458,9 +452,6 @@ class TangoRemoteQueue(TangoQueue):
         pickled_item = pickle.dumps(item)
         return self.__db.lrem(self.key, 0, pickled_item)
 
-    def _clean(self):
-        self.__db.delete(self.key)
-
     def make_empty(self) -> None:
         self.__db.delete(self.key)
 
@@ -502,7 +493,7 @@ class TangoDictionary(Protocol[T]):
     def delete(self, id: str) -> None:
         ...
     @abstractmethod
-    def _clean(self) -> None:
+    def make_empty(self) -> None:
         ...
     @abstractmethod
     def items(self) -> list[tuple[str, T]]:
@@ -568,7 +559,7 @@ class TangoRemoteDictionary(TangoDictionary[T]):
     def delete(self, id):
         self.r.hdel(self.hash_name, id)
 
-    def _clean(self):
+    def make_empty(self):
         # only for testing
         self.r.delete(self.hash_name)
 
@@ -629,6 +620,6 @@ class TangoNativeDictionary(TangoDictionary[T]):
             ]
         )
 
-    def _clean(self):
+    def make_empty(self):
         # only for testing
         return
