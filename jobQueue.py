@@ -53,9 +53,9 @@ class JobQueue(object):
         is needed since there are multiple worker threads and they might be
         using the makeUnassigned api.
         """
-        self.liveJobs = TangoDictionary("liveJobs")
-        self.deadJobs = TangoDictionary("deadJobs")
-        self.unassignedJobs = TangoQueue("unassignedLiveJobs")
+        self.liveJobs: TangoDictionary[TangoJob] = TangoDictionary.create("liveJobs")
+        self.deadJobs: TangoDictionary[TangoJob] = TangoDictionary.create("deadJobs")
+        self.unassignedJobs = TangoQueue.create("unassignedLiveJobs")
         self.queueLock = threading.Lock()
         self.preallocator = preallocator
         self.log = logging.getLogger("JobQueue")
@@ -136,7 +136,7 @@ class JobQueue(object):
 
         # Since we assume that the job is new, we set the number of retries
         # of this job to 0
-        job.retries = 0
+        assert(job.retries == 0)
 
         # Add the job to the queue. Careful not to append the trace until we
         # know the job has actually been added to the queue.
@@ -145,7 +145,7 @@ class JobQueue(object):
         self.log.debug("add| Acquired lock to job queue.")
 
         # Adds the job to the live jobs dictionary
-        self.liveJobs.set(job.id, job)
+        job.addToDict(self.liveJobs)
         # Add this to the unassigned job queue too
         self.unassignedJobs.put(int(job.id))
 
@@ -187,14 +187,14 @@ class JobQueue(object):
 
         self.log.info("addDead|Unassigning job %s" % str(job.id))
         job.makeUnassigned()
-        job.retries = 0
+        job.resetRetries()
 
         self.log.debug("addDead|Acquiring lock to job queue.")
         self.queueLock.acquire()
         self.log.debug("addDead|Acquired lock to job queue.")
 
         # We add the job into the dead jobs dictionary
-        self.deadJobs.set(job.id, job)
+        job.addToDict(self.deadJobs)
         self.queueLock.release()
         self.log.debug("addDead|Released lock to job queue.")
 
@@ -209,6 +209,7 @@ class JobQueue(object):
         """
         status = -1
         if deadjob == 0:
+            temp_job = self.liveJobs.getExn(id)
             try:
                 # Remove the job from the unassigned live jobs queue, if it
                 # is yet to be assigned.
@@ -218,7 +219,7 @@ class JobQueue(object):
                 self.log.info("delJob | Job ID %s was already assigned" % (id))
                 return status
 
-            return self.makeDead(id, "Requested by operator")
+            return self.makeDead(temp_job, "Requested by operator")
         else:
             self.queueLock.acquire()
             self.log.debug("delJob| Acquired lock to job queue.")
@@ -245,12 +246,15 @@ class JobQueue(object):
         self.log.debug("get| Released lock to job queue.")
         return job
 
-    def assignJob(self, jobId, vm=None):
+    # TODO: this function is a little weird. It sets the state of job to be "assigned", but not to which worker. 
+    # TODO: It does assign the job to a particular VM though.
+    # Precondition: jobId is in self.liveJobs
+    def assignJob(self, jobId, vm=None) -> None:
         """assignJob - marks a job to be assigned"""
         self.queueLock.acquire()
         self.log.debug("assignJob| Acquired lock to job queue.")
 
-        job = self.liveJobs.get(jobId)
+        job = self.liveJobs.getExn(jobId)
         print(str(job), jobId)
         # print(str(self.unassignedJobs))
         # print(str(self.liveJobs))
@@ -267,6 +271,7 @@ class JobQueue(object):
         self.log.debug("assignJob| Released lock to job queue.")
         # return job
 
+    # TODO: Rename this job to be more accurate in its description
     def unassignJob(self, jobId):
         """unassignJob - marks a job to be unassigned
         Note: We assume here that a job is to be rescheduled or
@@ -281,9 +286,9 @@ class JobQueue(object):
 
         # Increment the number of retires
         if job.retries is None:
-            job.retries = 0
+            job.resetRetries()
         else:
-            job.retries += 1
+            job.incrementRetries()
             Config.job_retries += 1
 
         self.log.info("unassignJob|Unassigning job %s" % str(job.id))
@@ -297,28 +302,32 @@ class JobQueue(object):
         self.queueLock.release()
         self.log.debug("unassignJob| Released lock to job queue.")
 
-    def makeDead(self, id, reason):
+    # Takes in a job in order to switch its remote location, in which you can't rely on syncing
+    def makeDead(self, job: TangoJob, reason):
         """makeDead - move a job from live queue to dead queue"""
-        self.log.info("makeDead| Making dead job ID: " + str(id))
+        self.log.info("makeDead| Making dead job ID: " + str(job.id))
         self.queueLock.acquire()
         self.log.debug("makeDead| Acquired lock to job queue.")
         status = -1
         # Check to make sure that the job is in the live jobs queue
-        if id in self.liveJobs:
-            self.log.info("makeDead| Found job ID: %s in the live queue" % (id))
-            status = 0
-            job = self.liveJobs.get(id)
-            self.log.info("Terminated job %s:%s: %s" % (job.name, job.id, reason))
-            # Add the job to the dead jobs dictionary
-            self.deadJobs.set(id, job)
-            # Remove the job from the live jobs dictionary
-            self.liveJobs.delete(id)
+        if job.id not in self.liveJobs:
+            self.log.error("makeDead| Job ID: %s not found in live jobs" % (job.id))
+            return -1
+        
+        self.log.info("makeDead| Found job ID: %s in the live queue" % (job.id))
+        status = 0
+        self.log.info("Terminated job %s:%s: %s" % (job.name, job.id, reason))
+        
+        # Remove the job from the live jobs dictionary
+        job.deleteFromDict(self.liveJobs)
+        # Add the job to the dead jobs dictionary
+        job.addToDict(self.deadJobs)
 
-            # unassign, remove from unassigned jobs queue
-            job.makeUnassigned()
-            self.unassignedJobs.remove(int(id))
+        # unassign, remove from unassigned jobs queue
+        job.makeUnassigned()
+        self.unassignedJobs.remove(int(job.id))
 
-            job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
+        job.appendTrace("%s|%s" % (datetime.utcnow().ctime(), reason))
         self.queueLock.release()
         self.log.debug("makeDead| Released lock to job queue.")
         return status
@@ -332,15 +341,15 @@ class JobQueue(object):
 
         return info
 
-    def reset(self):
+    def reset(self) -> None:
         """reset - resets and clears all the internal dictionaries
         and queues
         """
-        self.liveJobs._clean()
-        self.deadJobs._clean()
-        self.unassignedJobs._clean()
+        self.liveJobs.make_empty()
+        self.deadJobs.make_empty()
+        self.unassignedJobs.make_empty()
 
-    def getNextPendingJob(self):
+    def getNextPendingJob(self) -> TangoJob:
         """Gets the next unassigned live job. Note that this is a
         blocking function and we will block till there is an available
         job.
@@ -384,3 +393,5 @@ class JobQueue(object):
                 return job.vm
             else:
                 raise Exception("Job assigned without vm")
+
+

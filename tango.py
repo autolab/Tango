@@ -75,8 +75,8 @@ class TangoServer(object):
 
             vmms = DistDocker()
 
-        self.preallocator = Preallocator({Config.VMMS_NAME: vmms})
-        self.jobQueue = JobQueue(self.preallocator)
+        self.preallocator: Preallocator = Preallocator({Config.VMMS_NAME: vmms})
+        self.jobQueue: JobQueue = JobQueue(self.preallocator)
         if not Config.USE_REDIS:
             # creates a local Job Manager if there is no persistent
             # memory between processes. Otherwise, JobManager will
@@ -89,7 +89,7 @@ class TangoServer(object):
             level=Config.LOGLEVEL,
         )
         self.start_time = time.time()
-        self.log = logging.getLogger("TangoServer")
+        self.log: logging.Logger = logging.getLogger("TangoServer")
         self.log.info("Starting Tango server")
 
     def addJob(self, job):
@@ -278,6 +278,7 @@ class TangoServer(object):
             self.log.error("resetTango: Call to VMMS %s failed: %s" % (vmms_name, err))
             os._exit(1)
 
+    # Returns 0 if the job is valid, -1 if the job is invalid
     def __validateJob(self, job, vmms):
         """validateJob - validate the input arguments in an addJob request."""
         errors = 0
@@ -399,7 +400,7 @@ class TangoServer(object):
                 "validateJob: Setting job.timeout to" " default config value: %d secs",
                 Config.RUNJOB_TIMEOUT,
             )
-            job.timeout = Config.RUNJOB_TIMEOUT
+            job.setTimeout(Config.RUNJOB_TIMEOUT)
 
         # Any problems, return an error status
         if errors > 0:

@@ -4,6 +4,8 @@
 # directories.
 #
 
+from typing import List
+
 try:
     import pyflakes
 
@@ -46,7 +48,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Setup
-skip_paths = []
+skip_paths: List[str] = []
 
 # Stats
 file_count = 0

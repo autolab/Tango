@@ -18,7 +18,7 @@ class TestDictionary(unittest.TestCase):
         }
 
     def runDictionaryTests(self):
-        test_dict = TangoDictionary("test")
+        test_dict = TangoDictionary.create("test")
         self.assertEqual(test_dict.keys(), [])
         self.assertEqual(test_dict.values(), [])
 
@@ -69,7 +69,7 @@ class TestQueue(unittest.TestCase):
             self.assertEqual(self.testQueue.qsize(), self.expectedSize)
 
     def runQueueTests(self):
-        self.testQueue = TangoQueue("self.testQueue")
+        self.testQueue = TangoQueue.create("self.testQueue")
         self.expectedSize = 0
         self.assertEqual(self.testQueue.qsize(), self.expectedSize)
         self.assertTrue(self.testQueue.empty())

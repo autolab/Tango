@@ -14,6 +14,9 @@ import shutil
 import config
 from tangoObjects import TangoMachine
 
+from vmms.interface import VMMSInterface
+
+
 
 def timeout(command, time_out=1):
     """timeout - Run a unix command with a timeout. Return -1 on
@@ -72,7 +75,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
 #
 
 
-class LocalDocker(object):
+class LocalDocker(VMMSInterface):
     def __init__(self):
         """Checks if the machine is ready to run docker containers.
         Initialize boot2docker if running on OS X.
@@ -117,13 +120,13 @@ class LocalDocker(object):
     #
     def initializeVM(self, vm):
         """initializeVM -  Nothing to do for initializeVM"""
-        return vm
+        return 0
 
     def waitVM(self, vm, max_secs):
         """waitVM - Nothing to do for waitVM"""
         return
 
-    def copyIn(self, vm, inputFiles):
+    def copyIn(self, vm, inputFiles, job_id=None):
         """copyIn - Create a directory to be mounted as a volume
         for the docker containers. Copy input files to this directory.
         """

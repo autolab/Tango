@@ -6,15 +6,10 @@
 
 import sys
 import os
-import inspect
 import hashlib
 import json
 import logging
 import docker
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
 
 from config import Config
 from tangoObjects import TangoJob, TangoMachine, InputFile

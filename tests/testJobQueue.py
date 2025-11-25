@@ -130,7 +130,7 @@ class TestJobQueue(unittest.TestCase):
         info = self.jobQueue.getInfo()
         self.assertEqual(info["size_deadjobs"], 0)
         self.assertEqual(info["size_unassignedjobs"], 2)
-        self.jobQueue.makeDead(self.jobId1, "test")
+        self.jobQueue.makeDead(self.job1, "test")
         info = self.jobQueue.getInfo()
         self.assertEqual(info["size_deadjobs"], 1)
         self.assertEqual(info["size_unassignedjobs"], 1)

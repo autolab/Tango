@@ -6,8 +6,9 @@ import logging
 import time
 import copy
 
-from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue
+from tangoObjects import TangoDictionary, TangoQueue, TangoIntValue, TangoMachine
 from config import Config
+from typing import Tuple, List
 
 #
 # Preallocator - This class maintains a pool of active VMs for future
@@ -22,7 +23,7 @@ from config import Config
 
 class Preallocator(object):
     def __init__(self, vmms):
-        self.machines = TangoDictionary("machines")
+        self.machines: TangoDictionary[Tuple[List[TangoMachine], TangoQueue]] = TangoDictionary.create("machines")
         self.lock = threading.Lock()
         self.nextID = TangoIntValue("nextID", 1000)
         self.vmms = vmms
@@ -33,7 +34,7 @@ class Preallocator(object):
         if vmName not in self.machines:
             return 0
         else:
-            return len(self.machines.get(vmName)[0])
+            return len(self.machines.getExn(vmName)[0])
 
     def update(self, vm, num):
         """update - Updates the number of machines of a certain type
@@ -46,8 +47,9 @@ class Preallocator(object):
         """
         self.lock.acquire()
         if vm.name not in self.machines:
-            self.machines.set(vm.name, [[], TangoQueue(vm.name)])
-            self.machines.get(vm.name)[1].make_empty()
+            initial_queue = TangoQueue.create(vm.name)
+            initial_queue.make_empty()
+            self.machines.set(vm.name, ([], initial_queue))
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
 
@@ -206,7 +208,9 @@ class Preallocator(object):
             for i in range(size):
                 vm = self.machines.get(vmName)[1].get_nowait()
                 if vm.id != id:
-                    self.machines.get(vmName)[1].put(vm)
+                    machine = self.machines.get(vmName)
+                    machine[1].put(vm)
+                    self.machines.set(vmName, machine)
                 else:
                     dieVM = vm
         self.lock.release()

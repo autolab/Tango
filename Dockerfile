@@ -83,5 +83,8 @@ RUN cp /opt/TangoService/Tango/deployment/config/nginx.conf /etc/nginx/nginx.con
 RUN cp /opt/TangoService/Tango/deployment/config/supervisord.conf /etc/supervisor/supervisord.conf
 RUN if [ -f /opt/TangoService/Tango/boto.cfg ]; then cp /opt/TangoService/Tango/boto.cfg ~/.boto; fi
 
+# Set up PYTHONPATH
+ENV PYTHONPATH="/opt/TangoService/Tango"
+
 # Reload new config scripts
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

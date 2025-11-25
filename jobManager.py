@@ -19,14 +19,17 @@ from datetime import datetime
 
 import tango  # Written this way to avoid circular imports
 from config import Config
-from tangoObjects import TangoQueue
+from jobQueue import JobQueue
+from tangoObjects import TangoJob, TangoQueue, TangoMachine
+from typing import List, Tuple
 from worker import Worker
 
 
+
 class JobManager(object):
-    def __init__(self, queue):
+    def __init__(self, queue: JobQueue):
         self.daemon = True
-        self.jobQueue = queue
+        self.jobQueue: JobQueue = queue
         self.preallocator = self.jobQueue.preallocator
         self.vmms = self.preallocator.vmms
         self.log = logging.getLogger("JobManager")
@@ -34,7 +37,7 @@ class JobManager(object):
         self.nextId = 10000
         self.running = False
 
-    def start(self):
+    def start(self) -> None:
         if self.running:
             return
         thread = threading.Thread(target=self.__manage)
@@ -57,12 +60,13 @@ class JobManager(object):
             self.nextId = 10000
         return id
 
-    def __manage(self):
+    def __manage(self) -> None:
         self.running = True
         while True:
             # Blocks until we get a next job
-            job = self.jobQueue.getNextPendingJob()
+            job: TangoJob = self.jobQueue.getNextPendingJob()
             if not job.accessKey and Config.REUSE_VMS:
+                self.log.info(f"job has access key {job.accessKey} and is calling reuseVM")
                 vm = None
                 while vm is None:
                     vm = self.jobQueue.reuseVM(job)
@@ -80,7 +84,8 @@ class JobManager(object):
                     newVM = copy.deepcopy(job.vm)
                     newVM.id = self._getNextID()
                     try:
-                        preVM = vmms.initializeVM(newVM)
+                        vmms.initializeVM(newVM)
+                        preVM = newVM
                     except Exception as e:
                         self.log.error("ERROR initialization VM: %s", e)
                         self.log.error(traceback.format_exc())
@@ -89,6 +94,7 @@ class JobManager(object):
                             "EC2 SSH VM initialization failed: see log"
                         )
                 else:
+                    self.log.info(f"job {job.id} is not an ec2 vmms job")
                     # Try to find a vm on the free list and allocate it to
                     # the worker if successful.
                     if Config.REUSE_VMS:
@@ -122,33 +128,32 @@ class JobManager(object):
                 if job is None:
                     self.log.info("job_manager: job is None")
                 else:
-                    self.log.error(
-                        "job failed during creation %d %s" % (job.id, str(err))
-                    )
-                    self.jobQueue.makeDead(job.id, str(err))
+                    self.log.error("job failed during creation %d %s" % (job.id, str(err)))
+                    self.jobQueue.makeDead(job, str(err))
 
 
 if __name__ == "__main__":
 
     if not Config.USE_REDIS:
-        tango.log.error(
+        print(
             "You need to have Redis running to be able to initiate stand-alone\
          JobManager"
         )
     else:
-        tango = tango.TangoServer()
-        tango.log.debug("Resetting Tango VMs")
-        tango.resetTango(tango.preallocator.vmms)
-        for key in tango.preallocator.machines.keys():
-            tango.preallocator.machines.set(key, [[], TangoQueue(key)])
+        tango_server = tango.TangoServer()
+        tango_server.log.debug("Resetting Tango VMs")
+        tango_server.resetTango(tango_server.preallocator.vmms)
+        for key in tango_server.preallocator.machines.keys():
+            machine: Tuple[List[TangoMachine], TangoQueue] = ([], TangoQueue.create(key))
+            machine[1].make_empty()
+            tango_server.preallocator.machines.set(key, machine)
 
             # The above call sets the total pool empty.  But the free pool which
             # is a queue in redis, may not be empty.  When the job manager restarts,
             # resetting the free queue using the key doesn't change its content.
             # Therefore we empty the queue, thus the free pool, to keep it consistent
             # with the total pool.
-            tango.preallocator.machines.get(key)[1].make_empty()
-        jobs = JobManager(tango.jobQueue)
+        jobs = JobManager(tango_server.jobQueue)
 
-        tango.log.info("Starting the stand-alone Tango JobManager")
+        tango_server.log.info("Starting the stand-alone Tango JobManager")
         jobs.run()
