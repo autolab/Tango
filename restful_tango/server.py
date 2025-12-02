@@ -46,7 +46,7 @@ class UploadHandler(tornado.web.RequestHandler):
         if not os.path.exists(tempdir):
             os.mkdir(tempdir, 0o700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
-            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+            tangoREST.log.error("Cannot process uploads, %s is not a directory" % (tempdir,))
             return self.send_error()
         self.tempfile = NamedTemporaryFile(prefix="upload", dir=tempdir, delete=False)
         self.hasher = hashlib.md5()
@@ -129,7 +129,7 @@ class BuildHandler(tornado.web.RequestHandler):
         if not os.path.exists(tempdir):
             os.mkdir(tempdir, 0o700)
         if os.path.exists(tempdir) and not os.path.isdir(tempdir):
-            tangoREST.log("Cannot process uploads, %s is not a directory" % (tempdir,))
+            tangoREST.log.error("Cannot process uploads, %s is not a directory" % (tempdir,))
             return self.send_error()
         self.tempfile = NamedTemporaryFile(prefix="docker", dir=tempdir, delete=False)
 
