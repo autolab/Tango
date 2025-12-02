@@ -47,13 +47,13 @@ class Preallocator(object):
         """
         self.lock.acquire()
         if vm.name not in self.machines:
-            initial_queue = TangoQueue.create(vm.name)
+            initial_queue: TangoQueue[TangoMachine] = TangoQueue.create(vm.name)
             initial_queue.make_empty()
             self.machines.set(vm.name, ([], initial_queue))
             self.log.debug("Creating empty pool of %s instances" % (vm.name))
         self.lock.release()
 
-        delta = num - len(self.machines.get(vm.name)[0])
+        delta = num - len(self.machines.getExn(vm.name)[0])
         if delta > 0:
             # We need more self.machines, spin them up.
             self.log.debug("update: Creating %d new %s instances" % (delta, vm.name))
@@ -75,8 +75,8 @@ class Preallocator(object):
         if vmName in self.machines:
             self.lock.acquire()
 
-        if not self.machines.get(vmName)[1].empty():
-            vm = self.machines.get(vmName)[1].get_nowait()
+        if not self.machines.getExn(vmName)[1].empty():
+            vm = self.machines.getExn(vmName)[1].get_nowait()
 
         self.lock.release()
 
@@ -92,8 +92,8 @@ class Preallocator(object):
         # still a member of the pool.
         not_found = False
         self.lock.acquire()
-        if vm and vm.id in self.machines.get(vm.name)[0]:
-            machine = self.machines.get(vm.name)
+        if vm and vm.id in self.machines.getExn(vm.name)[0]:
+            machine = self.machines.getExn(vm.name)
             machine[1].put(vm)
             self.machines.set(vm.name, machine)
         else:
@@ -108,7 +108,7 @@ class Preallocator(object):
     def addVM(self, vm):
         """addVM - add a particular VM instance to the pool"""
         self.lock.acquire()
-        machine = self.machines.get(vm.name)
+        machine = self.machines.getExn(vm.name)
         machine[0].append(vm.id)
         self.machines.set(vm.name, machine)
         self.lock.release()
@@ -116,7 +116,7 @@ class Preallocator(object):
     def removeVM(self, vm):
         """removeVM - remove a particular VM instance from the pool"""
         self.lock.acquire()
-        machine = self.machines.get(vm.name)
+        machine = self.machines.getExn(vm.name)
         machine[0].remove(vm.id)
         self.machines.set(vm.name, machine)
         self.lock.release()
@@ -167,7 +167,7 @@ class Preallocator(object):
         the free list is empty.
         """
         self.lock.acquire()
-        dieVM = self.machines.get(vm.name)[1].get_nowait()
+        dieVM = self.machines.getExn(vm.name)[1].get_nowait()
         self.lock.release()
 
         if dieVM:
@@ -203,12 +203,14 @@ class Preallocator(object):
 
         dieVM = None
         self.lock.acquire()
-        size = self.machines.get(vmName)[1].qsize()
-        if size == len(self.machines.get(vmName)[0]):
-            for i in range(size):
-                vm = self.machines.get(vmName)[1].get_nowait()
+        size = self.machines.getExn(vmName)[1].qsize()
+        if size == len(self.machines.getExn(vmName)[0]):
+            for _ in range(size):
+                vm = self.machines.getExn(vmName)[1].get_nowait()
+                if vm is None:
+                    break
                 if vm.id != id:
-                    machine = self.machines.get(vmName)
+                    machine = self.machines.getExn(vmName)
                     machine[1].put(vm)
                     self.machines.set(vmName, machine)
                 else:
@@ -217,7 +219,7 @@ class Preallocator(object):
 
         if dieVM:
             self.removeVM(dieVM)
-            vmms = self.vmms[vm.vmms]
+            vmms = self.vmms[dieVM.vmms]
             vmms.safeDestroyVM(dieVM)
             return 0
         else:
@@ -229,9 +231,10 @@ class Preallocator(object):
             result[vmName] = self.getPool(vmName)
         return result
 
+    # TODO: replace with a named tuple
     def getPool(self, vmName):
         """getPool - returns the members of a pool and its free list"""
-        result = {}
+        result: Dict[str, List[TangoMachine]] = {}
         if vmName not in self.machines:
             return result
 
@@ -239,15 +242,17 @@ class Preallocator(object):
         result["free"] = []
         free_list = []
         self.lock.acquire()
-        size = self.machines.get(vmName)[1].qsize()
-        for i in range(size):
-            vm = self.machines.get(vmName)[1].get_nowait()
+        size = self.machines.getExn(vmName)[1].qsize()
+        for _ in range(size):
+            vm = self.machines.getExn(vmName)[1].get_nowait()
+            if vm is None:
+                break
             free_list.append(vm.id)
-            machine = self.machines.get(vmName)
+            machine = self.machines.getExn(vmName)
             machine[1].put(vm)
             self.machines.set(vmName, machine)
         self.lock.release()
 
-        result["total"] = self.machines.get(vmName)[0]
+        result["total"] = self.machines.getExn(vmName)[0]
         result["free"] = free_list
         return result
