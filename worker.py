@@ -284,7 +284,6 @@ class Worker(threading.Thread):
                 self.log.debug(msg)
                 return
             # Copy input files to VM
-            self.log.debug(f"Before copyIn: ret[copyin] = {ret['copyin']}, job_id: {str(self.job.id)}")
             ret["copyin"] = self.vmms.copyIn(vm, self.job.input, self.job.id)
             self.log.debug(f"After copyIn: ret[copyin] = {ret['copyin']}, job_id: {str(self.job.id)}")
 
