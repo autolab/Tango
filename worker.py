@@ -15,9 +15,10 @@ from enum import Enum
 from datetime import datetime
 from config import Config
 from jobQueue import JobQueue
-from tangoObjects import TangoMachine
+from tangoObjects import TangoMachine, TangoJob
 from typing import Dict, Optional
 from vmms.interface import VMMSInterface
+from preallocator import Preallocator
 #
 # Worker - The worker class is very simple and very dumb. The goal is
 # to walk through the VMMS interface, track the job's progress, and if
@@ -37,7 +38,7 @@ class DetachMethod(Enum):
 
 # We always preallocate a VM for the worker to use
 class Worker(threading.Thread):
-    def __init__(self, job, vmms, jobQueue, preallocator, preVM: TangoMachine):
+    def __init__(self, job: TangoJob, vmms: VMMSInterface, jobQueue: JobQueue, preallocator: Preallocator, preVM: TangoMachine):
         threading.Thread.__init__(self)
         self.daemon = True
         self.job = job
@@ -85,8 +86,7 @@ class Worker(threading.Thread):
             else:
                 raise ValueError(f"Invalid detach method: {detachMethod}")
 
-    # TODO: figure out what hdrfile, ret and err are
-    def rescheduleJob(self, hdrfile, ret, err):
+    def rescheduleJob(self, hdrfile: str, ret: Dict[str, int], err: str) -> None:
         """rescheduleJob - Reschedule a job that has failed because
         of a system error, such as a VM timing out or a connection
         failure.
@@ -121,13 +121,13 @@ class Worker(threading.Thread):
             )
             self.afterJobExecution(hdrfile, full_err, DetachMethod.DESTROY_AND_REPLACE)
 
-    def appendMsg(self, filename, msg):
+    def appendMsg(self, filename: str, msg: str) -> None:
         """appendMsg - Append a timestamped Tango message to a file"""
         f = open(filename, "a")
         f.write("Autograder [%s]: %s\n" % (datetime.now().ctime(), msg))
         f.close()
 
-    def catFiles(self, f1, f2):
+    def catFiles(self, f1: str, f2: str) -> None:
         """catFiles - cat f1 f2 > f2, where f1 is the Tango header
         and f2 is the output from the Autodriver
         """
@@ -146,7 +146,7 @@ class Worker(threading.Thread):
         os.rename(tmpname, f2)
         os.remove(f1)
 
-    def notifyServer(self, job):
+    def notifyServer(self, job: TangoJob) -> None:
         try:
             if job.notifyURL:
                 outputFileName = job.outputFile.split("/")[-1]  # get filename from path
@@ -172,7 +172,7 @@ class Worker(threading.Thread):
         except Exception as e:
             self.log.debug("Error in notifyServer: %s" % str(e))
 
-    def afterJobExecution(self, hdrfile, msg, detachMethod: DetachMethod): 
+    def afterJobExecution(self, hdrfile: str, msg: str, detachMethod: DetachMethod) -> None: 
         self.jobQueue.makeDead(self.job, msg)
         
         # Update the text that users see in the autodriver output file
@@ -188,7 +188,7 @@ class Worker(threading.Thread):
     #
     # Main worker function
     #
-    def run(self):
+    def run(self) -> None:
         """run - Step a job through its execution sequence"""
         try:
             # Hash of return codes for each step
@@ -409,7 +409,9 @@ class Worker(threading.Thread):
             # and detachVM can be run
             # if vm is not set but self.preVM is set, we still need
             # to return the VM, but have to initialize self.job.vm first
+            # TODO: move self.job.makeVM to the start of the try block, so it should be an error if vm fails to be set
             if self.preVM and not vm:
-                vm = self.job.vm = self.preVM 
+                self.job.makeVM(self.preVM)
+                vm = self.preVM 
             if vm:
                 self.detachVM(DetachMethod.DESTROY_AND_REPLACE)

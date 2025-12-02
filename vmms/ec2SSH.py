@@ -2,11 +2,7 @@
 # ec2SSH.py - Implements the Tango VMMS interface to run Tango jobs on Amazon EC2.
 #
 # This implementation uses the AWS EC2 SDK to manage the virtual machines and
-# ssh and scp to access them. The following excecption are raised back
-# to the caller:
-#
-#   Ec2Exception - EC2 raises this if it encounters any problem
-#   ec2CallError - raised by ec2Call() function
+# ssh and scp to access them.
 #
 
 import logging
@@ -21,11 +17,13 @@ import boto3
 from botocore.exceptions import ClientError
 
 import config
-from tangoObjects import TangoMachine
-from typing import Optional, Literal, List, Dict, Sequence
+from tangoObjects import TangoMachine, InputFile
+from typing import Optional, Literal, List, Dict, Sequence, Set, get_args
+from typing_extensions import TypeGuard
 from mypy_boto3_ec2 import EC2ServiceResource
+from mypy_boto3_ec2.literals import InstanceTypeType
 from mypy_boto3_ec2.service_resource import Instance, Image
-from mypy_boto3_ec2.type_defs import FilterTypeDef
+from mypy_boto3_ec2.type_defs import FilterTypeDef, TagTypeDef
 
 from vmms.interface import VMMSInterface
 from vmms.sharedUtils import VMMSUtils
@@ -35,9 +33,11 @@ logging.getLogger("boto3").setLevel(logging.CRITICAL)
 logging.getLogger("botocore").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
 
+valid_instance_types: Set[InstanceTypeType] = set(get_args(InstanceTypeType))
+def check_instance_type(instance_type: str) -> TypeGuard[InstanceTypeType]:
+    return instance_type in valid_instance_types
 
-
-def timeout_with_retries(command, time_out=1, retries=3, retry_delay=2) -> int:
+def timeout_with_retries(command: List[str], time_out: float = 1, retries: int = 3, retry_delay: float = 2) -> int:
     """timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
@@ -82,16 +82,6 @@ def try_load_instance(newInstance):
     newInstance.load()
 
 
-#
-# User defined exceptions
-#
-# ec2Call() exception
-
-
-class ec2CallError(Exception):
-    pass
-
-
 class Ec2SSH(VMMSInterface, VMMSUtils):
     _SSH_FLAGS = [
         "-i",
@@ -106,12 +96,12 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
     _vm_semaphore = threading.Semaphore(config.Config.MAX_EC2_VMS)
 
     @staticmethod
-    def acquire_vm_semaphore():
+    def acquire_vm_semaphore() -> None:
         """Blocks until a VM is available to limit load"""
         Ec2SSH._vm_semaphore.acquire()  # This blocks until a slot is available
 
     @staticmethod
-    def release_vm_semaphore():
+    def release_vm_semaphore() -> None:
         """Releases the VM sempahore"""
         Ec2SSH._vm_semaphore.release()
 
@@ -188,18 +178,18 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 % str(ignoredAMIs)
             )
 
-    def instanceName(self, id, name):
+    def instanceName(self, id: int, name: str) -> str:
         """instanceName - Constructs a VM instance name. Always use
         this function when you need a VM instance name. Never generate
         instance names manually.
         """
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
-    def keyPairName(self, id, name):
+    def keyPairName(self, id: int, name: str) -> str:
         """keyPairName - Constructs a unique key pair name."""
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
 
-    def domainName(self, vm):
+    def domainName(self, vm: TangoMachine) -> str:
         """Returns the domain name that is stored in the vm
         instance.
         """
@@ -209,7 +199,8 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
     # VMMS helper methods
     #
 
-    def tangoMachineToEC2Instance(self, vm: TangoMachine) -> dict:
+    # TODO: return a dataclass with the instance_type member of type InstanceTypeType of type str
+    def tangoMachineToEC2Instance(self, vm: TangoMachine) -> Dict[str, str]:
         """tangoMachineToEC2Instance - returns an object with EC2 instance
         type and AMI. Only general-purpose instances are used. Defalt AMI
         is currently used.
@@ -233,7 +224,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
         return ec2instance
 
-    def createKeyPair(self):
+    def createKeyPair(self) -> None:
         # TODO: SUPPORT
         raise
         # # try to delete the key to avoid collision
@@ -247,7 +238,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         # # change the SSH_FLAG accordingly
         # self.ssh_flags[1] = self.key_pair_path
 
-    def deleteKeyPair(self):
+    def deleteKeyPair(self) -> None:
         # TODO: SUPPORT
         raise
         # self.boto3client.delete_key_pair(self.key_pair_name)
@@ -259,7 +250,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
     # Creates a security group if it doesn't exist.
     # ^ Note: strangely, the security group id is never used.
-    def createSecurityGroup(self):
+    def createSecurityGroup(self) -> None:
         try:
             # Check if the security group already exists
             description_response = self.boto3client.describe_security_groups(
@@ -304,6 +295,9 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         try:
             instanceName = self.instanceName(vm.id, vm.name)
             ec2instance = self.tangoMachineToEC2Instance(vm)
+            instance_type = ec2instance["instance_type"]
+            if not check_instance_type(instance_type):
+                raise ValueError(f"Invalid instance type: {instance_type}")
             self.log.debug("instanceName: %s" % instanceName)
             # ensure that security group exists
             self.createSecurityGroup()
@@ -313,7 +307,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 ImageId=ec2instance["ami"],
                 KeyName=self.key_pair_name,
                 SecurityGroups=[config.Config.DEFAULT_SECURITY_GROUP],
-                InstanceType=ec2instance["instance_type"],
+                InstanceType=instance_type,
                 MaxCount=1,
                 MinCount=1,
                 InstanceMarketOptions=
@@ -416,7 +410,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                     return -1
             return -1
 
-    def waitVM(self, vm, max_secs) -> Literal[0, -1]:
+    def waitVM(self, vm: TangoMachine, max_secs: int) -> Literal[0, -1]:
         """waitVM - Wait at most max_secs for a VM to become
         ready. Return error if it takes too long.
 
@@ -482,7 +476,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             # Sleep a bit before trying again
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
-    def copyIn(self, vm, inputFiles, job_id=None):
+    def copyIn(self, vm: TangoMachine, inputFiles: List[InputFile], job_id: Optional[int] = None) -> int:
         """copyIn - Copy input files to VM
         Args:
         - vm is a TangoMachine object
@@ -546,7 +540,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
+    def runJob(self, vm: TangoMachine, runTimeout: int, maxOutputFileSize: int, disableNetwork: bool) -> int:
         """runJob - Run the make command on a VM using SSH and
         redirect output to file "output".
         """
@@ -578,7 +572,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         # runTimeout * 2 is a temporary hack. The driver will handle the timout
         return ret
 
-    def copyOut(self, vm, destFile):
+    def copyOut(self, vm: TangoMachine, destFile: str) -> int:
         """copyOut - Copy the file output on the VM to the file
         outputFile on the Tango host.
         """
@@ -638,7 +632,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             config.Config.COPYOUT_TIMEOUT,
         )
 
-    def destroyVM(self, vm):
+    def destroyVM(self, vm: TangoMachine) -> None:
         """destroyVM - Removes a VM from the system"""
         self.log.info(
             "destroyVM: %s %s %s %s"
@@ -685,15 +679,15 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
         Ec2SSH.release_vm_semaphore()
 
-    def safeDestroyVM(self, vm):
+    def safeDestroyVM(self, vm: TangoMachine) -> None:
         return self.destroyVM(vm)
 
-    def getVMs(self):
+    def getVMs(self) -> List[TangoMachine]:
         """getVMs - Returns the complete list of VMs on this account. Each
         list entry is a boto.ec2.instance.Instance object.
         """
         try:
-            vms = list()
+            vms: List[TangoMachine] = []
             filters: Sequence[FilterTypeDef] = [
                 {
                     "Name": "instance-state-name",
@@ -742,7 +736,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
         return vms
 
-    def existsVM(self, vm):
+    def existsVM(self, vm: TangoMachine) -> bool:
         """existsVM - Checks whether a VM exists in the vmms."""
         # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/migrationec2.html
         filters: Sequence[FilterTypeDef] = [{"Name": "instance-state-name", "Values": ["running"]}]
@@ -757,19 +751,19 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         # for instance in instances.filter(InstanceIds)
         return False
 
-    def getImages(self):
+    def getImages(self) -> List[str]:
         """getImages - return a constant; actually use the ami specified in config"""
         return [key for key in self.img2ami]
 
-    # getTag: to do later
-    def getTag(self, tagList, tagKey):
+    # TODO: later
+    def getTag(self, tagList: List[TagTypeDef], tagKey: str) -> Optional[str]:
         if tagList:
             for tag in tagList:
                 if tag["Key"] == tagKey:
                     return tag["Value"]
         return None
 
-    def getPartialOutput(self, vm):
+    def getPartialOutput(self, vm: TangoMachine) -> str:
         domain_name = self.domainName(vm)
 
         runcmd = "head -c %s /home/autograde/output.log" % (

@@ -29,14 +29,14 @@ class Preallocator(object):
         self.vmms: Dict[str, VMMSInterface] = vmms
         self.log = logging.getLogger("Preallocator")
 
-    def poolSize(self, vmName):
+    def poolSize(self, vmName: str):
         """poolSize - returns the size of the vmName pool, for external callers"""
         if vmName not in self.machines:
             return 0
         else:
             return len(self.machines.getExn(vmName)[0])
 
-    def update(self, vm, num):
+    def update(self, vm: TangoMachine, num: int):
         """update - Updates the number of machines of a certain type
         to be preallocated.
 
@@ -69,7 +69,7 @@ class Preallocator(object):
 
         # If delta == 0 then we are the perfect number!
 
-    def allocVM(self, vmName):
+    def allocVM(self, vmName: str):
         """allocVM - Allocate a VM from the free list"""
         vm = None
         if vmName in self.machines:
@@ -86,7 +86,7 @@ class Preallocator(object):
 
         return vm
 
-    def freeVM(self, vm):
+    def freeVM(self, vm: TangoMachine):
         """freeVM - Returns a VM instance to the free list"""
         # Sanity check: Return a VM to the free list only if it is
         # still a member of the pool.
@@ -105,7 +105,7 @@ class Preallocator(object):
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(vm)
 
-    def addVM(self, vm):
+    def addVM(self, vm: TangoMachine):
         """addVM - add a particular VM instance to the pool"""
         self.lock.acquire()
         machine = self.machines.getExn(vm.name)
@@ -113,7 +113,7 @@ class Preallocator(object):
         self.machines.set(vm.name, machine)
         self.lock.release()
 
-    def removeVM(self, vm):
+    def removeVM(self, vm: TangoMachine):
         """removeVM - remove a particular VM instance from the pool"""
         self.lock.acquire()
         machine = self.machines.getExn(vm.name)
@@ -137,7 +137,7 @@ class Preallocator(object):
         self.lock.release()
         return id
 
-    def __create(self, vm, cnt):
+    def __create(self, vm: TangoMachine, cnt: int):
         """__create - Creates count VMs and adds them to the pool
 
         This function should always be called in a thread since it
@@ -157,7 +157,7 @@ class Preallocator(object):
             self.freeVM(newVM)
             self.log.debug("__create: Added vm %s to pool %s " % (newVM.id, newVM.name))
 
-    def __destroy(self, vm):
+    def __destroy(self, vm: TangoMachine):
         """__destroy - Removes a VM from the pool
 
         If the user asks for fewer preallocated VMs, then we will
@@ -175,7 +175,7 @@ class Preallocator(object):
             vmms = self.vmms[vm.vmms]
             vmms.safeDestroyVM(dieVM)
 
-    def createVM(self, vm):
+    def createVM(self, vm: TangoMachine):
         """createVM - Called in non-thread context to create a single
         VM and add it to the pool
         """
@@ -192,7 +192,7 @@ class Preallocator(object):
         self.freeVM(newVM)
         self.log.debug("createVM: Added vm %s to pool %s" % (newVM.id, newVM.name))
 
-    def destroyVM(self, vmName, id):
+    def destroyVM(self, vmName: str, id: int):
         """destroyVM - Called by the delVM API function to remove and
         destroy a particular VM instance from a pool. We only allow
         this function when the system is queiscent (pool size == free
@@ -232,7 +232,7 @@ class Preallocator(object):
         return result
 
     # TODO: replace with a named tuple
-    def getPool(self, vmName):
+    def getPool(self, vmName: str):
         """getPool - returns the members of a pool and its free list"""
         result: Dict[str, List[TangoMachine]] = {}
         if vmName not in self.machines:
