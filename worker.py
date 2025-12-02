@@ -397,30 +397,6 @@ class Worker(threading.Thread):
             # with an explanatory message
             msg = "Success: Autodriver returned normally"
             self.afterJobExecution(hdrfile, msg, detachMethod=DetachMethod.RETURN_TO_POOL)
-            # if ret["copyin"] != 0:
-            #     msg = "Error: Copy in to VM failed (status=%d)" % (ret["copyin"])
-            # elif ret["runjob"] != 0:
-            #     if ret["runjob"] == 1:  # This should never happen
-            #         msg = "Error: Autodriver usage error (status=%d)" % (ret["runjob"])
-            #     elif ret["runjob"] == 2:
-            #         msg = "Error: Job timed out after %d seconds" % (self.job.timeout)
-            #     elif ret["runjob"] == 3:  # EXIT_OSERROR in Autodriver
-            #         # Abnormal job termination (Autodriver encountered an OS
-            #         # error).  Assume that the VM is damaged. Destroy this VM
-            #         # and do not retry the job since the job may have damaged
-            #         # the VM.
-            #         msg = "Error: OS error while running job on VM"
-            #         detachMethod = DetachMethod.DESTROY_WITHOUT_REPLACEMENT
-            #         self.job.vm.notes = str(self.job.id) + "_" + self.job.name
-            #         self.job.setKeepForDebugging(True)
-            #     else:  # This should never happen
-            #         msg = "Error: Unknown autodriver error (status=%d)" % (
-            #             ret["runjob"]
-            #         )
-
-            # elif ret["copyout"] != 0:
-            #     msg += "Error: Copy out from VM failed (status=%d)" % (ret["copyout"])
-
             return
 
         #

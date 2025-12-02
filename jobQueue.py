@@ -343,13 +343,13 @@ class JobQueue(object):
 
         return info
 
-    def reset(self):
+    def reset(self) -> None:
         """reset - resets and clears all the internal dictionaries
         and queues
         """
-        self.liveJobs._clean()
-        self.deadJobs._clean()
-        self.unassignedJobs._clean()
+        self.liveJobs.make_empty()
+        self.deadJobs.make_empty()
+        self.unassignedJobs.make_empty()
 
     def getNextPendingJob(self) -> TangoJob:
         """Gets the next unassigned live job. Note that this is a
