@@ -726,7 +726,6 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
                 vm.name = instName
                 vm.id = int(instName.split("-")[1])
-                vm.pool = instName.split("-")[2]
                 vm.name = instName
 
                 # needed for SSH
