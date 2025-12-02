@@ -257,6 +257,8 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         # except OSError:
         #     pass
 
+    # Creates a security group if it doesn't exist.
+    # ^ Note: strangely, the security group id is never used.
     def createSecurityGroup(self):
         try:
             # Check if the security group already exists
@@ -273,14 +275,16 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 return
         except Exception as e:
             self.log.debug("ERROR checking for existing security group: %s", e)
-
+        # ! Note: We've never encountered the lines below before (there was a type error),
+        # ! because we've always had a security group. 
+        # ! Difficult to test because it involves deleting all security groups.
         try:
-            security_group_response = self.boto3resource.create_security_group(
+            security_group_response = self.boto3client.create_security_group(
                 GroupName=config.Config.DEFAULT_SECURITY_GROUP,
                 Description="Autolab security group - allowing all traffic",
             )
             security_group_id = security_group_response["GroupId"]
-            self.boto3resource.authorize_security_group_ingress(
+            self.boto3client.authorize_security_group_ingress(
                 GroupId=security_group_id
             )
         except Exception as e:
