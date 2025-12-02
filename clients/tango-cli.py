@@ -20,6 +20,8 @@ sys.path.append("/usr/lib/python2.7/site-packages/")
 
 def get_arg(name, default=None):
     """Helper function to safely get arguments using dictionary .get() method"""
+    if not hasattr(args, name):
+        raise KeyError(f"Argument '{name}' not found in args")
     return vars(args).get(name, default)
 
 
