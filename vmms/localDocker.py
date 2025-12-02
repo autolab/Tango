@@ -18,7 +18,6 @@ from vmms.interface import VMMSInterface
 from vmms.sharedUtils import VMMSUtils
 
 
-
 #
 # User defined exceptions
 #
@@ -71,7 +70,12 @@ class LocalDocker(VMMSInterface, VMMSUtils):
         """waitVM - Nothing to do for waitVM"""
         return 0
 
-    def copyIn(self, vm: TangoMachine, inputFiles: List[InputFile], job_id: Optional[int] = None) -> int:
+    def copyIn(
+        self,
+        vm: TangoMachine,
+        inputFiles: List[InputFile],
+        job_id: Optional[int] = None,
+    ) -> int:
         """copyIn - Create a directory to be mounted as a volume
         for the docker containers. Copy input files to this directory.
         """
@@ -90,7 +94,13 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             )
         return 0
 
-    def runJob(self, vm: TangoMachine, runTimeout: int, maxOutputFileSize: int, disableNetwork: bool) -> int:
+    def runJob(
+        self,
+        vm: TangoMachine,
+        runTimeout: int,
+        maxOutputFileSize: int,
+        disableNetwork: bool,
+    ) -> int:
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -154,7 +164,9 @@ class LocalDocker(VMMSInterface, VMMSUtils):
         volumePath = self.getVolumePath("")
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
-        VMMSUtils.timeout(["docker", "rm", "-f", instanceName], config.Config.DOCKER_RM_TIMEOUT)
+        VMMSUtils.timeout(
+            ["docker", "rm", "-f", instanceName], config.Config.DOCKER_RM_TIMEOUT
+        )
         # Destroy corresponding volume if it exists.
         if instanceName in os.listdir(volumePath):
             shutil.rmtree(volumePath + instanceName)

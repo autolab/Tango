@@ -13,11 +13,22 @@ class VMMSInterface(Protocol):
         ...
 
     @abstractmethod
-    def copyIn(self, vm: TangoMachine, inputFiles: List[InputFile], job_id: Optional[int] = None) -> int:
+    def copyIn(
+        self,
+        vm: TangoMachine,
+        inputFiles: List[InputFile],
+        job_id: Optional[int] = None,
+    ) -> int:
         ...
 
     @abstractmethod
-    def runJob(self, vm: TangoMachine, runTimeout: int, maxOutputFileSize: int, disableNetwork: bool) -> int: # -1 to infinity
+    def runJob(
+        self,
+        vm: TangoMachine,
+        runTimeout: int,
+        maxOutputFileSize: int,
+        disableNetwork: bool,
+    ) -> int:  # -1 to infinity
         ...
 
     @abstractmethod
@@ -27,7 +38,7 @@ class VMMSInterface(Protocol):
     @abstractmethod
     def destroyVM(self, vm: TangoMachine) -> None:
         ...
-    
+
     @abstractmethod
     def safeDestroyVM(self, vm: TangoMachine) -> None:
         ...
@@ -47,7 +58,7 @@ class VMMSInterface(Protocol):
     @abstractmethod
     def getImages(self) -> List[str]:
         ...
-    
+
     @abstractmethod
     def getPartialOutput(self, vm: TangoMachine) -> str:
         ...

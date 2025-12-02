@@ -34,10 +34,15 @@ logging.getLogger("botocore").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
 
 valid_instance_types: Set[InstanceTypeType] = set(get_args(InstanceTypeType))
+
+
 def check_instance_type(instance_type: str) -> TypeGuard[InstanceTypeType]:
     return instance_type in valid_instance_types
 
-def timeout_with_retries(command: List[str], time_out: float = 1, retries: int = 3, retry_delay: float = 2) -> int:
+
+def timeout_with_retries(
+    command: List[str], time_out: float = 1, retries: int = 3, retry_delay: float = 2
+) -> int:
     """timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
     is typically 0 for success, 1-255 for failure.
@@ -106,7 +111,9 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         Ec2SSH._vm_semaphore.release()
 
     # TODO: the arguments accessKeyId and accessKey don't do anything
-    def __init__(self, accessKeyId: Optional[str] = None, accessKey: Optional[str] = None) -> None:
+    def __init__(
+        self, accessKeyId: Optional[str] = None, accessKey: Optional[str] = None
+    ) -> None:
         """log - logger for the instance
         connection - EC2Connection object that stores the connection
         info to the EC2 network
@@ -139,11 +146,15 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             # self.createKeyPair()
         # create boto3resource
 
-        self.img2ami: Dict[str, Image] = {} # this is a bad name, should really be img_name to img
+        self.img2ami: Dict[
+            str, Image
+        ] = {}  # this is a bad name, should really be img_name to img
         self.images: List[Image] = []
         try:
             # This is a service resource
-            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", config.Config.EC2_REGION) # TODO: rename this ot self.ec2resource
+            self.boto3resource: EC2ServiceResource = boto3.resource(
+                "ec2", config.Config.EC2_REGION
+            )  # TODO: rename this ot self.ec2resource
             self.boto3client = boto3.client("ec2", config.Config.EC2_REGION)
 
             # Get images from ec2
@@ -262,7 +273,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         except Exception as e:
             self.log.debug("ERROR checking for existing security group: %s", e)
         # ! Note: We've never encountered the lines below before (there was a type error),
-        # ! because we've always had a security group. 
+        # ! because we've always had a security group.
         # ! Difficult to test because it involves deleting all security groups.
         try:
             security_group_response = self.boto3client.create_security_group(
@@ -270,9 +281,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 Description="Autolab security group - allowing all traffic",
             )
             security_group_id = security_group_response["GroupId"]
-            self.boto3client.authorize_security_group_ingress(
-                GroupId=security_group_id
-            )
+            self.boto3client.authorize_security_group_ingress(GroupId=security_group_id)
         except Exception as e:
             self.log.debug("ERROR in creating security group: %s", e)
 
@@ -297,7 +306,6 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             # ensure that security group exists
             self.createSecurityGroup()
 
-
             reservation: List[Instance] = self.boto3resource.create_instances(
                 ImageId=ec2instance["ami"],
                 KeyName=self.key_pair_name,
@@ -305,13 +313,12 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 InstanceType=instance_type,
                 MaxCount=1,
                 MinCount=1,
-                InstanceMarketOptions=
-                        {
+                InstanceMarketOptions={
                     "MarketType": "spot",
                     "SpotOptions": {
                         "SpotInstanceType": "one-time",
-                        "InstanceInterruptionBehavior": "terminate"
-                    }
+                        "InstanceInterruptionBehavior": "terminate",
+                    },
                 },
             )
 
@@ -339,18 +346,13 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 # reload the state of the new instance
                 try_load_instance(newInstance)
                 for inst in instances.filter(InstanceIds=[newInstance.id]):
-                    self.log.debug(
-                        "VM %s %s: is running" % (vm.name, newInstance.id)
-                    )
+                    self.log.debug("VM %s %s: is running" % (vm.name, newInstance.id))
                     instanceRunning = True
 
                 if instanceRunning:
                     break
 
-                if (
-                    time.time() - start_time
-                    > config.Config.INITIALIZEVM_TIMEOUT
-                ):
+                if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
                     raise ValueError(
                         "VM %s %s: timeout (%d seconds) before reaching 'running' state"
                         % (
@@ -471,18 +473,21 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             # Sleep a bit before trying again
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
-    def copyIn(self, vm: TangoMachine, inputFiles: List[InputFile], job_id: Optional[int] = None) -> int:
+    def copyIn(
+        self,
+        vm: TangoMachine,
+        inputFiles: List[InputFile],
+        job_id: Optional[int] = None,
+    ) -> int:
         """copyIn - Copy input files to VM
         Args:
         - vm is a TangoMachine object
-        - inputFiles is a list of objects with attributes localFile and destFile. 
+        - inputFiles is a list of objects with attributes localFile and destFile.
             localFile is the file on the host, destFile is the file on the VM.
-        - job_id is the job id of the job being run on the VM. 
+        - job_id is the job id of the job being run on the VM.
             It is used for logging purposes only.
         """
-        self.log.info(
-            "copyIn %s - writing files" % self.instanceName(vm.id, vm.name)
-        )
+        self.log.info("copyIn %s - writing files" % self.instanceName(vm.id, vm.name))
 
         domain_name = self.domainName(vm)
 
@@ -504,18 +509,14 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             self.log.info("%s for job %s" % (line, job_id))
         self.log.info("Return Code: %s, job: %s" % (result.returncode, job_id))
         if result.stderr != 0:
-            self.log.info(
-                "Standard Error: %s, job: %s" % (result.stderr, job_id)
-            )
+            self.log.info("Standard Error: %s, job: %s" % (result.stderr, job_id))
 
         # Validate inputFiles structure
         if not inputFiles or not all(
             hasattr(file, "localFile") and hasattr(file, "destFile")
             for file in inputFiles
         ):
-            self.log.info(
-                "Error: Invalid inputFiles Structure, job: %s" % job_id
-            )
+            self.log.info("Error: Invalid inputFiles Structure, job: %s" % job_id)
 
         for file in inputFiles:
             self.log.info("%s - %s" % (file.localFile, file.destFile))
@@ -524,8 +525,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 + self.ssh_flags
                 + [
                     file.localFile,
-                    "%s@%s:~/autolab/%s"
-                    % (self.ec2User, domain_name, file.destFile),
+                    "%s@%s:~/autolab/%s" % (self.ec2User, domain_name, file.destFile),
                 ],
                 config.Config.COPYIN_TIMEOUT,
             )
@@ -535,7 +535,13 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
         return 0
 
-    def runJob(self, vm: TangoMachine, runTimeout: int, maxOutputFileSize: int, disableNetwork: bool) -> int:
+    def runJob(
+        self,
+        vm: TangoMachine,
+        runTimeout: int,
+        maxOutputFileSize: int,
+        disableNetwork: bool,
+    ) -> int:
         """runJob - Run the make command on a VM using SSH and
         redirect output to file "output".
         """
@@ -558,9 +564,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         # no logging for now
 
         ret = VMMSUtils.timeout(
-            ["ssh"]
-            + self.ssh_flags
-            + ["%s@%s" % (self.ec2User, domain_name), runcmd],
+            ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd],
             runTimeout * 2,
         )
 
@@ -615,7 +619,6 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 # re.error = xxx_todo_changeme
                 # Error copying out the timing data (probably runJob failed)
                 pass
-                
 
         return VMMSUtils.timeout(
             ["scp"]
@@ -639,9 +642,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 InstanceIds=[vm.instance_id]
             )
             if not instances:
-                self.log.debug(
-                    "no instances found with instance id %s", vm.instance_id
-                )
+                self.log.debug("no instances found with instance id %s", vm.instance_id)
             # Keep the vm and mark with meaningful tags for debugging
             if (
                 hasattr(config.Config, "KEEP_VM_AFTER_FAILURE")
@@ -668,9 +669,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
             if not self.useDefaultKeyPair:
                 self.deleteKeyPair()
         except Exception as e:
-            self.log.error(
-                "destroyVM failed: %s for vm %s" % (e, vm.instance_id)
-            )
+            self.log.error("destroyVM failed: %s for vm %s" % (e, vm.instance_id))
 
         Ec2SSH.release_vm_semaphore()
 
@@ -704,13 +703,8 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                     instance.tags, "Name"
                 )  # inst name PREFIX-serial-IMAGE
                 # Name tag is the standard form of prefix-serial-image
-                if not (
-                    instName
-                    and re.match("%s-" % config.Config.PREFIX, instName)
-                ):
-                    self.log.debug(
-                        "getVMs: Instance id %s skipped" % vm.instance_id
-                    )
+                if not (instName and re.match("%s-" % config.Config.PREFIX, instName)):
+                    self.log.debug("getVMs: Instance id %s skipped" % vm.instance_id)
                     continue  # instance without name tag or proper prefix
 
                 vm.name = instName
@@ -723,8 +717,7 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
 
                 vms.append(vm)
                 self.log.debug(
-                    "getVMs: Instance id %s, name %s"
-                    % (vm.instance_id, vm.name)
+                    "getVMs: Instance id %s, name %s" % (vm.instance_id, vm.name)
                 )
         except Exception as e:
             self.log.debug("getVMs Failed: %s" % e)
@@ -734,7 +727,9 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
     def existsVM(self, vm: TangoMachine) -> bool:
         """existsVM - Checks whether a VM exists in the vmms."""
         # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/migrationec2.html
-        filters: Sequence[FilterTypeDef] = [{"Name": "instance-state-name", "Values": ["running"]}]
+        filters: Sequence[FilterTypeDef] = [
+            {"Name": "instance-state-name", "Values": ["running"]}
+        ]
         # gets all running instances
         instances = self.boto3resource.instances.filter(Filters=filters)
         for instance in instances:
@@ -766,13 +761,11 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         )
 
         sshcmd = (
-            ["ssh"]
-            + self.ssh_flags
-            + ["%s@%s" % (self.ec2User, domain_name), runcmd]
+            ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd]
         )
 
-        output = subprocess.check_output(
-            sshcmd, stderr=subprocess.STDOUT
-        ).decode("utf-8")
+        output = subprocess.check_output(sshcmd, stderr=subprocess.STDOUT).decode(
+            "utf-8"
+        )
 
         return output

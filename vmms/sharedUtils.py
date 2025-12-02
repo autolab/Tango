@@ -4,6 +4,7 @@ import os
 from typing import List
 import config
 
+
 class VMMSUtils:
     @staticmethod
     def constructInstanceName(id: int, name: str) -> str:
@@ -12,7 +13,7 @@ class VMMSUtils:
         instance names manually.
         """
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
-    
+
     @staticmethod
     def timeout(command: List[str], time_out: float = 1) -> int:
         """timeout - Run a unix command with a timeout. Return -1 on
@@ -43,4 +44,3 @@ class VMMSUtils:
         else:
             returncode = poll_result
         return returncode
-
