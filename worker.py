@@ -164,7 +164,7 @@ class Worker(threading.Thread):
                     )
                 self.log.info(
                     "Response from callback to %s:%s"
-                    % (job.notifyURL, response.content)
+                    % (job.notifyURL, response.content.decode())
                 )
                 fh.close()
             else:
