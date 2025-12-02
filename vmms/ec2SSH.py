@@ -178,13 +178,6 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
                 % str(ignoredAMIs)
             )
 
-    def instanceName(self, id: int, name: str) -> str:
-        """instanceName - Constructs a VM instance name. Always use
-        this function when you need a VM instance name. Never generate
-        instance names manually.
-        """
-        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
-
     def keyPairName(self, id: int, name: str) -> str:
         """keyPairName - Constructs a unique key pair name."""
         return "%s-%d-%s" % (config.Config.PREFIX, id, name)
@@ -198,6 +191,8 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
     #
     # VMMS helper methods
     #
+    def instanceName(self, id: int, name: str) -> str:
+        return VMMSUtils.constructInstanceName(id, name)
 
     # TODO: return a dataclass with the instance_type member of type InstanceTypeType of type str
     def tangoMachineToEC2Instance(self, vm: TangoMachine) -> Dict[str, str]:

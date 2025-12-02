@@ -12,8 +12,8 @@ import os
 import sys
 import shutil
 import config
-from tangoObjects import TangoMachine
-from typing import List
+from tangoObjects import TangoMachine, InputFile
+from typing import List, Literal, Optional
 from vmms.interface import VMMSInterface
 from vmms.sharedUtils import VMMSUtils
 
@@ -40,25 +40,21 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             self.log.error(str(e))
             exit(1)
 
-    def instanceName(self, id, name):
-        """instanceName - Constructs a VM instance name. Always use
-        this function when you need a VM instance name. Never generate
-        instance names manually.
-        """
-        return "%s-%s-%s" % (config.Config.PREFIX, id, name)
+    def instanceName(self, id: int, name: str) -> str:
+        return VMMSUtils.constructInstanceName(id, name)
 
-    def getVolumePath(self, instanceName):
+    def getVolumePath(self, instanceName: str) -> str:
         volumePath = config.Config.DOCKER_VOLUME_PATH
         # Last empty string to cause trailing '/'
         volumePath = os.path.join(volumePath, instanceName, "")
         return volumePath
 
-    def getDockerVolumePath(self, dockerPath, instanceName):
+    def getDockerVolumePath(self, dockerPath: str, instanceName: str) -> str:
         # Last empty string to cause trailing '/'
         volumePath = os.path.join(dockerPath, instanceName, "")
         return volumePath
 
-    def domainName(self, vm):
+    def domainName(self, vm: TangoMachine) -> str:
         """Returns the domain name that is stored in the vm
         instance.
         """
@@ -67,15 +63,15 @@ class LocalDocker(VMMSInterface, VMMSUtils):
     #
     # VMMS API functions
     #
-    def initializeVM(self, vm):
+    def initializeVM(self, vm: TangoMachine) -> Literal[0, -1]:
         """initializeVM -  Nothing to do for initializeVM"""
         return 0
 
-    def waitVM(self, vm, max_secs):
+    def waitVM(self, vm: TangoMachine, max_secs: int) -> Literal[0, -1]:
         """waitVM - Nothing to do for waitVM"""
-        return
+        return 0
 
-    def copyIn(self, vm, inputFiles, job_id=None):
+    def copyIn(self, vm: TangoMachine, inputFiles: List[InputFile], job_id: Optional[int] = None) -> int:
         """copyIn - Create a directory to be mounted as a volume
         for the docker containers. Copy input files to this directory.
         """
@@ -94,7 +90,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             )
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
+    def runJob(self, vm: TangoMachine, runTimeout: int, maxOutputFileSize: int, disableNetwork: bool) -> int:
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -103,10 +99,9 @@ class LocalDocker(VMMSInterface, VMMSUtils):
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
-        if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
-            volumePath = self.getDockerVolumePath(
-                os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName
-            )
+        host_volume_path = os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH")
+        if host_volume_path:
+            volumePath = self.getDockerVolumePath(host_volume_path, instanceName)
         args = ["docker", "run", "--name", instanceName, "-v"]
         args = args + ["%s:%s" % (volumePath, "/home/mount")]
         if vm.cores:
@@ -140,7 +135,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
 
         return ret
 
-    def copyOut(self, vm, destFile):
+    def copyOut(self, vm: TangoMachine, destFile: str) -> int:
         """copyOut - Copy the autograder feedback from container to
         destFile on the Tango host. Then, destroy that container.
         Containers are never reused.
@@ -153,7 +148,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
 
         return 0
 
-    def destroyVM(self, vm):
+    def destroyVM(self, vm: TangoMachine) -> None:
         """destroyVM - Delete the docker container."""
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath("")
@@ -166,7 +161,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             self.log.debug("Deleted volume %s" % instanceName)
         return
 
-    def safeDestroyVM(self, vm):
+    def safeDestroyVM(self, vm: TangoMachine) -> None:
         """safeDestroyVM - Delete the docker container and make
         sure it is removed.
         """
@@ -178,7 +173,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             self.destroyVM(vm)
         return
 
-    def getVMs(self):
+    def getVMs(self) -> List[TangoMachine]:
         """getVMs - Executes and parses `docker ps`. This function
         is a lot of parsing and can break easily.
         """
@@ -196,7 +191,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
                 machines.append(machine)
         return machines
 
-    def existsVM(self, vm):
+    def existsVM(self, vm: TangoMachine) -> bool:
         """existsVM - Executes `docker inspect CONTAINER`, which returns
         a non-zero status upon not finding a container.
         """
@@ -204,7 +199,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
         ret = VMMSUtils.timeout(["docker", "inspect", instanceName])
         return ret == 0
 
-    def getImages(self):
+    def getImages(self) -> List[str]:
         """getImages - Executes `docker images` and returns a list of
         images that can be used to boot a docker container with. This
         function is a lot of parsing and so can break easily.
@@ -221,7 +216,7 @@ class LocalDocker(VMMSInterface, VMMSUtils):
             result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
         return list(result)
 
-    def getPartialOutput(self, vm):
+    def getPartialOutput(self, vm: TangoMachine) -> str:
         """getPartialOutput - Get the partial output of a job.
         It does not check if the docker container exists before executing
         as the command will not fail even if the container does not exist.

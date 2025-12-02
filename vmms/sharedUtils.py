@@ -6,6 +6,14 @@ import config
 
 class VMMSUtils:
     @staticmethod
+    def constructInstanceName(id: int, name: str) -> str:
+        """instanceName - Constructs a VM instance name. Always use
+        this function when you need a VM instance name. Never generate
+        instance names manually.
+        """
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+    
+    @staticmethod
     def timeout(command: List[str], time_out: float = 1) -> int:
         """timeout - Run a unix command with a timeout. Return -1 on
         timeout, otherwise return the return value from the command, which
