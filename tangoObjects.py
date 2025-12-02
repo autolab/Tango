@@ -106,7 +106,7 @@ class TangoJob(object):
         stopBefore="",
     ):
         self._assigned = False
-        self._retries = 0
+        self._retries: int = 0
 
         self._vm = vm
         if input is None:
@@ -124,12 +124,13 @@ class TangoJob(object):
         self._accessKeyId = accessKeyId
         self._accessKey = accessKey
         self._disableNetwork = disableNetwork
-        self._stopBefore = "stopBefore"
+        self._stopBefore = stopBefore
 
     def __repr__(self):
         self.syncRemote()
         return f"ID: {self.id} - Name: {self.name}"
     
+    # TODO: reduce code size/duplication by setting TangoJob as a dataclass
     # Getters for private variables
     @property
     def assigned(self):
@@ -256,6 +257,11 @@ class TangoJob(object):
         self._timeout = new_timeout
         self.updateRemote()
 
+    def setKeepForDebugging(self, keep_for_debugging: bool):
+        self.syncRemote()
+        self._vm.keep_for_debugging = keep_for_debugging
+        self.updateRemote()
+
     # Private method
     def __updateSelf(self, other_job):
         self._assigned = other_job._assigned
@@ -365,8 +371,6 @@ class TangoQueue(Protocol):
         ...
     def remove(self, item) -> None:
         ...
-    def _clean(self) -> None:
-        ...
     def make_empty(self) -> None:
         ...
 
@@ -385,14 +389,10 @@ class ExtendedQueue(Queue, TangoQueue):
         with self.mutex:
             self.queue.remove(value)
 
-    def _clean(self):
+    def make_empty(self):
         with self.mutex:
             self.queue.clear()
             
-    def make_empty(self):
-        self._clean()
-            
-
 class TangoRemoteQueue(TangoQueue):
 
     """Simple Queue with Redis Backend"""
@@ -452,14 +452,8 @@ class TangoRemoteQueue(TangoQueue):
         pickled_item = pickle.dumps(item)
         return self.__db.lrem(self.key, 0, pickled_item)
 
-    def _clean(self):
-        self.__db.delete(self.key)
-
     def make_empty(self) -> None:
-        while True:
-            item = self.__db.lpop(self.key)
-            if item is None:
-                break
+        self.__db.delete(self.key)
 
 T = TypeVar('T')
 # Dictionary from string to T
@@ -499,7 +493,7 @@ class TangoDictionary(Protocol[T]):
     def delete(self, id: str) -> None:
         ...
     @abstractmethod
-    def _clean(self) -> None:
+    def make_empty(self) -> None:
         ...
     @abstractmethod
     def items(self) -> list[tuple[str, T]]:
@@ -565,7 +559,7 @@ class TangoRemoteDictionary(TangoDictionary[T]):
     def delete(self, id):
         self.r.hdel(self.hash_name, id)
 
-    def _clean(self):
+    def make_empty(self):
         # only for testing
         self.r.delete(self.hash_name)
 
@@ -626,6 +620,6 @@ class TangoNativeDictionary(TangoDictionary[T]):
             ]
         )
 
-    def _clean(self):
+    def make_empty(self):
         # only for testing
         return

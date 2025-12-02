@@ -159,9 +159,7 @@ class TangoREST(object):
             )
             input.append(handinfile)
 
-        ec2_vmms = False
-        if "ec2Vmms" in jobObj:
-            ec2_vmms = jobObj["ec2Vmms"]
+        ec2_vmms = Config.VMMS_NAME == "ec2SSH"
 
         stopBefore = ""
         if "stopBefore" in jobObj:

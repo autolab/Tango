@@ -363,6 +363,7 @@ class Ec2SSH(VMMSInterface):
         """initializeVM - Tell EC2 to create a new VM instance.
 
         Returns a boto.ec2.instance.Instance object.
+        Reads from vm's id and name, writes to vm's instance_id and domain_name
         """
         newInstance: Optional[Instance] = None
         # Create the instance and obtain the reservation
@@ -548,7 +549,14 @@ class Ec2SSH(VMMSInterface):
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles, job_id=None):
-        """copyIn - Copy input files to VM"""
+        """copyIn - Copy input files to VM
+        Args:
+        - vm is a TangoMachine object
+        - inputFiles is a list of objects with attributes localFile and destFile. 
+            localFile is the file on the host, destFile is the file on the VM.
+        - job_id is the job id of the job being run on the VM. 
+            It is used for logging purposes only.
+        """
         self.log.info(
             "copyIn %s - writing files" % self.instanceName(vm.id, vm.name)
         )

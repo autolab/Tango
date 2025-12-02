@@ -17,6 +17,7 @@ from tangoObjects import TangoMachine
 from vmms.interface import VMMSInterface
 
 
+
 def timeout(command, time_out=1):
     """timeout - Run a unix command with a timeout. Return -1 on
     timeout, otherwise return the return value from the command, which
