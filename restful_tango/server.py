@@ -12,6 +12,8 @@ from tempfile import NamedTemporaryFile
 from tangoREST import TangoREST
 import asyncio
 
+import json
+
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -100,7 +102,6 @@ class InfoHandler(tornado.web.RequestHandler):
         """get - Handles the get request to info."""
         self.write(tangoREST.info(key))
 
-
 class JobsHandler(tornado.web.RequestHandler):
     def get(self, key, deadJobs):
         """get - Handles the get request to jobs."""
@@ -124,6 +125,18 @@ class PreallocHandler(tornado.web.RequestHandler):
         instances = await tangoREST.prealloc(key, image, num, self.request.body)
         self.write(instances)
 
+class CreateAmiHandler(tornado.web.RequestHandler):
+    async def post(self, key):
+        print("create ami handler called")
+        try:
+            payload = json.loads(self.request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            print("failed to decode json %s" % (self.request.body))
+            return self.send_error(400, reason="Invalid JSON")
+        if "username" not in payload or "packages" not in payload:
+            self.send_error()
+        res = tangoREST.createAmiImage(key, payload["username"], payload["packages"])
+        self.write(res)
 
 @tornado.web.stream_request_body
 class BuildHandler(tornado.web.RequestHandler):
@@ -162,6 +175,7 @@ async def main(port: int):
             (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
             (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
+            (r"/createAmi/(%s)/" % (SHA1_KEY), CreateAmiHandler)
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)

@@ -509,3 +509,9 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             os.unlink(tempfile)
             return self.status.wrong_key
+        
+    def createAmiImage(self, key, username, packages):
+        if self.validateKey(key):
+            from vmms.AMIBuilder import start_build_ami
+            self.log.info("Received create AMI request %s" % (packages))
+            return start_build_ami(username, packages)
