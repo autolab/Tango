@@ -12,6 +12,10 @@ import requests
 import argparse
 import sys
 import os
+import time
+from datetime import datetime
+import json
+import uuid
 
 sys.path.append("/usr/lib/python2.7/site-packages/")
 
@@ -69,6 +73,9 @@ parser.add_argument(
 parser.add_argument("--jobid", help="Job ID")
 
 parser.add_argument("--runJob", help="Run a job from a specific directory")
+parser.add_argument(
+    "--runJobPoll", help="Run a job from a specific directory, then poll"
+)
 parser.add_argument("--numJobs", type=int, default=1, help="Number of jobs to run")
 
 parser.add_argument(
@@ -270,6 +277,8 @@ def tango_addJob():
             % (args.server, args.port, args.key, args.courselab, json.dumps(requestObj))
         )
         print(response.text)
+        if args.runJob:
+            return response.text
 
     except Exception as err:
         print(
@@ -349,7 +358,10 @@ def tango_poll():
                 urllib.parse.quote(args.outputFile),
             )
         )
-        print(response.text)
+        if args.runJobPoll:
+            return response.text
+        else:
+            print(response.text)
 
     except Exception as err:
         print(
@@ -407,7 +419,10 @@ def tango_jobs():
             "Sent request to %s:%d/jobs/%s/%d/"
             % (args.server, args.port, args.key, args.deadJobs)
         )
-        print(response.text)
+        if args.runJobPoll:
+            return response.text
+        else:
+            print(response.text)
 
     except Exception as err:
         print(
@@ -539,7 +554,6 @@ def tango_runJob():
     if args.runJob is None:
         print("Invalid usage: [runJob]")
         sys.exit(0)
-
     dir = args.runJob
     infiles = [
         file for file in os.listdir(dir) if os.path.isfile(os.path.join(dir, file))
@@ -549,6 +563,8 @@ def tango_runJob():
 
     args.jobname += "-0"
     args.outputFile += "-0"
+    # assuming we send a single job
+    job_id = 0
     for i in range(1, args.numJobs + 1):
         print(
             "----------------------------------------- STARTING JOB "
@@ -565,10 +581,54 @@ def tango_runJob():
         length = len(str(i - 1))
         args.jobname = args.jobname[:-length] + str(i)
         args.outputFile = args.outputFile[:-length] + str(i)
-        tango_addJob()
+        addJob_response = json.loads(tango_addJob())
+        if addJob_response["statusId"] == 0:
+            job_id = addJob_response["jobId"]
         print(
             "--------------------------------------------------------------------------------------------------\n"
         )
+    return job_id
+
+
+def tango_runJobPoll():
+    end_string = "Job exited"
+    timeout_string = "Job timed out"
+    args.courselab = uuid.uuid4()
+    print(f"CREATE: RANDOM COURSELAB WITH ID: {args.courselab}")
+    args.runJob = args.runJobPoll
+    job_id = tango_runJob()
+    print("JOB ID", job_id)
+    while True:
+        print(
+            f"--------------------------------- POLL at {datetime.now()} ---------------------------------\n"
+        )
+        tango_info()
+        args.deadJobs = 0
+        jobs_response = tango_jobs()
+        jobs_json = json.loads(jobs_response)["jobs"]
+        for live_job in jobs_json:
+            if int(live_job["id"]) == int(job_id):
+                print(f"FOUND JOB {job_id} in live jobs: {live_job}")
+        args.deadJobs = 1
+        jobs_response = tango_jobs()
+        jobs_json = json.loads(jobs_response)["jobs"]
+        for dead_job in jobs_json:
+            if int(dead_job["id"]) == int(job_id):
+                print(f"FOUND JOB {job_id} in dead jobs: {dead_job}")
+        # print(jobs_json["jobs"])
+        print("----------- POLL FOR OUTPUT -----------\n")
+        response_text = tango_poll()
+        print(response_text)
+        print(
+            "--------------------------------------------------------------------------------------------------\n"
+        )
+        if end_string in response_text:
+            print("JOB EXITED SUCCESSFULLY")
+            return
+        elif timeout_string in response_text:
+            print("JOB TIMED OUT")
+            return
+        time.sleep(5)
 
 
 def router():
@@ -594,6 +654,8 @@ def router():
         tango_getPartialOutput()
     elif args.build:
         tango_build()
+    elif args.runJobPoll:
+        tango_runJobPoll()
 
 
 #
@@ -612,6 +674,7 @@ if (
     and not args.runJob
     and not args.getPartialOutput
     and not args.build
+    and not args.runJobPoll
 ):
     parser.print_help()
     sys.exit(0)
