@@ -258,7 +258,7 @@ class LocalDocker(object):
         function is a lot of parsing and so can break easily.
         """
         result = set()
-        cmd = "docker images"
+        cmd = "docker images --format 'table {{.Repository}}'"
         o = subprocess.check_output(cmd, shell=True).decode("utf-8")
         o_l = o.split("\n")
         o_l.pop()
@@ -282,7 +282,7 @@ class LocalDocker(object):
             config.Config.MAX_OUTPUT_FILE_SIZE,
         )
         output = subprocess.check_output(
-            cmd, stderr=subprocess.STDOUT, shell=True
+            cmd, stderr=subprocess.STDOUT, shell=True, timeout=30
         ).decode("utf-8")
 
         return output
