@@ -271,33 +271,28 @@ class DistDocker(object):
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
+        args = ["docker", "run", "--name", instanceName, "-v"]
+        args.append("%s:%s" % (volumePath, "/home/mount"))
+        if vm.cores:
+            args.append(f"--cpus={vm.cores}")
+        if vm.memory:
+            args.append(f"--memory={vm.memory}m")
+        if disableNetwork:
+            args.append("--network=none")
+
+        args.append(vm.image)
+        args.extend(("sh", "-c"))
+
         autodriverCmd = (
-            "autodriver -u %d -f %d -t %d -o %d autolab > output/feedback 2>&1"
-            % (
-                config.Config.VM_ULIMIT_USER_PROC,
-                config.Config.VM_ULIMIT_FILE_SIZE,
-                runTimeout,
-                config.Config.MAX_OUTPUT_FILE_SIZE,
-            )
+            f"autodriver -u {config.Config.VM_ULIMIT_USER_PROC} "
+            f"-f {config.Config.VM_ULIMIT_FILE_SIZE} "
+            f"-t {runTimeout} -o {config.Config.MAX_OUTPUT_FILE_SIZE} "
+            "autolab > output/feedback 2>&1"
         )
 
-        # IMPORTANT: The single and double quotes are important, since we
-        #            are switching to the autolab user and then running
-        #            bash commands.
-        setupCmd = (
-            'cp -r mount/* autolab/; su autolab -c "%s"; \
-                cp output/feedback mount/feedback'
-            % autodriverCmd
-        )
-
-        disableNetworkArg = "--network none" if disableNetwork else ""
-
-        args = "(docker run --name %s -v %s:/home/mount %s %s sh -c '%s')" % (
-            instanceName,
-            volumePath,
-            disableNetworkArg,
-            vm.image,
-            setupCmd,
+        args.append(
+            f"\"cp -r mount/* autolab/; su autolab -c '{autodriverCmd}'; \
+                        cp output/feedback mount/feedback\""
         )
 
         self.log.debug("Running job: %s" % args)
@@ -306,7 +301,8 @@ class DistDocker(object):
             ["ssh"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
-            + ["%s@%s" % (self.hostUser, vm.domain_name), args],
+            + ["%s@%s" % (self.hostUser, vm.domain_name)]
+            + args,
             runTimeout * 2,
         )
 

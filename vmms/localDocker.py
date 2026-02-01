@@ -156,31 +156,28 @@ class LocalDocker(object):
                 os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName
             )
         args = ["docker", "run", "--name", instanceName, "-v"]
-        args = args + ["%s:%s" % (volumePath, "/home/mount")]
+        args.append("%s:%s" % (volumePath, "/home/mount"))
         if vm.cores:
-            args = args + [f"--cpus={vm.cores}"]
+            args.append(f"--cpus={vm.cores}")
         if vm.memory:
-            args = args + ["-m", f"{vm.memory}m"]
+            args.append(f"--memory{vm.memory}m")
         if disableNetwork:
-            args = args + ["--network", "none"]
-        args = args + [vm.image]
-        args = args + ["sh", "-c"]
+            args.append("--network=none")
+        args.append(vm.image)
+        args.extend(("sh", "-c"))
 
         autodriverCmd = (
-            "autodriver -u %d -f %d -t %d -o %d autolab > output/feedback 2>&1"
-            % (
-                config.Config.VM_ULIMIT_USER_PROC,
-                config.Config.VM_ULIMIT_FILE_SIZE,
-                runTimeout,
-                config.Config.MAX_OUTPUT_FILE_SIZE,
-            )
+            f"autodriver -u {config.Config.VM_ULIMIT_USER_PROC} "
+            f"-f {config.Config.VM_ULIMIT_FILE_SIZE} "
+            f"-t {runTimeout} -o {config.Config.MAX_OUTPUT_FILE_SIZE} "
+            "autolab > output/feedback 2>&1"
         )
 
-        args = args + [
+        args.append(
             'cp -r mount/* autolab/; su autolab -c "%s"; \
                         cp output/feedback mount/feedback'
             % autodriverCmd
-        ]
+        )
 
         self.log.debug("Running job: %s" % str(args))
         ret = timeout(args, runTimeout * 2)
