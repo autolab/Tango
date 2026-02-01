@@ -115,9 +115,14 @@ class TangoREST(object):
         """createTangoMachine - Creates a tango machine object from image"""
         cores = getattr(Config, "DOCKER_CORES_LIMIT", None)
         memory = getattr(Config, "DOCKER_MEMORY_LIMIT", None)
+        docker_network = getattr(Config, "DOCKER_NETWORK", None)
+        if docker_network:
+            network = {"docker_attachment": docker_network}
         if vmObj and "cores" in vmObj and "memory" in vmObj:
             cores = vmObj["cores"]
             memory = vmObj["memory"]
+        if vmObj and "network" in vmObj:
+            network = vmObj["network"]
         return TangoMachine(
             name=image,
             vmms=vmms,
@@ -125,7 +130,7 @@ class TangoREST(object):
             cores=cores,
             memory=memory,
             disk=None,
-            network=None,
+            network=network,
         )
 
     def convertJobObj(self, dirName, jobObj):

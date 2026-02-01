@@ -11,6 +11,7 @@ import threading
 import os
 import sys
 import shutil
+from collections.abc import Mapping
 import config
 from tangoObjects import TangoMachine
 
@@ -163,6 +164,12 @@ class LocalDocker(object):
             args = args + ["-m", f"{vm.memory}m"]
         if disableNetwork:
             args = args + ["--network", "none"]
+        elif (
+            vm.network
+            and isinstance(vm.network, Mapping)
+            and "docker_attachment" in vm.network
+        ):
+            args.append("--network", vm.network["docker_attachment"])
         args = args + [vm.image]
         args = args + ["sh", "-c"]
 

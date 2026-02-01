@@ -89,6 +89,8 @@ class Config(object):
     # Docker autograding container resource limits
     DOCKER_CORES_LIMIT = None
     DOCKER_MEMORY_LIMIT = None  # in MB
+    # Docker network to attach to (must already exist)
+    DOCKER_NETWORK = None
 
     # Maximum size for input files in bytes
     MAX_INPUT_FILE_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
