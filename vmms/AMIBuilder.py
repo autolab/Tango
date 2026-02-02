@@ -5,7 +5,7 @@ import uuid
 
 # Basic config
 REGION = "us-east-1"
-BASE_AMI_ID = "ami-01e13770dd8d2097e"
+BASE_AMI_ID = "ami-02c5d1279f155f781"
 INSTANCE_PROFILE = "EC2InstanceProfileForImageBuilder"  # must exist in IAM
 
 # Returns Amazon Resource Name of the image that it started building
@@ -16,9 +16,9 @@ def start_build_ami(username, packages):
   infra_name = f"infra-{unique_id}"
   pipeline_name = f"pipeline-{unique_id}"
 
-  if not validate_packages_docker(packages):
-    print("Invalid!")
-    return
+  # if not validate_packages_docker(packages):
+  #   print("Invalid!")
+  #   return
 
   component_arn = create_component(client, packages, unique_id)  
   recipe_arn = create_image_recipe(client, recipe_name, component_arn)
@@ -82,6 +82,26 @@ def validate_packages_docker(packages, ubuntu_version="22.04"):
     return False
 
 def create_component(client, packages, unique_id):
+  apt_pkgs = []
+  deb_commands = ["mkdir /tmp/debs",
+                  "command -v curl >/dev/null 2>&1 || apt-get install -y curl"]
+  for pkg in packages:
+    if pkg["install_type"] == "apt":
+      if pkg["version"] == "latest" or pkg["version"] == "":
+        apt_pkgs.append(f"{pkg["name"]}")
+      else:
+        apt_pkgs.append(f"{pkg["name"]}={pkg["version"]}")
+    if pkg["install_type"] == "deb":
+      if pkg["deb_url"] == "":
+        print("deb_url doesn't exist.")
+        continue
+      else:
+        deb_commands.append(f"curl -fsSL \"{pkg["deb_url"]}\" -o \"/tmp/debs/{pkg["name"]}.deb\"")
+        deb_commands.append(f"apt-get -y install \"/tmp/debs/{pkg["name"]}.deb\"")
+        deb_commands.append(f"rm \"/tmp/debs{pkg["name"]}\"")
+  
+  yaml_commands = "\n".join([f"            - {c}" for c in deb_commands])
+
   component_name = f"install-apt-{unique_id}"
   component_data = f"""name: InstallAptPackages
 description: Install apt packages
@@ -94,7 +114,8 @@ phases:
         inputs:
           commands:
             - apt-get update -y
-            - apt-get install -y {' '.join(packages)}
+            - apt-get install -y {' '.join(apt_pkgs)}
+{yaml_commands}
 """
   print(component_data)
 
