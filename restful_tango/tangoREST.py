@@ -513,5 +513,13 @@ class TangoREST(object):
     def createAmiImage(self, key, username, packages):
         if self.validateKey(key):
             from vmms.AMIBuilder import start_build_ami
-            self.log.info("Received create AMI request %s" % (packages))
+            self.log.info("Received create AMI request")
             return start_build_ami(username, packages)
+
+    def refreshAmiStatus(self, key, amis):
+        if self.validateKey(key):
+            from vmms.AMIBuilder import refresh_status
+            self.log.info("Received refresh status request %s" % (amis))
+            return refresh_status(amis)
+        else:
+            self.log.error("Validation failed %s" % (key))

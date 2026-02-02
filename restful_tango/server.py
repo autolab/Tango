@@ -138,6 +138,22 @@ class CreateAmiHandler(tornado.web.RequestHandler):
         res = tangoREST.createAmiImage(key, payload["username"], payload["packages"])
         self.write(res)
 
+class RefreshAmiStatusHandler(tornado.web.RequestHandler):
+    async def post(self, key):
+        print("refresh status handler called hmmmmmm")
+        try:
+            payload = json.loads(self.request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            print("failed to decode json %s" % (self.request.body))
+            return self.send_error(400, reason="Invalid JSON")
+        if "amis" not in payload:
+            print("amis dont exist")
+            self.send_error()
+        res = tangoREST.refreshAmiStatus(key, payload["amis"])
+        print(payload["amis"])
+        print(res)
+        self.write(res)
+
 @tornado.web.stream_request_body
 class BuildHandler(tornado.web.RequestHandler):
     def prepare(self):
@@ -175,7 +191,8 @@ async def main(port: int):
             (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
             (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
-            (r"/createAmi/(%s)/" % (SHA1_KEY), CreateAmiHandler)
+            (r"/createAmi/(%s)/" % (SHA1_KEY), CreateAmiHandler),
+            (r"/refreshAmiStatus/(%s)/" % (SHA1_KEY), RefreshAmiStatusHandler)
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)

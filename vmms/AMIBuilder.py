@@ -1,5 +1,5 @@
 import boto3
-import time
+from datetime import datetime 
 import docker
 import uuid
 
@@ -41,6 +41,43 @@ def clean_build_ami(pipeline_arn, recipe_arn, component_arn):
   client.delete_image_pipeline(pipeline_arn)
   client.delete_image_recipe(recipe_arn)
   client.delete_component(component_arn)
+
+def refresh_status(amis):
+  client = boto3.client("imagebuilder", region_name=REGION)
+  print("refreshing status")
+  ami_result = []
+  for ami in amis:
+    resp = client.get_image(imageBuildVersionArn=ami["execution_arn"])
+    state = resp["image"]["state"]["status"]
+    ami_result.append({
+      "id": ami["id"],
+      "status": normalize_state(state),
+      "ami_state": state,
+      "checked_at": datetime.utcnow().ctime(),
+      "ami_id": get_ami_id(state, resp)
+    })
+  print({
+    "amis": ami_result
+  })
+  return {
+    "amis": ami_result
+  }
+
+def normalize_state(ami_state):
+  if ami_state == "PENDING":
+    return 1
+  elif ami_state in ("CREATING", "BUILDING", "TESTING", "DISTRIBUTING"):
+    return 2
+  elif ami_state == "AVAILABLE":
+    return 3
+  else:
+    return 0
+  
+def get_ami_id(state, resp):
+  if state == "AVAILABLE":
+    return resp["image"]["outputResources"]["amis"][0]["image"]
+  else:
+    return ""
 
 ### Helper Functions
 
@@ -98,7 +135,7 @@ def create_component(client, packages, unique_id):
       else:
         deb_commands.append(f"curl -fsSL \"{pkg["deb_url"]}\" -o \"/tmp/debs/{pkg["name"]}.deb\"")
         deb_commands.append(f"apt-get -y install \"/tmp/debs/{pkg["name"]}.deb\"")
-        deb_commands.append(f"rm \"/tmp/debs{pkg["name"]}\"")
+        deb_commands.append(f"rm \"/tmp/debs/{pkg["name"]}.deb\"")
   
   yaml_commands = "\n".join([f"            - {c}" for c in deb_commands])
 
@@ -170,3 +207,4 @@ def create_pipeline(client, pipeline_name, recipe_arn, infra_arn):
 
 if __name__ == "__main__":
   start_build_ami("soma", ["minicom", "invalid"])
+
