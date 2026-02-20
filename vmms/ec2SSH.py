@@ -202,19 +202,20 @@ class Ec2SSH(object):
 
         for image in images:
             if image.tags:
-                for tag in image.tags:
-                    if tag["Key"] == "Name" and tag["Value"]:
-                        if tag["Value"] in self.img2ami:
-                            self.log.info(
-                                "Ignore %s for duplicate name tag %s"
-                                % (image.id, tag["Value"])
-                            )
-                        else:
-                            self.img2ami[tag["Value"]] = image
-                            self.log.info(
-                                "Found image: %s with name tag %s"
-                                % (image.id, tag["Value"])
-                            )
+                self.img2ami[image.id] = image
+                # for tag in image.tags:
+                #     if tag["Key"] == "Name" and tag["Value"]:
+                #         if tag["Value"] in self.img2ami:
+                #             self.log.info(
+                #                 "Ignore %s for duplicate name tag %s"
+                #                 % (image.id, tag["Value"])
+                #             )
+                #         else:
+                #             self.img2ami[tag["Value"]] = image
+                #             self.log.info(
+                #                 "Found image: %s with name tag %s"
+                #                 % (image.id, tag["Value"])
+                #             )
 
         imageAMIs = [item.id for item in images]
         taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
@@ -266,7 +267,8 @@ class Ec2SSH(object):
             ec2instance["instance_type"] = config.Config.DEFAULT_INST_TYPE
 
         # for now, ami is config default
-        ec2instance["ami"] = self.img2ami[vm.image].id
+        # ec2instance["ami"] = self.img2ami[vm.image].id
+        ec2instance["ami"] = vm.image
 
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
         return ec2instance
@@ -348,6 +350,8 @@ class Ec2SSH(object):
                 raise
                 self.key_pair_name = self.keyPairName(vm.id, vm.name)
                 self.createKeyPair()
+
+            self.log.debug("starting ami image %s" % ec2instance["ami"])
 
             reservation = self.boto3resource.create_instances(
                 ImageId=ec2instance["ami"],
@@ -783,7 +787,18 @@ class Ec2SSH(object):
 
     def getImages(self):
         """getImages - return a constant; actually use the ami specified in config"""
-        return [key for key in self.img2ami]
+        # return [key for key in self.img2ami]
+        try:
+            # Get images from ec2
+            images = self.boto3resource.images.filter(Owners=["self"])
+        except Exception as e:
+            self.log.error("EC2SSH failed getting images: %s" % (e))
+            raise
+
+        for image in images:
+            if image.tags:
+                self.img2ami[image.id] = image
+        return [value.id for value in self.img2ami.values()]
 
     # getTag: to do later
     def getTag(self, tagList, tagKey):

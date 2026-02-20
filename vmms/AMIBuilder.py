@@ -5,7 +5,7 @@ import uuid
 
 # Basic config
 REGION = "us-east-1"
-BASE_AMI_ID = "ami-02c5d1279f155f781"
+BASE_AMI_ID = "ami-02abefba40ddd266a"
 INSTANCE_PROFILE = "EC2InstanceProfileForImageBuilder"  # must exist in IAM
 
 # Returns Amazon Resource Name of the image that it started building
@@ -153,6 +153,7 @@ phases:
             - apt-get update -y
             - apt-get install -y {' '.join(apt_pkgs)}
 {yaml_commands}
+            - touch skip_cleanup_ssh_files
 """
   print(component_data)
 
