@@ -38,7 +38,7 @@ class DetachMethod(Enum):
     DESTROY_AND_REPLACE = "replace"
 
 
-# We always preallocate a VM for the worker to use
+# We always preallocate a VM for the worker to use, hence it isn't Optional
 class Worker(threading.Thread):
     def __init__(
         self,
@@ -428,13 +428,5 @@ class Worker(threading.Thread):
         except Exception as err:
             self.log.exception("Internal Error")
             self.appendMsg(self.job.outputFile, "Internal Error: %s" % err)
-            # if vm is set, then the normal job assignment completed,
-            # and detachVM can be run
-            # if vm is not set but self.preVM is set, we still need
-            # to return the VM, but have to initialize self.job.vm first
-            # TODO: move self.job.makeVM to the start of the try block, so it should be an error if vm fails to be set
-            if self.preVM and not vm:
-                self.job.makeVM(self.preVM)
-                vm = self.preVM
-            if vm:
-                self.detachVM(DetachMethod.DESTROY_AND_REPLACE)
+            # error must have occurred after the job had its VM set
+            self.detachVM(DetachMethod.DESTROY_AND_REPLACE)

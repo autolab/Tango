@@ -745,7 +745,6 @@ class Ec2SSH(VMMSInterface, VMMSUtils):
         """getImages - return a constant; actually use the ami specified in config"""
         return [key for key in self.img2ami]
 
-    # TODO: later
     def getTag(self, tagList: List[TagTypeDef], tagKey: str) -> Optional[str]:
         if tagList:
             for tag in tagList:
