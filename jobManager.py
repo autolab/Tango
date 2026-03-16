@@ -23,7 +23,7 @@ from jobQueue import JobQueue
 from tangoObjects import TangoJob, TangoQueue, TangoMachine
 from typing import List, Tuple
 from worker import Worker
-
+from vmms.interface import VMMSInterface
 
 
 class JobManager(object):
@@ -66,13 +66,16 @@ class JobManager(object):
             # Blocks until we get a next job
             job: TangoJob = self.jobQueue.getNextPendingJob()
             if not job.accessKey and Config.REUSE_VMS:
-                self.log.info(f"job has access key {job.accessKey} and is calling reuseVM")
+                self.log.info(
+                    f"job has access key {job.accessKey} and is calling reuseVM"
+                )
                 vm = None
                 while vm is None:
                     vm = self.jobQueue.reuseVM(job)
                     # Sleep for a bit and then check again
                     time.sleep(Config.DISPATCH_PERIOD)
 
+            vmms: VMMSInterface
             try:
                 # if the job is a ec2 vmms job
                 # spin up an ec2 instance for that job
@@ -90,9 +93,7 @@ class JobManager(object):
                         self.log.error("ERROR initialization VM: %s", e)
                         self.log.error(traceback.format_exc())
                     if preVM is None:
-                        raise Exception(
-                            "EC2 SSH VM initialization failed: see log"
-                        )
+                        raise Exception("EC2 SSH VM initialization failed: see log")
                 else:
                     self.log.info(f"job {job.id} is not an ec2 vmms job")
                     # Try to find a vm on the free list and allocate it to
@@ -120,15 +121,15 @@ class JobManager(object):
                 )
                 # Mark the job assigned
                 self.jobQueue.assignJob(job.id, preVM)
-                Worker(
-                    job, vmms, self.jobQueue, self.preallocator, preVM
-                ).start()
+                Worker(job, vmms, self.jobQueue, self.preallocator, preVM).start()
 
             except Exception as err:
                 if job is None:
                     self.log.info("job_manager: job is None")
                 else:
-                    self.log.error("job failed during creation %d %s" % (job.id, str(err)))
+                    self.log.error(
+                        "job failed during creation %d %s" % (job.id, str(err))
+                    )
                     self.jobQueue.makeDead(job, str(err))
 
 
@@ -144,7 +145,10 @@ if __name__ == "__main__":
         tango_server.log.debug("Resetting Tango VMs")
         tango_server.resetTango(tango_server.preallocator.vmms)
         for key in tango_server.preallocator.machines.keys():
-            machine: Tuple[List[TangoMachine], TangoQueue] = ([], TangoQueue.create(key))
+            machine: Tuple[List[TangoMachine], TangoQueue] = (
+                [],
+                TangoQueue.create(key),
+            )
             machine[1].make_empty()
             tango_server.preallocator.machines.set(key, machine)
 

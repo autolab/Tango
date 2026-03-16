@@ -14,7 +14,17 @@ finished_tests = dict()
 start_time = time.time()
 expected_output = ""
 
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+
+def printProgressBar(
+    iteration,
+    total,
+    prefix="",
+    suffix="",
+    decimals=1,
+    length=100,
+    fill="█",
+    printEnd="\r",
+):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -29,38 +39,64 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    bar = fill * filledLength + "-" * (length - filledLength)
+    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd)
     # Print New Line on Complete
-    if iteration == total: 
+    if iteration == total:
         print()
 
-def run_stress_test(num_submissions, submission_delay, autograder_image, output_file, tango_port, cli_path, 
-                    job_name, job_path, instance_type, timeout, ec2):
-    printProgressBar(0, num_submissions, prefix = 'Jobs Added:', suffix = 'Complete', length = 50)
-    with open(output_file, 'a') as f:
+
+def run_stress_test(
+    num_submissions,
+    submission_delay,
+    autograder_image,
+    output_file,
+    tango_port,
+    cli_path,
+    job_name,
+    job_path,
+    instance_type,
+    timeout,
+    ec2,
+):
+    printProgressBar(
+        0, num_submissions, prefix="Jobs Added:", suffix="Complete", length=50
+    )
+    with open(output_file, "a") as f:
         f.write(f"Stress testing with {num_submissions} submissions\n")
-        
+
         for i in range(1, num_submissions + 1):
             command = [
-                'python3', cli_path,
-                '-P', str(tango_port),
-                '-k', 'test',
-                '-l', job_name,
-                '--runJob', job_path,
-                '--image', autograder_image,
-                '--instanceType', instance_type,
-                '--timeout', str(timeout),
-                '--callbackURL', ("http://localhost:8888/autograde_done?id=%d" % (i))
+                "python3",
+                cli_path,
+                "-P",
+                str(tango_port),
+                "-k",
+                "test",
+                "-l",
+                job_name,
+                "--runJob",
+                job_path,
+                "--image",
+                autograder_image,
+                "--instanceType",
+                instance_type,
+                "--timeout",
+                str(timeout),
+                "--callbackURL",
+                ("http://localhost:8888/autograde_done?id=%d" % (i)),
             ]
             if ec2:
-                command += ['--ec2']
+                command += ["--ec2"]
             subprocess.run(command, stdout=f, stderr=f)
             f.write(f"Submission {i} completed\n")
-            printProgressBar(i, num_submissions, prefix = 'Jobs Added:', suffix = 'Complete', length = 50)
+            printProgressBar(
+                i, num_submissions, prefix="Jobs Added:", suffix="Complete", length=50
+            )
             if submission_delay > 0:
                 time.sleep(submission_delay)
         print()
+
 
 class AutogradeDoneHandler(tornado.web.RequestHandler):
     def post(self):
@@ -71,10 +107,16 @@ class AutogradeDoneHandler(tornado.web.RequestHandler):
         id = self.get_query_argument("id")
         fileBody = self.request.files["file"][0]["body"].decode()
         scoreJson = fileBody.split("\n")[-2]
-        with open(os.path.join(test_dir, "output", "output%s.txt" % id), 'w') as f:
+        with open(os.path.join(test_dir, "output", "output%s.txt" % id), "w") as f:
             f.write(fileBody)
         finished_tests[str(id)] = scoreJson
-        printProgressBar(len(finished_tests), sub_num, prefix = 'Tests Done:', suffix = 'Complete', length = 50)
+        printProgressBar(
+            len(finished_tests),
+            sub_num,
+            prefix="Tests Done:",
+            suffix="Complete",
+            length=50,
+        )
         self.write("ok")
         self.flush()
 
@@ -87,6 +129,7 @@ class AutogradeDoneHandler(tornado.web.RequestHandler):
             print("\nShutting down server...")
             tornado.ioloop.IOLoop.current().stop()
 
+
 def create_summary():
     success = []
     failed = []
@@ -95,7 +138,7 @@ def create_summary():
             success.append(i)
         else:
             failed.append(i)
-    with open(os.path.join(test_dir, "summary.txt"), 'w') as f:
+    with open(os.path.join(test_dir, "summary.txt"), "w") as f:
         f.write("Total Time: %d seconds\n" % (time.time() - start_time))
         f.write("Total Succeeded: %d / %d\n" % (len(success), sub_num))
         f.write("Total Failed: %d / %d\n" % (len(failed), sub_num))
@@ -107,21 +150,28 @@ def create_summary():
         for i in range(0, len(failed)):
             f.write("Test Case #%d: %s\n" % (failed[i], finished_tests[str(failed[i])]))
 
+
 def make_app():
-    return tornado.web.Application([
-        (r"/autograde_done", AutogradeDoneHandler),
-    ])
+    return tornado.web.Application(
+        [
+            (r"/autograde_done", AutogradeDoneHandler),
+        ]
+    )
+
 
 def notifyServer():
     global shutdown_event
     app = make_app()
     app.listen(8888)
-    printProgressBar(0, sub_num, prefix = 'Tests Done:', suffix = 'Complete', length = 50)
+    printProgressBar(0, sub_num, prefix="Tests Done:", suffix="Complete", length=50)
     tornado.ioloop.IOLoop.current().start()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stress test script for Tango")
-    parser.add_argument('--test_dir', type=str, required=True, help="Directory to run the test in")
+    parser.add_argument(
+        "--test_dir", type=str, required=True, help="Directory to run the test in"
+    )
 
     args = parser.parse_args()
 
@@ -129,10 +179,10 @@ if __name__ == "__main__":
 
     test_dir = args.test_dir
 
-    with open(os.path.join(args.test_dir, dirname + '.yaml'), 'r') as f:
+    with open(os.path.join(args.test_dir, dirname + ".yaml"), "r") as f:
         data = yaml.load(f, Loader=yaml.SafeLoader)
-    
-    with open(os.path.join(args.test_dir, data["expected_output"]), 'r') as f:
+
+    with open(os.path.join(args.test_dir, data["expected_output"]), "r") as f:
         expected_output = f.read()
 
     sub_num = data["num_submissions"]
@@ -152,10 +202,10 @@ if __name__ == "__main__":
         data["tango_port"],
         data["cli_path"],
         dirname,
-        os.path.join(args.test_dir, 'input'),
+        os.path.join(args.test_dir, "input"),
         data["instance_type"],
         data["timeout"],
-        data["ec2"]
+        data["ec2"],
     )
 
     notifyServer()

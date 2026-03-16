@@ -195,7 +195,7 @@ class TangoREST(object):
             accessKey=accessKey,
             accessKeyId=accessKeyId,
             disableNetwork=disableNetwork,
-            stopBefore=stopBefore
+            stopBefore=stopBefore,
         )
 
         self.log.debug("inputFiles: %s" % [file.localFile for file in input])
@@ -306,7 +306,9 @@ class TangoREST(object):
                     os.unlink(tempfile)
                     return self.status.wrong_courselab
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
+                exc_type, _, exc_tb = sys.exc_info()
+                assert exc_type is not None
+                assert exc_tb is not None  # currently handling an exception
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("upload request failed: %s" % str(e))
@@ -335,7 +337,9 @@ class TangoREST(object):
                 result["jobId"] = jobId
                 return result
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
+                exc_type, _, exc_tb = sys.exc_info()
+                assert exc_type is not None
+                assert exc_tb is not None  # currently handling an exception
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 self.log.error("addJob request failed: %s" % str(e))

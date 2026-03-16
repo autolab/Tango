@@ -21,61 +21,11 @@ import tempfile
 import socket
 import config
 from tangoObjects import TangoMachine
+from vmms.interface import VMMSInterface
+from vmms.sharedUtils import VMMSUtils
 
 
-def timeout(command, time_out=1):
-    """timeout - Run a unix command with a timeout. Return -1 on
-    timeout, otherwise return the return value from the command, which
-    is typically 0 for success, 1-255 for failure.
-    """
-
-    # Launch the command
-    p = subprocess.Popen(
-        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-    )
-
-    # Wait for the command to complete
-    t = 0.0
-    while t < time_out and p.poll() is None:
-        time.sleep(config.Config.TIMER_POLL_INTERVAL)
-        t += config.Config.TIMER_POLL_INTERVAL
-
-    # Determine why the while loop terminated
-    if p.poll() is None:
-        try:
-            os.kill(p.pid, 9)
-        except OSError:
-            pass
-        returncode = -1
-    else:
-        returncode = p.poll()
-    return returncode
-
-
-def timeoutWithReturnStatus(command, time_out, returnValue=0):
-    """timeoutWithReturnStatus - Run a Unix command with a timeout,
-    until the expected value is returned by the command; On timeout,
-    return last error code obtained from the command.
-    """
-    p = subprocess.Popen(
-        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-    )
-    t = 0.0
-    while t < time_out:
-        ret = p.poll()
-        if ret is None:
-            time.sleep(config.Config.TIMER_POLL_INTERVAL)
-            t += config.Config.TIMER_POLL_INTERVAL
-        elif ret == returnValue:
-            return ret
-        else:
-            p = subprocess.Popen(
-                command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-            )
-    return ret
-
-
-class DistDocker(object):
+class DistDocker(VMMSInterface, VMMSUtils):
 
     _SSH_FLAGS = ["-q", "-o", "BatchMode=yes"]
     _SSH_AUTH_FLAGS = [
@@ -171,7 +121,7 @@ class DistDocker(object):
             # If the call to ssh returns timeout (-1) or ssh error
             # (255), then success. Otherwise, keep trying until we run
             # out of time.
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -187,7 +137,7 @@ class DistDocker(object):
             # Sleep a bit before trying again
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
-    def copyIn(self, vm, inputFiles):
+    def copyIn(self, vm, inputFiles, job_id=None):
         """copyIn - Create a directory to be mounted as a volume
         for the docker containers on the host machine for this VM.
         Copy input files to this directory on the host machine.
@@ -196,7 +146,7 @@ class DistDocker(object):
         volumePath = self.getVolumePath(instanceName)
 
         if vm.use_ssh_master:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -208,7 +158,7 @@ class DistDocker(object):
                 return ret
 
         # Create a fresh volume
-        ret = timeout(
+        ret = VMMSUtils.timeout(
             ["ssh"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
@@ -224,7 +174,7 @@ class DistDocker(object):
             return ret
 
         for file in inputFiles:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["scp"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -260,7 +210,7 @@ class DistDocker(object):
         volumePath = self.getVolumePath(instanceName)
 
         if vm.use_ssh_master:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -302,7 +252,7 @@ class DistDocker(object):
 
         self.log.debug("Running job: %s" % args)
 
-        ret = timeout(
+        ret = VMMSUtils.timeout(
             ["ssh"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
@@ -323,7 +273,7 @@ class DistDocker(object):
         volumePath = self.getVolumePath(instanceName)
 
         if vm.use_ssh_master:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -334,7 +284,7 @@ class DistDocker(object):
                 self.log.debug("Lost persistent SSH connection")
                 return ret
 
-        ret = timeout(
+        ret = VMMSUtils.timeout(
             ["scp"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
@@ -355,7 +305,7 @@ class DistDocker(object):
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
         if vm.use_ssh_master:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -371,7 +321,7 @@ class DistDocker(object):
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
         args = "(docker rm -f %s)" % (instanceName)
-        timeout(
+        VMMSUtils.timeout(
             ["ssh"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
@@ -379,7 +329,7 @@ class DistDocker(object):
             config.Config.DOCKER_RM_TIMEOUT,
         )
         # Destroy corresponding volume if it exists.
-        timeout(
+        VMMSUtils.timeout(
             ["ssh"]
             + DistDocker._SSH_FLAGS
             + vm.ssh_flags
@@ -388,7 +338,7 @@ class DistDocker(object):
         )
         self.log.debug("Deleted volume %s" % instanceName)
         if vm.use_ssh_master:
-            timeout(
+            VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags
@@ -489,7 +439,7 @@ class DistDocker(object):
         instanceName = self.instanceName(vm.id, vm.image)
 
         if vm.use_ssh_master:
-            ret = timeout(
+            ret = VMMSUtils.timeout(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + vm.ssh_flags

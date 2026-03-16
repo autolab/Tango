@@ -12,62 +12,10 @@ import os
 import sys
 import shutil
 import config
-from tangoObjects import TangoMachine
-
+from tangoObjects import TangoMachine, InputFile
+from typing import List, Literal, Optional
 from vmms.interface import VMMSInterface
-
-
-
-def timeout(command, time_out=1):
-    """timeout - Run a unix command with a timeout. Return -1 on
-    timeout, otherwise return the return value from the command, which
-    is typically 0 for success, 1-255 for failure.
-    """
-
-    # Launch the command
-    p = subprocess.Popen(
-        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-    )
-
-    # Wait for the command to complete
-    t = 0.0
-    while t < time_out and p.poll() is None:
-        time.sleep(config.Config.TIMER_POLL_INTERVAL)
-        t += config.Config.TIMER_POLL_INTERVAL
-
-    # Determine why the while loop terminated
-    if p.poll() is None:
-        try:
-            os.kill(p.pid, 9)
-        except OSError:
-            pass
-        returncode = -1
-    else:
-        returncode = p.poll()
-    return returncode
-
-
-def timeoutWithReturnStatus(command, time_out, returnValue=0):
-    """timeoutWithReturnStatus - Run a Unix command with a timeout,
-    until the expected value is returned by the command; On timeout,
-    return last error code obtained from the command.
-    """
-    p = subprocess.Popen(
-        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-    )
-    t = 0.0
-    while t < time_out:
-        ret = p.poll()
-        if ret is None:
-            time.sleep(config.Config.TIMER_POLL_INTERVAL)
-            t += config.Config.TIMER_POLL_INTERVAL
-        elif ret == returnValue:
-            return ret
-        else:
-            p = subprocess.Popen(
-                command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-            )
-    return ret
+from vmms.sharedUtils import VMMSUtils
 
 
 #
@@ -75,7 +23,7 @@ def timeoutWithReturnStatus(command, time_out, returnValue=0):
 #
 
 
-class LocalDocker(VMMSInterface):
+class LocalDocker(VMMSInterface, VMMSUtils):
     def __init__(self):
         """Checks if the machine is ready to run docker containers.
         Initialize boot2docker if running on OS X.
@@ -91,25 +39,21 @@ class LocalDocker(VMMSInterface):
             self.log.error(str(e))
             exit(1)
 
-    def instanceName(self, id, name):
-        """instanceName - Constructs a VM instance name. Always use
-        this function when you need a VM instance name. Never generate
-        instance names manually.
-        """
-        return "%s-%s-%s" % (config.Config.PREFIX, id, name)
+    def instanceName(self, id: int, name: str) -> str:
+        return VMMSUtils.constructInstanceName(id, name)
 
-    def getVolumePath(self, instanceName):
+    def getVolumePath(self, instanceName: str) -> str:
         volumePath = config.Config.DOCKER_VOLUME_PATH
         # Last empty string to cause trailing '/'
         volumePath = os.path.join(volumePath, instanceName, "")
         return volumePath
 
-    def getDockerVolumePath(self, dockerPath, instanceName):
+    def getDockerVolumePath(self, dockerPath: str, instanceName: str) -> str:
         # Last empty string to cause trailing '/'
         volumePath = os.path.join(dockerPath, instanceName, "")
         return volumePath
 
-    def domainName(self, vm):
+    def domainName(self, vm: TangoMachine) -> str:
         """Returns the domain name that is stored in the vm
         instance.
         """
@@ -118,15 +62,20 @@ class LocalDocker(VMMSInterface):
     #
     # VMMS API functions
     #
-    def initializeVM(self, vm):
+    def initializeVM(self, vm: TangoMachine) -> Literal[0, -1]:
         """initializeVM -  Nothing to do for initializeVM"""
         return 0
 
-    def waitVM(self, vm, max_secs):
+    def waitVM(self, vm: TangoMachine, max_secs: int) -> Literal[0, -1]:
         """waitVM - Nothing to do for waitVM"""
-        return
+        return 0
 
-    def copyIn(self, vm, inputFiles, job_id=None):
+    def copyIn(
+        self,
+        vm: TangoMachine,
+        inputFiles: List[InputFile],
+        job_id: Optional[int] = None,
+    ) -> int:
         """copyIn - Create a directory to be mounted as a volume
         for the docker containers. Copy input files to this directory.
         """
@@ -145,7 +94,13 @@ class LocalDocker(VMMSInterface):
             )
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
+    def runJob(
+        self,
+        vm: TangoMachine,
+        runTimeout: int,
+        maxOutputFileSize: int,
+        disableNetwork: bool,
+    ) -> int:
         """runJob - Run a docker container by doing the follows:
         - mount directory corresponding to this job to /home/autolab
           in the container
@@ -154,10 +109,9 @@ class LocalDocker(VMMSInterface):
         """
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath(instanceName)
-        if os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"):
-            volumePath = self.getDockerVolumePath(
-                os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH"), instanceName
-            )
+        host_volume_path = os.getenv("DOCKER_TANGO_HOST_VOLUME_PATH")
+        if host_volume_path:
+            volumePath = self.getDockerVolumePath(host_volume_path, instanceName)
         args = ["docker", "run", "--name", instanceName, "-v"]
         args = args + ["%s:%s" % (volumePath, "/home/mount")]
         if vm.cores:
@@ -186,12 +140,12 @@ class LocalDocker(VMMSInterface):
         ]
 
         self.log.debug("Running job: %s" % str(args))
-        ret = timeout(args, runTimeout * 2)
+        ret = VMMSUtils.timeout(args, runTimeout * 2)
         self.log.debug("runJob returning %d" % ret)
 
         return ret
 
-    def copyOut(self, vm, destFile):
+    def copyOut(self, vm: TangoMachine, destFile: str) -> int:
         """copyOut - Copy the autograder feedback from container to
         destFile on the Tango host. Then, destroy that container.
         Containers are never reused.
@@ -204,20 +158,22 @@ class LocalDocker(VMMSInterface):
 
         return 0
 
-    def destroyVM(self, vm):
+    def destroyVM(self, vm: TangoMachine) -> None:
         """destroyVM - Delete the docker container."""
         instanceName = self.instanceName(vm.id, vm.image)
         volumePath = self.getVolumePath("")
         # Do a hard kill on corresponding docker container.
         # Return status does not matter.
-        timeout(["docker", "rm", "-f", instanceName], config.Config.DOCKER_RM_TIMEOUT)
+        VMMSUtils.timeout(
+            ["docker", "rm", "-f", instanceName], config.Config.DOCKER_RM_TIMEOUT
+        )
         # Destroy corresponding volume if it exists.
         if instanceName in os.listdir(volumePath):
             shutil.rmtree(volumePath + instanceName)
             self.log.debug("Deleted volume %s" % instanceName)
         return
 
-    def safeDestroyVM(self, vm):
+    def safeDestroyVM(self, vm: TangoMachine) -> None:
         """safeDestroyVM - Delete the docker container and make
         sure it is removed.
         """
@@ -229,7 +185,7 @@ class LocalDocker(VMMSInterface):
             self.destroyVM(vm)
         return
 
-    def getVMs(self):
+    def getVMs(self) -> List[TangoMachine]:
         """getVMs - Executes and parses `docker ps`. This function
         is a lot of parsing and can break easily.
         """
@@ -247,15 +203,15 @@ class LocalDocker(VMMSInterface):
                 machines.append(machine)
         return machines
 
-    def existsVM(self, vm):
+    def existsVM(self, vm: TangoMachine) -> bool:
         """existsVM - Executes `docker inspect CONTAINER`, which returns
         a non-zero status upon not finding a container.
         """
         instanceName = self.instanceName(vm.id, vm.name)
-        ret = timeout(["docker", "inspect", instanceName])
+        ret = VMMSUtils.timeout(["docker", "inspect", instanceName])
         return ret == 0
 
-    def getImages(self):
+    def getImages(self) -> List[str]:
         """getImages - Executes `docker images` and returns a list of
         images that can be used to boot a docker container with. This
         function is a lot of parsing and so can break easily.
@@ -272,7 +228,7 @@ class LocalDocker(VMMSInterface):
             result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
         return list(result)
 
-    def getPartialOutput(self, vm):
+    def getPartialOutput(self, vm: TangoMachine) -> str:
         """getPartialOutput - Get the partial output of a job.
         It does not check if the docker container exists before executing
         as the command will not fail even if the container does not exist.

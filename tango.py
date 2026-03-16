@@ -48,16 +48,17 @@ from preallocator import Preallocator
 from jobQueue import JobQueue
 from tangoObjects import TangoJob
 from config import Config
+from vmms.interface import VMMSInterface
 
 
 class TangoServer(object):
 
     """TangoServer - Implements the API functions that the server accepts"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.daemon = True
 
-        vmms = None
+        vmms: VMMSInterface
         if Config.VMMS_NAME == "tashiSSH":
             from vmms.tashiSSH import TashiSSH
 
@@ -353,15 +354,6 @@ class TangoServer(object):
                     % (datetime.utcnow().ctime(), job.outputFile)
                 )
                 errors += 1
-
-        # Check for max output file size parameter
-        if not job.maxOutputFileSize:
-            self.log.debug(
-                "validateJob: Setting job.maxOutputFileSize "
-                "to default value: %d bytes",
-                Config.MAX_OUTPUT_FILE_SIZE,
-            )
-            job.maxOutputFileSize = Config.MAX_OUTPUT_FILE_SIZE
 
         # Check the list of input files
         hasMakefile = False

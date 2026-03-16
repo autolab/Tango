@@ -54,40 +54,6 @@ def timeout(command, time_out=1):
     return returncode
 
 
-def timeoutWithReturnStatus(command, time_out, returnValue=0):
-    """timeoutWithReturnStatus - Run a Unix command with a timeout,
-    until the expected value is returned by the command; On timeout,
-    return last error code obtained from the command.
-    """
-    if (config.Config.LOGLEVEL is logging.DEBUG) and (
-        "ssh" in command or "scp" in command
-    ):
-        out = sys.stdout
-        err = sys.stderr
-    else:
-        out = open("/dev/null", "w")
-        err = sys.stdout
-
-    # Launch the command
-    p = subprocess.Popen(
-        command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-    )
-
-    t = 0.0
-    while t < time_out:
-        ret = p.poll()
-        if ret is None:
-            time.sleep(config.Config.TIMER_POLL_INTERVAL)
-            t += config.Config.TIMER_POLL_INTERVAL
-        elif ret == returnValue:
-            return ret
-        else:
-            p = subprocess.Popen(
-                command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT
-            )
-    return ret
-
-
 #
 # User defined exceptions
 #
@@ -98,7 +64,7 @@ class tashiCallError(Exception):
     pass
 
 
-class TashiSSH(object):
+class TashiSSH(VMMSInterface):
     _SSH_FLAGS = [
         "-q",
         "-i",
@@ -254,7 +220,7 @@ class TashiSSH(object):
             # Sleep a bit before trying again
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
-    def copyIn(self, vm, inputFiles):
+    def copyIn(self, vm, inputFiles, job_id=None):
         """copyIn - Copy input files to VM"""
         domain_name = self.domainName(vm.id, vm.name)
         self.log.debug("Creating autolab directory on VM")
@@ -292,7 +258,7 @@ class TashiSSH(object):
                 return ret
         return 0
 
-    def runJob(self, vm, runTimeout, maxOutputFileSize):
+    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
         """runJob - Run the make command on a VM using SSH and
         redirect output to file "output".
         """
