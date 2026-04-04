@@ -19,6 +19,7 @@ bin
 lib
 include
 pip-selfcheck.json
+env/
 
 # Mac OS X custom attribute files
 .DS_Store

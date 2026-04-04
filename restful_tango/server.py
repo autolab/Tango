@@ -2,6 +2,7 @@ import os
 import sys
 import inspect
 import hashlib
+import json 
 
 import urllib.error
 import urllib.parse
@@ -13,6 +14,7 @@ from restful_tango.tangoREST import TangoREST
 import asyncio
 
 from config import Config
+from vmms import ecrBuilder 
 
 tangoREST = TangoREST()
 
@@ -142,6 +144,40 @@ class BuildHandler(tornado.web.RequestHandler):
         self.tempfile.close()
         self.write(tangoREST.build(key, name, self.request.headers["imageName"]))
 
+class BuildImageHandler(tornado.web.RequestHandler):
+    def post(self, key):
+        """post - Trigger the ECR Docker build."""
+        try:
+            payload = json.loads(self.request.body.decode('utf-8'))
+            course_id = payload.get("course_id")
+            image_name = payload.get("image_name")
+            tag = payload.get("tag", "latest")
+            dockerfile_content = payload.get("dockerfile_content")
+
+            if not all([course_id, image_name, dockerfile_content]):
+                self.set_status(400)
+                self.write({"statusMsg": "Missing required parameters", "statusId": -1})
+                return
+
+            # Trigger background build
+            job_id = ecrBuilder.start_ecr_build(course_id, image_name, tag, dockerfile_content)
+
+            response = {
+                "statusMsg": "Building image in ECR",
+                "statusId": 0,
+                "jobId": job_id
+            }
+            self.write(json.dumps(response))
+            
+        except Exception as e:
+            self.set_status(500)
+            self.write({"statusMsg": f"Server Error: {str(e)}", "statusId": -1})
+
+class BuildStatusHandler(tornado.web.RequestHandler):
+    def get(self, key, jobId):
+        """get - Poll for the status of an ECR build."""
+        status_data = ecrBuilder.get_build_status(jobId)
+        self.write(json.dumps(status_data))
 
 async def main(port: int):
     # Routes
@@ -158,6 +194,8 @@ async def main(port: int):
             (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
             (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
+            (r"/build_image/(%s)/" % (SHA1_KEY), BuildImageHandler), 
+            (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
