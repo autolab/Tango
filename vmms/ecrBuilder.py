@@ -5,6 +5,7 @@ import os
 import docker
 import boto3
 import base64
+import json
 
 # In-memory dictionary to track build status
 build_jobs = {}
@@ -38,6 +39,30 @@ def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content)
             ecr_client.describe_repositories(repositoryNames=[image_name])
         except ecr_client.exceptions.RepositoryNotFoundException:
             ecr_client.create_repository(repositoryName=image_name)
+            
+            # Apply Lifecycle Policy to automatically expire old images
+            policy_text = json.dumps({
+                "rules": [
+                    {
+                        "rulePriority": 1,
+                        "description": "Expire images older than 180 days",
+                        "selection": {
+                            "tagStatus": "any",
+                            "countType": "sinceImagePushed",
+                            "countUnit": "days",
+                            "countNumber": 180
+                        },
+                        "action": {
+                            "type": "expire"
+                        }
+                    }
+                ]
+            })
+            
+            ecr_client.put_lifecycle_policy(
+                repositoryName=image_name,
+                lifecyclePolicyText=policy_text
+            )
 
         auth_response = ecr_client.get_authorization_token()
         auth_data = auth_response['authorizationData'][0]
