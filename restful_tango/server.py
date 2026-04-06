@@ -160,14 +160,14 @@ class BuildImageHandler(tornado.web.RequestHandler):
                 return
 
             # Trigger background build
-            job_id = ecrBuilder.start_ecr_build(course_id, image_name, tag, dockerfile_content)
+            job_id = tangoREST.buildImage(key, course_id, image_name, tag, dockerfile_content)
 
             response = {
                 "statusMsg": "Building image in ECR",
                 "statusId": 0,
                 "jobId": job_id
             }
-            self.write(json.dumps(response))
+            self.write(response)
             
         except Exception as e:
             self.set_status(500)
@@ -176,8 +176,8 @@ class BuildImageHandler(tornado.web.RequestHandler):
 class BuildStatusHandler(tornado.web.RequestHandler):
     def get(self, key, jobId):
         """get - Poll for the status of an ECR build."""
-        status_data = ecrBuilder.get_build_status(jobId)
-        self.write(json.dumps(status_data))
+        status_data = tangoREST.buildStatus(key, job_id=jobId)
+        self.write(status_data)
 
 async def main(port: int):
     # Routes
