@@ -6,11 +6,13 @@ import docker
 import boto3
 import base64
 import json
+import time
+from config import Config
 
 # In-memory dictionary to track build status
 build_jobs = {}
 
-def start_ecr_build(course_id, image_name, tag, dockerfile_content):
+def start_ecr_build(course_id, image_name, dockerfile_content):
     # Generate a numeric ID to match the JOBID regex in server.py
     #TODO: fix job_id collision, add locks
     job_id = str(random.randint(10000, 999999))
@@ -25,24 +27,26 @@ def start_ecr_build(course_id, image_name, tag, dockerfile_content):
     # Spin up background thread to avoid blocking the API
     thread = threading.Thread(
         target=_build_and_push_task,
-        args=(job_id, course_id, image_name, tag, dockerfile_content)
+        args=(job_id, course_id, image_name, dockerfile_content)
     )
     thread.daemon = True
     thread.start()
 
     return int(job_id)
 
-def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content):
+def _build_and_push_task(job_id, course_id, image_name, dockerfile_content):
+    version_tag = f"{image_name}-{int(time.time())}"
+    stable_tag = image_name
     try:
         # Authenticate with AWS ECR
-        ecr_client = boto3.client('ecr', region_name='us-east-2')
+        ecr_client = boto3.client('ecr', region_name=Config.EC2_REGION)
         
         print("Connecting to ECR repository")
         try:
-            ecr_client.describe_repositories(repositoryNames=[image_name])
+            ecr_client.describe_repositories(repositoryNames=[course_id])
         except ecr_client.exceptions.RepositoryNotFoundException:
             print("Creating ECR repository")
-            ecr_client.create_repository(repositoryName=image_name)
+            ecr_client.create_repository(repositoryName=course_id)
             
             # Apply Lifecycle Policy to automatically expire old images
             policy_text = json.dumps({
@@ -64,7 +68,7 @@ def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content)
             })
             
             ecr_client.put_lifecycle_policy(
-                repositoryName=image_name,
+                repositoryName=course_id,
                 lifecyclePolicyText=policy_text
             )
 
@@ -86,7 +90,16 @@ def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content)
             with open(dockerfile_path, 'w') as f:
                 f.write(dockerfile_content)
 
-            full_image_name = f"{registry}/{image_name}:{tag}"
+            apt_preferences_content = """Package: fakeroot
+Pin: release *
+Pin-Priority: -1
+"""
+
+            apt_preferences_path = os.path.join(tmpdir, 'apt-preferences')
+            with open(apt_preferences_path, 'w') as f:
+                f.write(apt_preferences_content)
+
+            full_image_name = f"{registry}/{course_id}:{version_tag}"
 
             # Build the image locally
             docker_client.images.build(path=tmpdir, tag=full_image_name)
@@ -97,6 +110,9 @@ def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content)
             for log in push_logs:
                 if 'error' in log:
                     raise Exception(log['error'])
+            # Tag it with the stable image name
+            docker_client.images.get(full_image_name) \
+                .tag(f"{registry}/{course_id}:{stable_tag}")
 
         # On Success
         build_jobs[job_id]["statusId"] = 0
@@ -104,6 +120,7 @@ def _build_and_push_task(job_id, course_id, image_name, tag, dockerfile_content)
         build_jobs[job_id]["ecrImageUri"] = full_image_name
 
     except Exception as e:
+        print(("Build failed: %s" % e))
         # On Failure
         build_jobs[job_id]["statusId"] = -1
         build_jobs[job_id]["statusMsg"] = f"Build failed: {str(e)}"

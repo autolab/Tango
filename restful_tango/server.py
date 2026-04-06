@@ -151,7 +151,6 @@ class BuildImageHandler(tornado.web.RequestHandler):
             payload = json.loads(self.request.body.decode('utf-8'))
             course_id = payload.get("course_id")
             image_name = payload.get("image_name")
-            tag = payload.get("tag", "latest")
             dockerfile_content = payload.get("dockerfile_content")
 
             if not all([course_id, image_name, dockerfile_content]):
@@ -160,7 +159,7 @@ class BuildImageHandler(tornado.web.RequestHandler):
                 return
 
             # Trigger background build
-            job_id = tangoREST.buildImage(key, course_id, image_name, tag, dockerfile_content)
+            job_id = tangoREST.buildImage(key, course_id, image_name, dockerfile_content)
 
             response = {
                 "statusMsg": "Building image in ECR",
