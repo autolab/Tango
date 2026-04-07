@@ -153,6 +153,10 @@ class Ec2SSH(VMMSInterface):
         "-o",
         "StrictHostKeyChecking no",
         "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "GlobalKnownHostsFile=/dev/null",
+        "-o",
         "GSSAPIAuthentication no",
     ]
 
@@ -169,6 +173,36 @@ class Ec2SSH(VMMSInterface):
         """Releases the VM sempahore"""
         Ec2SSH._vm_semaphore.release()
 
+    @staticmethod
+    def _validate_ec2_runtime_config() -> str:
+        """Validate required EC2 configuration and return normalized key path."""
+        missing = []
+
+        if not str(config.Config.EC2_REGION).strip():
+            missing.append("EC2_REGION")
+        if not str(config.Config.EC2_USER_NAME).strip():
+            missing.append("EC2_USER_NAME")
+        if not str(config.Config.SECURITY_KEY_PATH).strip():
+            missing.append("SECURITY_KEY_PATH")
+
+        if missing:
+            raise ValueError(
+                "Missing required EC2 configuration: %s"
+                % ", ".join(missing)
+            )
+
+        key_path = os.path.expanduser(str(config.Config.SECURITY_KEY_PATH).strip())
+        if not os.path.isfile(key_path):
+            raise ValueError(
+                "Invalid SECURITY_KEY_PATH (file does not exist): %s" % key_path
+            )
+        if not os.access(key_path, os.R_OK):
+            raise ValueError(
+                "Invalid SECURITY_KEY_PATH (file is not readable): %s" % key_path
+            )
+
+        return key_path
+
     # TODO: the arguments accessKeyId and accessKey don't do anything
     def __init__(self, accessKeyId=None, accessKey=None):
         """log - logger for the instance
@@ -177,6 +211,8 @@ class Ec2SSH(VMMSInterface):
         instance - Instance object that stores information about the
         VM created
         """
+        validated_key_path = Ec2SSH._validate_ec2_runtime_config()
+
         # do not do anything until we acquire a vm semaphore
         Ec2SSH.acquire_vm_semaphore()
 
@@ -188,14 +224,16 @@ class Ec2SSH(VMMSInterface):
         # initialize EC2 USER
         # PDL gets a ec2user in the parameter, just use the default
         # user for now
-        self.ssh_flags = Ec2SSH._SSH_FLAGS
-        self.ec2User = config.Config.EC2_USER_NAME
+        self.ssh_flags = Ec2SSH._SSH_FLAGS.copy()
+        self.ssh_flags[1] = validated_key_path
+        self.ec2User = str(config.Config.EC2_USER_NAME).strip()
+        self.ec2Region = str(config.Config.EC2_REGION).strip()
         self.useDefaultKeyPair = True
 
         # key pair settings, for now, use default security key
         if self.useDefaultKeyPair:
             self.key_pair_name: str = config.Config.SECURITY_KEY_NAME
-            self.key_pair_path: str = config.Config.SECURITY_KEY_PATH
+            self.key_pair_path: str = validated_key_path
         else:
             # TODO: SUPPORT. Know that this if/else block used to be under initializeVM, using vm for a unique identifier
             raise
@@ -207,8 +245,8 @@ class Ec2SSH(VMMSInterface):
         self.images = []
         try:
             # This is a service resource
-            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", config.Config.EC2_REGION) # TODO: rename this ot self.ec2resource
-            self.boto3client = boto3.client("ec2", config.Config.EC2_REGION)
+            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", self.ec2Region) # TODO: rename this ot self.ec2resource
+            self.boto3client = boto3.client("ec2", self.ec2Region)
 
             # Get images from ec2
             images = self.boto3resource.images.filter(Owners=["self"])
