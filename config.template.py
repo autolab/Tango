@@ -157,3 +157,10 @@ class Config(object):
     SECURITY_KEY_NAME = ""
     TANGO_RESERVATION_ID = ""
     INSTANCE_RUNNING = 16  # Status code of a instance that is running
+
+    MAX_EC2_VMS = 5  # The maximum number of spot instances allowed at once
+
+    SECURITY_KEY_NAME = "" # The name of the key pair in AWS (no .pem)
+    SECURITY_KEY_PATH = "/path/to/key.pem-ptt" # Absolute path to the key on your local machine
+    
+    PREFIX = "autolab" # Used to name the EC2 instances
