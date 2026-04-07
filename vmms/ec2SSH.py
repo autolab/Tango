@@ -212,10 +212,18 @@ class Ec2SSH(VMMSInterface):
 
         key_mode = stat.S_IMODE(os.stat(key_path).st_mode)
         if key_mode & 0o077:
-            raise ValueError(
-                "Invalid SECURITY_KEY_PATH permissions for private key %s (mode %o). "
-                "Expected chmod 600 (or stricter)." % (key_path, key_mode)
-            )
+            # Try to auto-fix common container mount permission issue.
+            try:
+                os.chmod(key_path, 0o600)
+            except OSError:
+                pass
+
+            key_mode = stat.S_IMODE(os.stat(key_path).st_mode)
+            if key_mode & 0o077:
+                raise ValueError(
+                    "Invalid SECURITY_KEY_PATH permissions for private key %s (mode %o). "
+                    "Expected chmod 600 (or stricter)." % (key_path, key_mode)
+                )
 
         return key_path
 
