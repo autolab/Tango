@@ -16,17 +16,25 @@ build_jobs_lock = threading.RLock()
 def create_build_job(job_id, status_id, status_msg):
     with build_jobs_lock:
         build_jobs[str(job_id)] = {
-            "statusMsg": "Building image in ECR",
-            "statusId": 1,
-            "jobId": int(job_id)
+            "statusMsg": status_msg,
+            "statusId": status_id,
+            "jobId": int(job_id),
+            "logs": [],
+            "logCursor": 0,
         }
 
-def update_build_job(job_id, status_id, status_msg, uri=None):
+def update_build_job(job_id, status_id, status_msg, uri=None, log_cursor=None):
     with build_jobs_lock:
         build_jobs[str(job_id)]["statusId"] = status_id
         build_jobs[str(job_id)]["statusMsg"] = status_msg
         if uri != None:
             build_jobs[str(job_id)]["ecrImageUri"] = uri
+        if log_cursor != None:
+            build_jobs[str(job_id)]["logCursor"] = log_cursor
+
+def append_build_log(job_id, message):
+    with build_jobs_lock:
+        build_jobs[str(job_id)]["logs"].append(message)
 
 def start_ecr_build(course_id, job_id, image_name, dockerfile_content):
     print("Starting build with job_id=%s" % job_id)
@@ -121,8 +129,10 @@ Pin-Priority: -1
             for chunk in logs:
                 if "stream" in chunk:
                     print(chunk["stream"], end="")
+                    append_build_log(job_id, chunk["stream"])
                 if "error" in chunk:
                     print("BUILD ERROR:", chunk["error"])
+                    append_build_log(job_id, chunk["stream"])
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
@@ -150,9 +160,40 @@ Pin-Priority: -1
         )
 
 def get_build_status(job_id):
-    return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})
+    with build_jobs_lock:
+        job = build_jobs.get(str(job_id))
+        if job is None:
+            return {
+                "statusId": 255,
+                "statusMsg": "Job not found",
+                "logs": []
+            }
+
+        # retrieve the most recent logs
+        logs = list(job.get("logs", []))
+
+        # clear logs (consume-on-read)
+        job["logs"] = []
+
+        res = {
+            "statusId": int(job["statusId"]),
+            "statusMsg": job["statusMsg"],
+            "logs": logs,
+        }
+
+        if "ecrImageUri" in job:
+            res["ecrImageUri"] = job["ecrImageUri"]
+
+        # mark terminal jobs
+        if job["statusId"] in (2, 255):
+            job["done"] = True
+
+        return res
 
 def get_all_build_status():
+    all_jobs = {}
+    for job in build_jobs.values():
+        all_jobs[str(job["jobId"])] = get_build_status(int(job["jobId"]))
     return {
-        "images": build_jobs
+        "images": all_jobs
     }
