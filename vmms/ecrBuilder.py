@@ -103,7 +103,6 @@ def _build_and_push_task(job_id, course_id, image_name, dockerfile_content):
         docker_client = docker.from_env()
         docker_client.login(username=username, password=password, registry=registry)
 
-
         # Write Dockerfile to temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
             print("Copying dockerfile %s" % image_name)
@@ -132,7 +131,7 @@ Pin-Priority: -1
                     append_build_log(job_id, chunk["stream"])
                 if "error" in chunk:
                     print("BUILD ERROR:", chunk["error"])
-                    append_build_log(job_id, chunk["stream"])
+                    append_build_log(job_id, chunk["error"])
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
