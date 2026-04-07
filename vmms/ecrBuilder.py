@@ -102,7 +102,12 @@ Pin-Priority: -1
             full_image_name = f"{registry}/{course_id}:{version_tag}"
 
             # Build the image locally
-            docker_client.images.build(path=tmpdir, tag=full_image_name)
+            _, logs = docker_client.images.build(path=tmpdir, tag=full_image_name)
+            for chunk in logs:
+                if "stream" in chunk:
+                    print(chunk["stream"], end="")
+                if "error" in chunk:
+                    print("BUILD ERROR:", chunk["error"])
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
@@ -115,15 +120,15 @@ Pin-Priority: -1
                 .tag(f"{registry}/{course_id}:{stable_tag}")
 
         # On Success
-        build_jobs[job_id]["statusId"] = 0
+        build_jobs[job_id]["statusId"] = 2
         build_jobs[job_id]["statusMsg"] = "Image built successfully"
         build_jobs[job_id]["ecrImageUri"] = full_image_name
 
     except Exception as e:
         print(("Build failed: %s" % e))
         # On Failure
-        build_jobs[job_id]["statusId"] = -1
+        build_jobs[job_id]["statusId"] = 255
         build_jobs[job_id]["statusMsg"] = f"Build failed: {str(e)}"
 
 def get_build_status(job_id):
-    return build_jobs.get(str(job_id), {"statusId": -1, "statusMsg": "Job not found"})
+    return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})
