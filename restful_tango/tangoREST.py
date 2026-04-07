@@ -159,7 +159,7 @@ class TangoREST(object):
             )
             input.append(handinfile)
 
-        ec2_vmms = Config.VMMS_NAME == "ec2SSH"
+        ec2_vmms = Config.VMMS_NAME == "ec2SSH" or Config.VMMS_NAME == "ec2Docker"
 
         stopBefore = ""
         if "stopBefore" in jobObj:
