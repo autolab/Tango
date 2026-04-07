@@ -12,13 +12,10 @@ from config import Config
 # In-memory dictionary to track build status
 build_jobs = {}
 
-def start_ecr_build(course_id, image_name, dockerfile_content):
-    # Generate a numeric ID to match the JOBID regex in server.py
-    #TODO: fix job_id collision, add locks
-    job_id = str(random.randint(10000, 999999))
+def start_ecr_build(course_id, job_id, image_name, dockerfile_content):
     print("Starting build with job_id=%s" % job_id)
     
-    build_jobs[job_id] = {
+    build_jobs[str(job_id)] = {
         "statusMsg": "Building image in ECR",
         "statusId": 1,
         "jobId": int(job_id)
@@ -131,4 +128,5 @@ Pin-Priority: -1
         build_jobs[job_id]["statusMsg"] = f"Build failed: {str(e)}"
 
 def get_build_status(job_id):
+    print(build_jobs)
     return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})

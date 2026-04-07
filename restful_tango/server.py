@@ -150,16 +150,17 @@ class BuildImageHandler(tornado.web.RequestHandler):
         try:
             payload = json.loads(self.request.body.decode('utf-8'))
             course_id = payload.get("course_id")
+            job_id = payload.get("job_id")
             image_name = payload.get("image_name")
             dockerfile_content = payload.get("dockerfile_content")
 
-            if not all([course_id, image_name, dockerfile_content]):
+            if not all([course_id, job_id, image_name, dockerfile_content]):
                 self.set_status(400)
                 self.write({"statusMsg": "Missing required parameters", "statusId": -1})
                 return
 
             # Trigger background build
-            job_id = tangoREST.buildImage(key, course_id, image_name, dockerfile_content)
+            job_id = tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content)
 
             response = {
                 "statusMsg": "Building image in ECR",

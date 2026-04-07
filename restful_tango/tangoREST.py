@@ -503,12 +503,12 @@ class TangoREST(object):
             os.unlink(tempfile)
             return self.status.wrong_key
         
-    def buildImage(self, key, course_id, image_name, dockerfile_content):
+    def buildImage(self, key, course_id, job_id, image_name, dockerfile_content):
         self.log.debug("Received docker image build request(%s)" % (key))
         if self.validateKey(key):
             from vmms.ecrBuilder import start_ecr_build
             self.log.info("Starting docker image build %s" % image_name)
-            return start_ecr_build(course_id, image_name, dockerfile_content)
+            return start_ecr_build(course_id, job_id, image_name, dockerfile_content)
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
