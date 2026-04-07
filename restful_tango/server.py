@@ -164,7 +164,7 @@ class BuildImageHandler(tornado.web.RequestHandler):
 
             response = {
                 "statusMsg": "Building image in ECR",
-                "statusId": 0,
+                "statusId": 1,
                 "jobId": job_id
             }
             self.write(response)
@@ -177,6 +177,12 @@ class BuildStatusHandler(tornado.web.RequestHandler):
     def get(self, key, jobId):
         """get - Poll for the status of an ECR build."""
         status_data = tangoREST.buildStatus(key, job_id=jobId)
+        self.write(status_data)
+
+class AllBuildStatusHandler(tornado.web.RequestHandler):
+    def get(self, key):
+        """get - Poll for the status of an ECR build."""
+        status_data = tangoREST.allBuildStatus(key)
         self.write(status_data)
 
 async def main(port: int):
@@ -196,6 +202,7 @@ async def main(port: int):
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
             (r"/build_image/(%s)/" % (SHA1_KEY), BuildImageHandler), 
             (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
+            (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler), 
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)

@@ -117,7 +117,7 @@ Pin-Priority: -1
 
             # Build the image locally
             print("Building the docker image %s" % image_name)
-            logs = docker_client.api.build(path=tmpdir, tag=full_image_name)
+            logs = docker_client.api.build(path=tmpdir, tag=full_image_name, decode=True)
             for chunk in logs:
                 if "stream" in chunk:
                     print(chunk["stream"], end="")
@@ -151,3 +151,8 @@ Pin-Priority: -1
 
 def get_build_status(job_id):
     return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})
+
+def get_all_build_status():
+    return {
+        "images": build_jobs
+    }

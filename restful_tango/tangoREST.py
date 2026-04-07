@@ -521,3 +521,12 @@ class TangoREST(object):
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
+        
+    def allBuildStatus(self, key):
+        self.log.debug("Received all docker image status request(%s)" % (key))
+        if self.validateKey(key):
+            from vmms.ecrBuilder import get_all_build_status
+            return get_all_build_status()
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
