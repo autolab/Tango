@@ -1,0 +1,4 @@
+Autodriver: Job exited with status 0
+gcc hello.c -o hello
+./hello
+Grading complete! 100/100
