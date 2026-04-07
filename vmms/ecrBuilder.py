@@ -11,15 +11,31 @@ from config import Config
 
 # In-memory dictionary to track build status
 build_jobs = {}
+build_jobs_lock = threading.RLock()
+
+def create_build_job(job_id, status_id, status_msg):
+    with build_jobs_lock:
+        build_jobs[str(job_id)] = {
+            "statusMsg": "Building image in ECR",
+            "statusId": 1,
+            "jobId": int(job_id)
+        }
+
+def update_build_job(job_id, status_id, status_msg, uri=None):
+    with build_jobs_lock:
+        build_jobs[str(job_id)]["statusId"] = status_id
+        build_jobs[str(job_id)]["statusMsg"] = status_msg
+        if uri != None:
+            build_jobs[str(job_id)]["ecrImageUri"] = uri
 
 def start_ecr_build(course_id, job_id, image_name, dockerfile_content):
     print("Starting build with job_id=%s" % job_id)
     
-    build_jobs[str(job_id)] = {
-        "statusMsg": "Building image in ECR",
-        "statusId": 1,
-        "jobId": int(job_id)
-    }
+    create_build_job(
+        job_id=int(job_id),
+        status_id=1,
+        status_msg="Building image in ECR"
+    )
 
     # Spin up background thread to avoid blocking the API
     thread = threading.Thread(
@@ -117,15 +133,21 @@ Pin-Priority: -1
 
         print("Build all done!")
         # On Success
-        build_jobs[str(job_id)]["statusId"] = 2
-        build_jobs[str(job_id)]["statusMsg"] = "Image built successfully"
-        build_jobs[str(job_id)]["ecrImageUri"] = full_image_name
+        update_build_job(
+            job_id=job_id,
+            status_id=2,
+            status_msg="Image built successfully",
+            uri=full_image_name
+        )
 
     except Exception as e:
         print(("Build failed: %s" % e))
         # On Failure
-        build_jobs[str(job_id)]["statusId"] = 255
-        build_jobs[str(job_id)]["statusMsg"] = f"Build failed: {str(e)}"
+        update_build_job(
+            job_id=job_id,
+            status_id=255,
+            status_msg=f"Build failed: {str(e)}",
+        )
 
 def get_build_status(job_id):
     return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})
