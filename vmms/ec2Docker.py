@@ -1,0 +1,418 @@
+#
+# ec2Docker.py - Implements the Tango VMMS interface to run Tango Docker jobs on Amazon EC2.
+#
+
+import logging
+import os
+import re
+import subprocess
+import threading
+import time
+
+import backoff
+import boto3
+from botocore.exceptions import ClientError
+
+import config
+from tangoObjects import TangoMachine
+from typing import Optional, Literal, List, Sequence
+from mypy_boto3_ec2 import EC2ServiceResource
+from mypy_boto3_ec2.service_resource import Instance
+from mypy_boto3_ec2.type_defs import FilterTypeDef
+
+from vmms.interface import VMMSInterface
+
+# Suppress verbose boto logging
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
+
+
+def timeout(command, time_out=1):
+    p = subprocess.Popen(command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT)
+    t = 0.0
+    while t < time_out and p.poll() is None:
+        time.sleep(config.Config.TIMER_POLL_INTERVAL)
+        t += config.Config.TIMER_POLL_INTERVAL
+    if t >= time_out:
+        print("ERROR: timeout trying ", command)
+    if p.poll() is None:
+        try: os.kill(p.pid, 9)
+        except OSError: pass
+        returncode = -1
+    else:
+        returncode = p.poll()
+    return returncode
+
+
+def timeout_with_retries(command, time_out=1, retries=3, retry_delay=2):
+    for attempt in range(retries + 1):
+        p = subprocess.Popen(command, stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT)
+        t = 0.0
+        while t < time_out and p.poll() is None:
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            t += config.Config.TIMER_POLL_INTERVAL
+        if t >= time_out:
+            print("ERROR: timeout trying ", command)
+
+        if p.poll() is None:
+            try: os.kill(p.pid, 9)
+            except OSError: pass
+            returncode = -1
+        else:
+            returncode = p.poll()
+
+        if returncode == -1:
+            if attempt < retries:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print("All retries exhausted.")
+                return -1
+        else:
+            return returncode
+
+
+@backoff.on_exception(backoff.expo, ClientError, max_tries=3, jitter=None)
+def try_load_instance(newInstance):
+    newInstance.load()
+
+
+class ec2CallError(Exception):
+    pass
+
+
+class Ec2Docker(VMMSInterface):
+    _SSH_FLAGS = [
+        "-i", config.Config.SECURITY_KEY_PATH,
+        "-o", "StrictHostKeyChecking no",
+        "-o", "GSSAPIAuthentication no",
+    ]
+
+    _vm_semaphore = threading.Semaphore(config.Config.MAX_EC2_VMS)
+
+    @staticmethod
+    def acquire_vm_semaphore():
+        """Blocks until a VM is available to limit system load."""
+        Ec2Docker._vm_semaphore.acquire()
+
+    @staticmethod
+    def release_vm_semaphore():
+        """Releases the VM semaphore."""
+        Ec2Docker._vm_semaphore.release()
+
+    def __init__(self, accessKeyId=None, accessKey=None):
+        Ec2Docker.acquire_vm_semaphore()
+
+        self.appName = os.path.basename(__file__).strip(".py")
+        self.log = logging.getLogger("Ec2Docker-" + str(os.getpid()))
+        self.log.info("init Ec2Docker in program %s" % (self.appName))
+
+        self.ssh_flags = Ec2Docker._SSH_FLAGS
+        self.ec2User = config.Config.EC2_USER_NAME
+        self.useDefaultKeyPair = True
+
+        if self.useDefaultKeyPair:
+            self.key_pair_name: str = config.Config.SECURITY_KEY_NAME
+            self.key_pair_path: str = config.Config.SECURITY_KEY_PATH
+        else:
+            raise
+
+        self.img2ami = {} 
+        self.images = []
+        try:
+            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", config.Config.EC2_REGION)
+            self.boto3client = boto3.client("ec2", config.Config.EC2_REGION)
+            images = self.boto3resource.images.filter(Owners=["self"])
+        except Exception as e:
+            self.log.error("Ec2Docker failed initialization: %s" % (e))
+            raise
+
+        for image in images:
+            if image.tags:
+                for tag in image.tags:
+                    if tag["Key"] == "Name" and tag["Value"]:
+                        if tag["Value"] in self.img2ami:
+                            self.log.info("Ignore %s for duplicate name tag %s" % (image.id, tag["Value"]))
+                        else:
+                            self.img2ami[tag["Value"]] = image
+                            self.log.info("Found image: %s with name tag %s" % (image.id, tag["Value"]))
+
+        imageAMIs = [item.id for item in images]
+        taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
+        ignoredAMIs = list(set(imageAMIs) - set(taggedAMIs))
+
+        if len(ignoredAMIs) > 0:
+            self.log.info("Ignored images %s for lack of or ill-formed name tag" % str(ignoredAMIs))
+
+    def instanceName(self, id, name):
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+
+    def keyPairName(self, id, name):
+        return "%s-%d-%s" % (config.Config.PREFIX, id, name)
+
+    def domainName(self, vm):
+        return vm.domain_name
+
+    def tangoMachineToEC2Instance(self, vm: TangoMachine) -> dict:
+        """Returns instance type and base AMI. Defers to a universal Docker base image."""
+        ec2instance = dict()
+        if vm.instance_type is not None:
+            ec2instance["instance_type"] = vm.instance_type
+        else:
+            ec2instance["instance_type"] = config.Config.DEFAULT_INST_TYPE
+
+        # Use universal base AMI for all Docker executions
+        ec2instance["ami"] = self.img2ami["autolab-docker-base"].id
+        self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
+        return ec2instance
+
+    def createKeyPair(self):
+        raise
+
+    def deleteKeyPair(self):
+        raise
+
+    def createSecurityGroup(self):
+        try:
+            response = self.boto3client.describe_security_groups(
+                Filters=[{"Name": "group-name", "Values": [config.Config.DEFAULT_SECURITY_GROUP]}]
+            )
+            if response["SecurityGroups"]: return
+        except Exception as e:
+            self.log.debug("ERROR checking for existing security group: %s", e)
+
+        try:
+            response = self.boto3resource.create_security_group(
+                GroupName=config.Config.DEFAULT_SECURITY_GROUP,
+                Description="Autolab security group - allowing all traffic",
+            )
+            self.boto3resource.authorize_security_group_ingress(GroupId=response["GroupId"])
+        except Exception as e:
+            self.log.debug("ERROR in creating security group: %s", e)
+
+    def initializeVM(self, vm: TangoMachine) -> Literal[0, -1]:
+        """Provisions a new Spot Instance and attaches the ECR Role."""
+        newInstance: Optional[Instance] = None
+        try:
+            instanceName = self.instanceName(vm.id, vm.name)
+            ec2instance = self.tangoMachineToEC2Instance(vm)
+            self.log.debug("instanceName: %s" % instanceName)
+            self.createSecurityGroup()
+
+            reservation: List[Instance] = self.boto3resource.create_instances(
+                ImageId=ec2instance["ami"],
+                KeyName=self.key_pair_name,
+                SecurityGroups=[config.Config.DEFAULT_SECURITY_GROUP],
+                InstanceType=ec2instance["instance_type"],
+                IamInstanceProfile={'Name': 'AutolabEC2ECRRole'}, # Grants ECR access
+                MaxCount=1,
+                MinCount=1,
+                InstanceMarketOptions={
+                    "MarketType": "spot",
+                    "SpotOptions": {
+                        "SpotInstanceType": "one-time",
+                        "InstanceInterruptionBehavior": "terminate"
+                    }
+                },
+            )
+
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+            newInstance = reservation[0]
+            if not newInstance:
+                raise ValueError("Cannot find new instance for %s" % vm.name)
+
+            start_time = time.time()
+            while True:
+                filters: Sequence[FilterTypeDef] = [{"Name": "instance-state-name", "Values": ["running"]}]
+                instances = self.boto3resource.instances.filter(Filters=filters)
+                instanceRunning = False
+
+                try_load_instance(newInstance)
+                for inst in instances.filter(InstanceIds=[newInstance.id]):
+                    self.log.debug("VM %s %s: is running" % (vm.name, newInstance.id))
+                    instanceRunning = True
+
+                if instanceRunning: break
+
+                if time.time() - start_time > config.Config.INITIALIZEVM_TIMEOUT:
+                    raise ValueError("VM %s %s: timeout" % (vm.name, newInstance.id))
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
+
+            self.boto3resource.create_tags(
+                Resources=[newInstance.id], Tags=[{"Key": "Name", "Value": vm.name}],
+            )
+
+            vm.domain_name = newInstance.public_ip_address
+            vm.instance_id = newInstance.id
+            return 0
+
+        except Exception as e:
+            self.log.debug("initializeVM Failed: %s" % e)
+            if newInstance is not None:
+                try: self.boto3resource.instances.filter(InstanceIds=[newInstance.id]).terminate()
+                except Exception as e:
+                    self.log.error("Exception handling failed for %s: %s" % (vm.name, e))
+                    return -1
+            return -1
+
+    def waitVM(self, vm, max_secs) -> Literal[0, -1]:
+        """Polls the instance until network and SSH drivers are responsive."""
+        self.log.info("WaitVM: %s %s" % (vm.name, vm.instance_id))
+        if not self.existsVM(vm): return -1
+            
+        instance_down = 1
+        start_time = time.time()
+        domain_name = self.domainName(vm)
+        
+        while instance_down:
+            instance_down = subprocess.call(
+                "ping -c 1 %s" % (domain_name), shell=True,
+                stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT,
+            )
+            if instance_down:
+                time.sleep(config.Config.TIMER_POLL_INTERVAL)
+                if (time.time() - start_time) > max_secs: return -1
+
+        while True:
+            elapsed_secs = time.time() - start_time
+            if elapsed_secs > max_secs: return -1
+            ret = timeout(
+                ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), "(:)"],
+                max_secs - elapsed_secs,
+            )
+            if (ret != -1) and (ret != 255): return 0
+            time.sleep(config.Config.TIMER_POLL_INTERVAL)
+
+    def copyIn(self, vm, inputFiles, job_id=None):
+        """Creates the staging directory and securely copies grading files to EC2."""
+        self.log.info("copyIn %s - writing files" % self.instanceName(vm.id, vm.name))
+        domain_name = self.domainName(vm)
+
+        subprocess.run(
+            ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), "(mkdir -p autolab && chmod 775 autolab)"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+
+        for file in inputFiles:
+            ret = timeout_with_retries(
+                ["scp"] + self.ssh_flags + [file.localFile, "%s@%s:~/autolab/%s" % (self.ec2User, domain_name, file.destFile)],
+                config.Config.COPYIN_TIMEOUT,
+            )
+            if ret != 0: return ret
+        return 0
+
+    def runJob(self, vm, runTimeout, maxOutputFileSize, disableNetwork):
+        """Authenticates with ECR, pulls the requested course image, and executes the grader."""
+        domain_name = self.domainName(vm)
+        self.log.debug("runJob: Running Docker job on VM %s" % self.instanceName(vm.id, vm.name))
+        
+        network_flag = "--network none " if disableNetwork else ""
+        
+        # Parse the ECR Registry domain from the provided image URI
+        registry_url = vm.image.split('/')[0] if '/' in vm.image else ""
+        region = config.Config.EC2_REGION
+        
+        # ECR Auth -> Docker Run
+        runcmd = (
+            f"aws ecr get-login-password --region {region} | "
+            f"docker login --username AWS --password-stdin {registry_url} && "
+            f"docker run --rm {network_flag}-v /home/%s/autolab:/home/mount -w /home {vm.image} "
+            "sh -c \"mkdir -p output && chown autolab:autolab output && "
+            "cp -a mount/. autolab/ && chown -R autolab:autolab autolab/ && "
+            "su autolab -c \\\"/usr/bin/time --output=output/time.out autodriver "
+            "-u %d -f %d -t %d -o %d autolab > output/feedback 2>&1\\\" ; "
+            "cp output/feedback mount/ ; cp output/time.out mount/\""
+            % (
+                self.ec2User,
+                config.Config.VM_ULIMIT_USER_PROC,
+                config.Config.VM_ULIMIT_FILE_SIZE,
+                runTimeout,
+                maxOutputFileSize,
+            )
+        )
+
+        ret = timeout(["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd], runTimeout * 2)
+        return ret
+
+    def copyOut(self, vm, destFile):
+        """Retrieves the completed feedback log back to the Tango host."""
+        domain_name = self.domainName(vm)
+        if config.Config.LOG_TIMING:
+            try:
+                no_file = re.compile("No such file or directory")
+                time_info = (
+                    subprocess.check_output(["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), "cat autolab/time.out"])
+                    .decode("utf-8").rstrip("\n")
+                )
+                if not no_file.match(time_info):
+                    time_info = re.sub("\n", " ", time_info, count=1)
+                    self.log.info("Timing (%s): %s" % (domain_name, time_info))
+            except subprocess.CalledProcessError: pass
+
+        return timeout(
+            ["scp"] + self.ssh_flags + ["%s@%s:autolab/feedback" % (config.Config.EC2_USER_NAME, domain_name), destFile],
+            config.Config.COPYOUT_TIMEOUT,
+        )
+
+    def destroyVM(self, vm):
+        """Terminates the EC2 instance to preserve costs."""
+        try:
+            instances = self.boto3resource.instances.filter(InstanceIds=[vm.instance_id])
+            if (hasattr(config.Config, "KEEP_VM_AFTER_FAILURE") and config.Config.KEEP_VM_AFTER_FAILURE and vm.keep_for_debugging):
+                tag = self.boto3resource.Tag(vm.instance_id, "Name", vm.name)
+                if tag: tag.delete()
+                self.boto3resource.create_tags(
+                    Resources=[vm.instance_id],
+                    Tags=[{"Key": "Name", "Value": "failed-" + vm.name}, {"Key": "Notes", "Value": vm.notes}],
+                )
+                return
+            instances.terminate()
+        except Exception as e:
+            self.log.error("destroyVM failed: %s for vm %s" % (e, vm.instance_id))
+        Ec2Docker.release_vm_semaphore()
+
+    def safeDestroyVM(self, vm):
+        return self.destroyVM(vm)
+
+    def getVMs(self):
+        try:
+            vms = list()
+            filters = [{"Name": "instance-state-name", "Values": ["running", "pending"]}]
+            instances = self.boto3resource.instances.filter(Filters=filters)
+            for instance in instances:
+                vm = TangoMachine()
+                vm.instance_id = instance.id
+                vm.domain_name = None
+                vm.id = None
+                instName = self.getTag(instance.tags, "Name")
+                if not (instName and re.match("%s-" % config.Config.PREFIX, instName)): continue
+                vm.name = instName
+                vm.id = int(instName.split("-")[1])
+                vm.pool = instName.split("-")[2]
+                if instance.public_ip_address: vm.domain_name = instance.public_ip_address
+                vms.append(vm)
+        except Exception: pass
+        return vms
+
+    def existsVM(self, vm):
+        filters = [{"Name": "instance-state-name", "Values": ["running"]}]
+        instances = self.boto3resource.instances.filter(Filters=filters)
+        for instance in instances:
+            if instance.instance_id == vm.instance_id: return True
+        return False
+
+    def getImages(self):
+        return [key for key in self.img2ami]
+
+    def getTag(self, tagList, tagKey):
+        if tagList:
+            for tag in tagList:
+                if tag["Key"] == tagKey: return tag["Value"]
+        return None
+
+    def getPartialOutput(self, vm):
+        domain_name = self.domainName(vm)
+        runcmd = "head -c %s autolab/feedback" % (config.Config.MAX_OUTPUT_FILE_SIZE)
+        sshcmd = (["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd])
+        return subprocess.check_output(sshcmd, stderr=subprocess.STDOUT).decode("utf-8")

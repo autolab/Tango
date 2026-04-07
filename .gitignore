@@ -37,3 +37,4 @@ env/
 # Tests
 tests/*
 !tests/*.py
+!tests/filesForDockerTest/
