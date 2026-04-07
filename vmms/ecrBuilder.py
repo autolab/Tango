@@ -82,7 +82,7 @@ def _build_and_push_task(job_id, course_id, image_name, dockerfile_content):
 
         # Write Dockerfile to temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
-            print("Creating docker image %s" % image_name)
+            print("Copying dockerfile %s" % image_name)
             dockerfile_path = os.path.join(tmpdir, 'Dockerfile')
             with open(dockerfile_path, 'w') as f:
                 f.write(dockerfile_content)
@@ -97,9 +97,11 @@ Pin-Priority: -1
                 f.write(apt_preferences_content)
 
             full_image_name = f"{registry}/{course_id}:{version_tag}"
+            repository = f"{registry}/{course_id}"
 
             # Build the image locally
-            _, logs = docker_client.images.build(path=tmpdir, tag=full_image_name)
+            print("Building the docker image %s" % image_name)
+            logs = docker_client.api.build(path=tmpdir, tag=full_image_name)
             for chunk in logs:
                 if "stream" in chunk:
                     print(chunk["stream"], end="")
@@ -108,25 +110,22 @@ Pin-Priority: -1
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
-            push_logs = docker_client.images.push(full_image_name, stream=True, decode=True)
+            push_logs = docker_client.images.push(repository=repository, tag=version_tag, stream=True, decode=True)
             for log in push_logs:
                 if 'error' in log:
                     raise Exception(log['error'])
-            # Tag it with the stable image name
-            docker_client.images.get(full_image_name) \
-                .tag(f"{registry}/{course_id}:{stable_tag}")
 
+        print("Build all done!")
         # On Success
-        build_jobs[job_id]["statusId"] = 2
-        build_jobs[job_id]["statusMsg"] = "Image built successfully"
-        build_jobs[job_id]["ecrImageUri"] = full_image_name
+        build_jobs[str(job_id)]["statusId"] = 2
+        build_jobs[str(job_id)]["statusMsg"] = "Image built successfully"
+        build_jobs[str(job_id)]["ecrImageUri"] = full_image_name
 
     except Exception as e:
         print(("Build failed: %s" % e))
         # On Failure
-        build_jobs[job_id]["statusId"] = 255
-        build_jobs[job_id]["statusMsg"] = f"Build failed: {str(e)}"
+        build_jobs[str(job_id)]["statusId"] = 255
+        build_jobs[str(job_id)]["statusMsg"] = f"Build failed: {str(e)}"
 
 def get_build_status(job_id):
-    print(build_jobs)
     return build_jobs.get(str(job_id), {"statusId": 255, "statusMsg": "Job not found"})
