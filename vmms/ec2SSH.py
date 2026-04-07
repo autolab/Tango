@@ -12,6 +12,7 @@
 import logging
 import os
 import re
+import stat
 import subprocess
 import threading
 import time
@@ -157,6 +158,14 @@ class Ec2SSH(VMMSInterface):
         "-o",
         "GlobalKnownHostsFile=/dev/null",
         "-o",
+        "BatchMode yes",
+        "-o",
+        "IdentitiesOnly yes",
+        "-o",
+        "PreferredAuthentications publickey",
+        "-o",
+        "ConnectTimeout 5",
+        "-o",
         "GSSAPIAuthentication no",
     ]
 
@@ -199,6 +208,13 @@ class Ec2SSH(VMMSInterface):
         if not os.access(key_path, os.R_OK):
             raise ValueError(
                 "Invalid SECURITY_KEY_PATH (file is not readable): %s" % key_path
+            )
+
+        key_mode = stat.S_IMODE(os.stat(key_path).st_mode)
+        if key_mode & 0o077:
+            raise ValueError(
+                "Invalid SECURITY_KEY_PATH permissions for private key %s (mode %o). "
+                "Expected chmod 600 (or stricter)." % (key_path, key_mode)
             )
 
         return key_path
