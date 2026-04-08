@@ -134,6 +134,28 @@ class Ec2Docker(VMMSInterface):
         """Releases the VM sempahore"""
         Ec2Docker._vm_semaphore.release()
 
+    def refresh_ecr_images(self):
+        self.ecrImages = {}
+        try:
+            ecrClient = boto3.client("ecr", config.Config.EC2_REGION)
+
+            for repo_page in ecrClient.get_paginator("describe_repositories").paginate():
+                for repo in repo_page["repositories"]:
+                    repo_name = repo["repositoryName"]
+                    repo_uri = repo["repositoryUri"]
+
+                    for image_page in ecrClient.get_paginator("list_images").paginate(
+                        repositoryName=repo_name,
+                        filter={"tagStatus": "TAGGED"}
+                    ):
+                        for image_id in image_page.get("imageIds", []):
+                            tag = image_id.get("imageTag")
+                            if tag:
+                                self.ecrImages[f"{repo_uri}:{tag}"] = tag
+        except Exception as e:
+            self.log.error("Ec2Docker failed retrieving ECR images: %s" % (e))
+            raise
+
     def __init__(self, accessKeyId=None, accessKey=None):
         """log - logger for the instance
         connection - EC2Connection object that stores the connection
@@ -190,28 +212,8 @@ class Ec2Docker(VMMSInterface):
                 "Ignored images %s for lack of or ill-formed name tag"
                 % str(ignoredAMIs)
             )
-
-        self.ecrImages = {}
-        try:
-            ecrClient = boto3.client("ecr", config.Config.EC2_REGION)
-
-            for repo_page in ecrClient.get_paginator("describe_repositories").paginate():
-                for repo in repo_page["repositories"]:
-                    repo_name = repo["repositoryName"]
-                    repo_uri = repo["repositoryUri"]
-
-                    for image_page in ecrClient.get_paginator("list_images").paginate(
-                        repositoryName=repo_name,
-                        filter={"tagStatus": "TAGGED"}
-                    ):
-                        for image_id in image_page.get("imageIds", []):
-                            tag = image_id.get("imageTag")
-                            if tag:
-                                self.ecrImages[f"{repo_uri}:{tag}"] = tag
-        except Exception as e:
-            self.log.error("Ec2Docker failed retrieving ECR images: %s" % (e))
-            raise
-        print(self.ecrImages.keys())
+        
+        self.refresh_ecr_images()
 
     def instanceName(self, id, name):
         """instanceName - Constructs a VM instance name. Always use
@@ -519,6 +521,7 @@ class Ec2Docker(VMMSInterface):
         return False
 
     def getImages(self):
+        self.refresh_ecr_images()
         return [key for key in self.ecrImages]
 
     def getTag(self, tagList, tagKey):
