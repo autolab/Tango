@@ -433,8 +433,8 @@ class Ec2Docker(VMMSInterface):
             f"docker run --rm {network_flag}-v /home/%s/autolab:/home/mount -w /home {vm.image} "
             "sh -c \"mkdir -p output && chown autolab:autolab output && "
             "cp -a mount/. autolab/ && chown -R autolab:autolab autolab/ && "
-            "su autolab -c \\\"/usr/bin/time --output=output/time.out autodriver "
-            "-u %d -f %d -t %d -o %d autolab > output/feedback 2>&1\\\" ; "
+            "su autolab -c \\\"autodriver "
+            "-u %d -f %d -t %d -o %d autolab > output/feedback 2>&1\\\" ; touch output/time.out ;"
             "cp output/feedback mount/ ; cp output/time.out mount/\""
             % (
                 self.ec2User,
@@ -444,6 +444,9 @@ class Ec2Docker(VMMSInterface):
                 maxOutputFileSize,
             )
         )
+
+        print("running command:")
+        print(runcmd)
 
         ret = timeout(["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd], runTimeout * 2)
         return ret
