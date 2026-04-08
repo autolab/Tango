@@ -63,7 +63,7 @@ class Worker(threading.Thread):
         """
         # job-owned instance, simply destroy after job is completed
         self.cleanupStatus = True
-        if Config.VMMS_NAME == "ec2SSH":
+        if Config.VMMS_NAME == "ec2SSH" or Config.VMMS_NAME == "ec2Docker":
             self.vmms.safeDestroyVM(self.job.vm)
             # EC2 doesn't use the preallocator
         else:

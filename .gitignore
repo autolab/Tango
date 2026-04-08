@@ -38,3 +38,4 @@ env/
 tests/*
 !tests/*.py
 !tests/filesForDockerTest/
+*.pem

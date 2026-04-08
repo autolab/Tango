@@ -349,12 +349,16 @@ class Ec2Docker(VMMSInterface):
     def waitVM(self, vm, max_secs) -> Literal[0, -1]:
         """Polls the instance until network and SSH drivers are responsive."""
         self.log.info("WaitVM: %s %s" % (vm.name, vm.instance_id))
-        if not self.existsVM(vm): return -1
-            
+        if not self.existsVM(vm):
+            self.log.info("VM %s: no longer an instance", vm.name)
+            return -1
+        
+        # First, wait for ping to the vm instance to work
         instance_down = 1
         start_time = time.time()
         domain_name = self.domainName(vm)
         
+        self.log.info("WaitVM: pinging %s %s" % (domain_name, vm.name))
         while instance_down:
             instance_down = subprocess.call(
                 "ping -c 1 %s" % (domain_name), shell=True,
@@ -362,16 +366,35 @@ class Ec2Docker(VMMSInterface):
             )
             if instance_down:
                 time.sleep(config.Config.TIMER_POLL_INTERVAL)
-                if (time.time() - start_time) > max_secs: return -1
+                if (time.time() - start_time) > max_secs:
+                    self.log.debug("WAITVM_TIMEOUT: %s", vm.id)
+                    return -1
 
+        # The ping worked, so now wait for SSH to work before
+        # declaring that the VM is ready
+        self.log.debug("VM %s: ping completed" % (vm.name))
         while True:
             elapsed_secs = time.time() - start_time
-            if elapsed_secs > max_secs: return -1
+
+            # Give up if the elapsed time exceeds the allowable time
+            if elapsed_secs > max_secs:
+                self.log.info(
+                    "VM %s: SSH timeout after %d secs" % (vm.name, elapsed_secs)
+                )
+                return -1
+            
+            # If the call to ssh returns timeout (-1) or ssh error
+            # (255), then success. Otherwise, keep trying until we run
+            # out of time.
             ret = timeout(
                 ["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), "(:)"],
                 max_secs - elapsed_secs,
             )
-            if (ret != -1) and (ret != 255): return 0
+
+            self.log.debug("VM %s: ssh returned with %d" % (vm.name, ret))
+
+            if (ret != -1) and (ret != 255):
+                return 0
             time.sleep(config.Config.TIMER_POLL_INTERVAL)
 
     def copyIn(self, vm, inputFiles, job_id=None):
