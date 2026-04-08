@@ -15,6 +15,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN chmod 1777 /tmp
 
 # Install dependancies
+RUN rm -f /etc/apt/sources.list.d/*passenger* \
+ && apt-get update \
+ && apt-get install -y sqlite3 tzdata shared-mime-info \
+ && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
@@ -38,7 +42,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /opt/TangoService/Tango/
 
-# Install Docker
+# Install Docker from Docker Inc. repositories.
 RUN set -eux; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl gnupg; \

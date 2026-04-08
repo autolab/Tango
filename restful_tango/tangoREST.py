@@ -228,7 +228,7 @@ class TangoREST(object):
         """convertTangoJobObj - Converts a TangoJob object into a dictionary"""
         job = dict()
         # Convert scalar attribtues first
-        job["retries"] = tangoJobObj.retries
+        # job["retries"] = tangoJobObj.retries
         job["outputFile"] = tangoJobObj.outputFile
         job["name"] = tangoJobObj.name
         job["notifyURL"] = tangoJobObj.notifyURL
@@ -530,3 +530,4 @@ class TangoREST(object):
         else:
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
+            self.log.error("Validation failed %s" % (key))
