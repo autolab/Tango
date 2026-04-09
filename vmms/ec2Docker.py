@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import stat
 import subprocess
 import threading
 import time
@@ -119,6 +120,12 @@ class Ec2Docker(VMMSInterface):
     _SSH_FLAGS = [
         "-i", config.Config.SECURITY_KEY_PATH,
         "-o", "StrictHostKeyChecking no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "GlobalKnownHostsFile=/dev/null",
+        "-o", "BatchMode yes",
+        "-o", "IdentitiesOnly yes",
+        "-o", "PreferredAuthentications publickey",
+        "-o", "ConnectTimeout 5",
         "-o", "GSSAPIAuthentication no",
     ]
 
@@ -134,10 +141,55 @@ class Ec2Docker(VMMSInterface):
         """Releases the VM sempahore"""
         Ec2Docker._vm_semaphore.release()
 
+    @staticmethod
+    def _validate_ec2_runtime_config() -> str:
+        """Validate required EC2 configuration and return normalized key path."""
+        missing = []
+
+        if not str(config.Config.EC2_REGION).strip():
+            missing.append("EC2_REGION")
+        if not str(config.Config.EC2_USER_NAME).strip():
+            missing.append("EC2_USER_NAME")
+        if not str(config.Config.SECURITY_KEY_PATH).strip():
+            missing.append("SECURITY_KEY_PATH")
+
+        if missing:
+            raise ValueError(
+                "Missing required EC2 configuration: %s"
+                % ", ".join(missing)
+            )
+
+        key_path = os.path.expanduser(str(config.Config.SECURITY_KEY_PATH).strip())
+        if not os.path.isfile(key_path):
+            raise ValueError(
+                "Invalid SECURITY_KEY_PATH (file does not exist): %s" % key_path
+            )
+        if not os.access(key_path, os.R_OK):
+            raise ValueError(
+                "Invalid SECURITY_KEY_PATH (file is not readable): %s" % key_path
+            )
+
+        key_mode = stat.S_IMODE(os.stat(key_path).st_mode)
+        if key_mode & 0o077:
+            # Try to auto-fix common container mount permission issue.
+            try:
+                os.chmod(key_path, 0o600)
+            except OSError:
+                pass
+
+            key_mode = stat.S_IMODE(os.stat(key_path).st_mode)
+            if key_mode & 0o077:
+                raise ValueError(
+                    "Invalid SECURITY_KEY_PATH permissions for private key %s (mode %o). "
+                    "Expected chmod 600 (or stricter)." % (key_path, key_mode)
+                )
+
+        return key_path
+
     def refresh_ecr_images(self):
         self.ecrImages = {}
         try:
-            ecrClient = boto3.client("ecr", config.Config.EC2_REGION)
+            ecrClient = boto3.client("ecr", self.ec2Region)
 
             for repo_page in ecrClient.get_paginator("describe_repositories").paginate():
                 for repo in repo_page["repositories"]:
@@ -165,6 +217,7 @@ class Ec2Docker(VMMSInterface):
         """
         # do not do anything until we acquire a vm semaphore
         Ec2Docker.acquire_vm_semaphore()
+        validated_key_path = Ec2Docker._validate_ec2_runtime_config()
 
         self.appName = os.path.basename(__file__).strip(".py")
         # Setup logger
@@ -174,20 +227,22 @@ class Ec2Docker(VMMSInterface):
         # initialize EC2 USER
         # PDL gets a ec2user in the parameter, just use the default
         # user for now
-        self.ssh_flags = Ec2Docker._SSH_FLAGS
-        self.ec2User = config.Config.EC2_USER_NAME
+        self.ssh_flags = Ec2Docker._SSH_FLAGS.copy()
+        self.ssh_flags[1] = validated_key_path
+        self.ec2User = str(config.Config.EC2_USER_NAME).strip()
+        self.ec2Region = str(config.Config.EC2_REGION).strip()
         self.useDefaultKeyPair = True
 
         if self.useDefaultKeyPair:
             self.key_pair_name: str = config.Config.SECURITY_KEY_NAME
-            self.key_pair_path: str = config.Config.SECURITY_KEY_PATH
+            self.key_pair_path: str = validated_key_path
         else:
             raise
 
         self.img2ami = {} 
         try:
-            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", config.Config.EC2_REGION)
-            self.boto3client = boto3.client("ec2", config.Config.EC2_REGION)
+            self.boto3resource: EC2ServiceResource = boto3.resource("ec2", self.ec2Region)
+            self.boto3client = boto3.client("ec2", self.ec2Region)
             images = self.boto3resource.images.filter(Owners=["self"])
         except Exception as e:
             self.log.error("Ec2Docker failed initialization: %s" % (e))
@@ -426,7 +481,7 @@ class Ec2Docker(VMMSInterface):
         
         # Parse the ECR Registry domain from the provided image URI
         registry_url = vm.image.split('/')[0] if '/' in vm.image else ""
-        region = config.Config.EC2_REGION
+        region = self.ec2Region
         
         # ECR Auth -> Docker Run
         runcmd = (
@@ -469,7 +524,7 @@ class Ec2Docker(VMMSInterface):
             except subprocess.CalledProcessError: pass
 
         return timeout(
-            ["scp"] + self.ssh_flags + ["%s@%s:autolab/feedback" % (config.Config.EC2_USER_NAME, domain_name), destFile],
+            ["scp"] + self.ssh_flags + ["%s@%s:autolab/feedback" % (self.ec2User, domain_name), destFile],
             config.Config.COPYOUT_TIMEOUT,
         )
 
