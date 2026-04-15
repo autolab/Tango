@@ -342,6 +342,7 @@ class Worker(threading.Thread):
                     self.job.setKeepForDebugging(True)
                 elif ret["runjob"] == -1:
                     Config.runjob_timeouts += 1
+                    msg = "RunJob: Status -1"
                     # TODO: difference between 2 and -1?
                 else:  # This should never happen
                     msg = "RunJob: Unknown autodriver error (status=%d)" % (
