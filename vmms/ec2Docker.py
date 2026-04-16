@@ -488,7 +488,7 @@ class Ec2Docker(VMMSInterface):
             f"aws ecr get-login-password --region {region} | "
             f"docker login --username AWS --password-stdin {registry_url} && "
             f"docker run --rm {network_flag}-v /home/%s/autolab:/home/mount -w /home {vm.image} "
-            "sh -c \"mkdir -p output && chown autolab:autolab output && "
+            "sh -c \"cd /home && mkdir -p output && chown autolab:autolab output && "
             "cp -a mount/. autolab/ && chown -R autolab:autolab autolab/ && "
             "su autolab -c \\\"autodriver "
             "-u %d -f %d -t %d -o %d autolab > output/feedback 2>&1\\\" ; touch output/time.out ;"
