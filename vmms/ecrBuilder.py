@@ -36,7 +36,7 @@ def append_build_log(job_id, message):
     with build_jobs_lock:
         build_jobs[str(job_id)]["logs"].append(message)
 
-def start_ecr_build(course_id, job_id, image_name, dockerfile_content):
+def start_ecr_build(course_id, job_id, image_name, dockerfile_content, base_tag, base_uri):
     print("Starting build with job_id=%s" % job_id)
     
     create_build_job(
@@ -48,15 +48,18 @@ def start_ecr_build(course_id, job_id, image_name, dockerfile_content):
     # Spin up background thread to avoid blocking the API
     thread = threading.Thread(
         target=_build_and_push_task,
-        args=(job_id, course_id, image_name, dockerfile_content)
+        args=(job_id, course_id, image_name, dockerfile_content, base_tag, base_uri)
     )
     thread.daemon = True
     thread.start()
 
     return int(job_id)
 
-def _build_and_push_task(job_id, course_id, image_name, dockerfile_content):
-    version_tag = f"{image_name}-{int(time.time())}"
+def _build_and_push_task(job_id, course_id, image_name, dockerfile_content, base_tag, base_uri):
+    if course_id is "public":
+        ecr_tag = image_name
+    else:
+        ecr_tag = f"{image_name}-{int(time.time())}"
     stable_tag = image_name
     try:
         # Authenticate with AWS ECR
@@ -103,6 +106,11 @@ def _build_and_push_task(job_id, course_id, image_name, dockerfile_content):
         docker_client = docker.from_env()
         docker_client.login(username=username, password=password, registry=registry)
 
+        print("Pulling remote docker image %s" % base_tag)
+        if base_tag is not None and base_uri is not None:
+            docker_client.images.pull(base_uri)
+            docker_client.images.get(base_uri).tag(base_tag)
+
         # Write Dockerfile to temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
             print("Copying dockerfile %s" % image_name)
@@ -119,7 +127,7 @@ Pin-Priority: -1
             with open(apt_preferences_path, 'w') as f:
                 f.write(apt_preferences_content)
 
-            full_image_name = f"{registry}/{course_id}:{version_tag}"
+            full_image_name = f"{registry}/{course_id}:{ecr_tag}"
             repository = f"{registry}/{course_id}"
 
             # Build the image locally
@@ -141,7 +149,7 @@ Pin-Priority: -1
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
-            push_logs = docker_client.images.push(repository=repository, tag=version_tag, stream=True, decode=True)
+            push_logs = docker_client.images.push(repository=repository, tag=ecr_tag, stream=True, decode=True)
             for log in push_logs:
                 if 'error' in log:
                     raise Exception(log['error'])

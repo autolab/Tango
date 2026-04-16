@@ -153,14 +153,31 @@ class BuildImageHandler(tornado.web.RequestHandler):
             job_id = payload.get("job_id")
             image_name = payload.get("image_name")
             dockerfile_content = payload.get("dockerfile_content")
+            is_public = payload.get("is_public")
+            base_tag = payload.get("base_tag")
+            base_uri = payload.get("base_uri")
 
-            if not all([course_id, job_id, image_name, dockerfile_content]):
+            if any(x is None for x in [job_id, image_name, dockerfile_content, is_public]):
                 self.set_status(400)
+                print([job_id, image_name, dockerfile_content, is_public, course_id])
                 self.write({"statusMsg": "Missing required parameters", "statusId": -1})
                 return
+            
+            if not is_public and course_id is None:
+                self.set_status(400)
+                self.write({"statusMsg": "Requires course_id if image is private.", "statusId": -1})
+                return
+            
+            if base_tag is not None and base_uri is None:
+                self.set_status(400)
+                self.write({"statusMsg": "Requires the URI to pull from a base docker image", "statusId": -1})
+                return
+            
+            if is_public:
+                course_id = "public"
 
             # Trigger background build
-            job_id = tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content)
+            job_id = tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri)
 
             response = {
                 "statusMsg": "Building image in ECR",
