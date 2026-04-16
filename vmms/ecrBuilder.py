@@ -132,6 +132,12 @@ Pin-Priority: -1
                 if "error" in chunk:
                     print("BUILD ERROR:", chunk["error"])
                     append_build_log(job_id, chunk["error"])
+                    raise Exception(chunk["error"])
+                if "message" in chunk:
+                    print(chunk["message"], end="")
+                    append_build_log(job_id, chunk["message"])
+                    if "dockerfile parse error" in chunk["message"].lower():
+                        raise Exception(chunk["message"])
 
             print("Pushing docker image %s to ECR" % image_name)
             # Push to ECR
