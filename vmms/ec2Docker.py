@@ -487,7 +487,7 @@ class Ec2Docker(VMMSInterface):
         runcmd = (
             f"aws ecr get-login-password --region {region} | "
             f"docker login --username AWS --password-stdin {registry_url} && "
-            f"docker run --rm {network_flag}-v /home/%s/autolab:/home/mount -w /home {vm.image} "
+            f"docker run --name autograder --rm {network_flag}-v /home/%s/autolab:/home/mount -w /home {vm.image} "
             "sh -c \"cd /home && mkdir -p output && chown autolab:autolab output && "
             "cp -a mount/. autolab/ && chown -R autolab:autolab autolab/ && "
             "su autolab -c \\\"autodriver "
@@ -587,6 +587,6 @@ class Ec2Docker(VMMSInterface):
 
     def getPartialOutput(self, vm):
         domain_name = self.domainName(vm)
-        runcmd = "head -c %s autolab/feedback" % (config.Config.MAX_OUTPUT_FILE_SIZE)
+        runcmd = "docker exec autograder head -c %s autograde/output.log" % (config.Config.MAX_OUTPUT_FILE_SIZE)
         sshcmd = (["ssh"] + self.ssh_flags + ["%s@%s" % (self.ec2User, domain_name), runcmd])
         return subprocess.check_output(sshcmd, stderr=subprocess.STDOUT).decode("utf-8")
