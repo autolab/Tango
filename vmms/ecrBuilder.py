@@ -56,6 +56,8 @@ def start_ecr_build(course_id, job_id, image_name, dockerfile_content, base_tag,
     return int(job_id)
 
 def _build_and_push_task(job_id, course_id, image_name, dockerfile_content, base_tag, base_uri):
+    course_id = course_id.lower()
+    image_name = image_name.lower()
     if course_id is "public":
         ecr_tag = image_name
     else:
@@ -182,11 +184,8 @@ def get_build_status(job_id):
                 "logs": []
             }
 
-        # retrieve the most recent logs
+        # Retrieve the FULL log history
         logs = list(job.get("logs", []))
-
-        # clear logs (consume-on-read)
-        job["logs"] = []
 
         res = {
             "statusId": int(job["statusId"]),
