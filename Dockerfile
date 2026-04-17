@@ -42,6 +42,7 @@ RUN set -eux; \
         lxc \
         iptables \
         iputils-ping \
+        openssh-client \
         gnupg; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
