@@ -19,6 +19,7 @@ bin
 lib
 include
 pip-selfcheck.json
+env/
 
 # Mac OS X custom attribute files
 .DS_Store
@@ -36,3 +37,5 @@ pip-selfcheck.json
 # Tests
 tests/*
 !tests/*.py
+!tests/filesForDockerTest/
+*.pem

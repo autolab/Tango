@@ -2,6 +2,7 @@ import os
 import sys
 import inspect
 import hashlib
+import json 
 
 import urllib.error
 import urllib.parse
@@ -13,6 +14,7 @@ from restful_tango.tangoREST import TangoREST
 import asyncio
 
 from config import Config
+from vmms import ecrBuilder 
 
 tangoREST = TangoREST()
 
@@ -142,6 +144,63 @@ class BuildHandler(tornado.web.RequestHandler):
         self.tempfile.close()
         self.write(tangoREST.build(key, name, self.request.headers["imageName"]))
 
+class BuildImageHandler(tornado.web.RequestHandler):
+    def post(self, key):
+        """post - Trigger the ECR Docker build."""
+        try:
+            payload = json.loads(self.request.body.decode('utf-8'))
+            course_id = payload.get("course_id")
+            job_id = payload.get("job_id")
+            image_name = payload.get("image_name")
+            dockerfile_content = payload.get("dockerfile_content")
+            is_public = payload.get("is_public")
+            base_tag = payload.get("base_tag")
+            base_uri = payload.get("base_uri")
+
+            if any(x is None for x in [job_id, image_name, dockerfile_content, is_public]):
+                self.set_status(400)
+                print([job_id, image_name, dockerfile_content, is_public, course_id])
+                self.write({"statusMsg": "Missing required parameters", "statusId": -1})
+                return
+            
+            if not is_public and course_id is None:
+                self.set_status(400)
+                self.write({"statusMsg": "Requires course_id if image is private.", "statusId": -1})
+                return
+            
+            if base_tag is not None and base_uri is None:
+                self.set_status(400)
+                self.write({"statusMsg": "Requires the URI to pull from a base docker image", "statusId": -1})
+                return
+            
+            if is_public:
+                course_id = "public"
+
+            # Trigger background build
+            assert(tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri) == job_id)
+
+            response = {
+                "statusMsg": "Building image in ECR",
+                "statusId": 1,
+                "jobId": job_id
+            }
+            self.write(response)
+            
+        except Exception as e:
+            self.set_status(500)
+            self.write({"statusMsg": f"Server Error: {str(e)}", "statusId": -1})
+
+class BuildStatusHandler(tornado.web.RequestHandler):
+    def get(self, key, jobId):
+        """get - Poll for the status of an ECR build."""
+        status_data = tangoREST.buildStatus(key, job_id=jobId)
+        self.write(status_data)
+
+class AllBuildStatusHandler(tornado.web.RequestHandler):
+    def get(self, key):
+        """get - Poll for the status of an ECR build."""
+        status_data = tangoREST.allBuildStatus(key)
+        self.write(status_data)
 
 async def main(port: int):
     # Routes
@@ -158,6 +217,9 @@ async def main(port: int):
             (r"/pool/(%s)/" % (SHA1_KEY), PoolHandler),
             (r"/prealloc/(%s)/(%s)/(%s)/" % (SHA1_KEY, IMAGE, NUM), PreallocHandler),
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
+            (r"/build_image/(%s)/" % (SHA1_KEY), BuildImageHandler), 
+            (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
+            (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler), 
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)

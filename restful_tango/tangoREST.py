@@ -159,7 +159,7 @@ class TangoREST(object):
             )
             input.append(handinfile)
 
-        ec2_vmms = Config.VMMS_NAME == "ec2SSH"
+        ec2_vmms = Config.VMMS_NAME == "ec2SSH" or Config.VMMS_NAME == "ec2Docker"
 
         stopBefore = ""
         if "stopBefore" in jobObj:
@@ -228,7 +228,7 @@ class TangoREST(object):
         """convertTangoJobObj - Converts a TangoJob object into a dictionary"""
         job = dict()
         # Convert scalar attribtues first
-        job["retries"] = tangoJobObj.retries
+        # job["retries"] = tangoJobObj.retries
         job["outputFile"] = tangoJobObj.outputFile
         job["name"] = tangoJobObj.name
         job["notifyURL"] = tangoJobObj.notifyURL
@@ -502,3 +502,32 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             os.unlink(tempfile)
             return self.status.wrong_key
+        
+    def buildImage(self, key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri):
+        self.log.debug("Received docker image build request(%s)" % (key))
+        if self.validateKey(key):
+            from vmms.ecrBuilder import start_ecr_build
+            self.log.info("Starting docker image build %s" % image_name)
+            return start_ecr_build(course_id, job_id, image_name, dockerfile_content, base_tag, base_uri)
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+        
+    def buildStatus(self, key, job_id):
+        self.log.debug("Received docker image status request(%s)" % (key))
+        if self.validateKey(key):
+            from vmms.ecrBuilder import get_build_status
+            return get_build_status(job_id)
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+        
+    def allBuildStatus(self, key):
+        self.log.debug("Received all docker image status request(%s)" % (key))
+        if self.validateKey(key):
+            from vmms.ecrBuilder import get_all_build_status
+            return get_all_build_status()
+        else:
+            self.log.info("Key not recognized: %s" % key)
+            return self.status.wrong_key
+            self.log.error("Validation failed %s" % (key))

@@ -76,10 +76,15 @@ class JobManager(object):
             try:
                 # if the job is a ec2 vmms job
                 # spin up an ec2 instance for that job
-                if Config.VMMS_NAME == "ec2SSH":
-                    from vmms.ec2SSH import Ec2SSH
-
-                    vmms = Ec2SSH(job.accessKeyId, job.accessKey)
+                if Config.VMMS_NAME == "ec2SSH" or Config.VMMS_NAME == "ec2Docker":
+                    if Config.VMMS_NAME == "ec2SSH":
+                        from vmms.ec2SSH import Ec2SSH
+                        vmms = Ec2SSH(job.accessKeyId, job.accessKey)
+                    elif Config.VMMS_NAME == "ec2Docker":
+                        from vmms.ec2Docker import Ec2Docker
+                        vmms = Ec2Docker(job.accessKeyId, job.accessKey)
+                    else:
+                        raise Exception("Invalid VMMS")
 
                     newVM = copy.deepcopy(job.vm)
                     newVM.id = self._getNextID()

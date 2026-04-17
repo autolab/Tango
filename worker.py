@@ -63,7 +63,7 @@ class Worker(threading.Thread):
         """
         # job-owned instance, simply destroy after job is completed
         self.cleanupStatus = True
-        if Config.VMMS_NAME == "ec2SSH":
+        if Config.VMMS_NAME == "ec2SSH" or Config.VMMS_NAME == "ec2Docker":
             self.vmms.safeDestroyVM(self.job.vm)
             # EC2 doesn't use the preallocator
         else:
@@ -342,6 +342,7 @@ class Worker(threading.Thread):
                     self.job.setKeepForDebugging(True)
                 elif ret["runjob"] == -1:
                     Config.runjob_timeouts += 1
+                    msg = "RunJob: Status -1"
                     # TODO: difference between 2 and -1?
                 else:  # This should never happen
                     msg = "RunJob: Unknown autodriver error (status=%d)" % (

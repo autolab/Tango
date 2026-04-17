@@ -40,7 +40,7 @@ class Config(object):
 
     # VMMS to use. Must be set to a VMMS implemented in vmms/ before
     # starting Tango.  Options are: "localDocker", "distDocker",
-    # "tashiSSH", and "ec2SSH"
+    # "tashiSSH", "ec2SSH", "ec2Docker"
     VMMS_NAME = "localDocker"
 
     # Update this to the 'volumes' directory of your Tango installation if
@@ -152,8 +152,10 @@ class Config(object):
     DEFAULT_AMI = ""
     DEFAULT_INST_TYPE = ""
     DEFAULT_SECURITY_GROUP = ""
-    SECURITY_KEY_PATH = ""
+    SECURITY_KEY_PATH = "" # Absolute path to the key on your local machine
     DYNAMIC_SECURITY_KEY_PATH = ""
-    SECURITY_KEY_NAME = ""
+    SECURITY_KEY_NAME = "" # The name of the key pair in AWS (no .pem)
     TANGO_RESERVATION_ID = ""
     INSTANCE_RUNNING = 16  # Status code of a instance that is running
+
+    MAX_EC2_VMS = 5  # The maximum number of spot instances allowed at once

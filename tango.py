@@ -74,6 +74,10 @@ class TangoServer(object):
             from vmms.distDocker import DistDocker
 
             vmms = DistDocker()
+        elif Config.VMMS_NAME == "ec2Docker":
+            from vmms.ec2Docker import Ec2Docker
+
+            vmms = Ec2Docker()
 
         self.preallocator: Preallocator = Preallocator({Config.VMMS_NAME: vmms})
         self.jobQueue: JobQueue = JobQueue(self.preallocator)
