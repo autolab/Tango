@@ -177,7 +177,7 @@ class BuildImageHandler(tornado.web.RequestHandler):
                 course_id = "public"
 
             # Trigger background build
-            job_id = tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri)
+            assert(tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri) == job_id)
 
             response = {
                 "statusMsg": "Building image in ECR",

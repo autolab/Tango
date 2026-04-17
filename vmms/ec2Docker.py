@@ -216,8 +216,8 @@ class Ec2Docker(VMMSInterface):
         VM created
         """
         # do not do anything until we acquire a vm semaphore
-        Ec2Docker.acquire_vm_semaphore()
         validated_key_path = Ec2Docker._validate_ec2_runtime_config()
+        Ec2Docker.acquire_vm_semaphore()
 
         self.appName = os.path.basename(__file__).strip(".py")
         # Setup logger
