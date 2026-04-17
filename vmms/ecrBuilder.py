@@ -180,12 +180,6 @@ Pin-Priority: -1
             if 'full_image_name' in locals():
                 docker_client.images.remove(image=full_image_name, force=True)
             
-            # Remove the base template image (if it was pulled)
-            if base_uri is not None:
-                docker_client.images.remove(image=base_uri, force=True)
-            if base_tag is not None:
-                docker_client.images.remove(image=base_tag, force=True)
-            
             #  Prune intermediate `<none>:<none>` dangling layers
             prune_result = docker_client.images.prune(filters={'dangling': True})
             reclaimed = prune_result.get('SpaceReclaimed', 0) / (1024 * 1024) # Convert bytes to MB
