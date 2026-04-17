@@ -173,6 +173,27 @@ Pin-Priority: -1
             status_id=255,
             status_msg=f"Build failed: {str(e)}",
         )
+    finally:
+        print("Cleaning up local Docker storage...")
+        try:
+            # Remove the final built image from the EC2 drive
+            if 'full_image_name' in locals():
+                docker_client.images.remove(image=full_image_name, force=True)
+            
+            # Remove the base template image (if it was pulled)
+            if base_uri is not None:
+                docker_client.images.remove(image=base_uri, force=True)
+            if base_tag is not None:
+                docker_client.images.remove(image=base_tag, force=True)
+            
+            #  Prune intermediate `<none>:<none>` dangling layers
+            prune_result = docker_client.images.prune(filters={'dangling': True})
+            reclaimed = prune_result.get('SpaceReclaimed', 0) / (1024 * 1024) # Convert bytes to MB
+            print(f"Cleanup successful. Reclaimed {reclaimed:.2f} MB of dangling cache.")
+            
+        except Exception as cleanup_error:
+            # We catch exceptions here so a cleanup failure doesn't crash the Tango daemon
+            print(f"Cleanup warning: {cleanup_error}")
 
 def get_build_status(job_id):
     with build_jobs_lock:
