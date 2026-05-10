@@ -181,6 +181,40 @@ class Ec2SSH(VMMSInterface):
     def release_vm_semaphore():
         """Releases the VM sempahore"""
         Ec2SSH._vm_semaphore.release()
+        
+    def __get_valid_images(self) -> dict:
+        # Get images from ec2
+        images = self.boto3resource.images.filter(Owners=["self"])
+
+        img_name_to_img_obj = {}
+        for image in images:
+            if image.tags:
+                for tag in image.tags:
+                    if tag["Key"] == "Name" and tag["Value"]:
+                        if tag["Value"] in img_name_to_img_obj:
+                            self.log.info(
+                                "Ignore %s for duplicate name tag %s"
+                                % (image.id, tag["Value"])
+                            )
+                        else:
+                            img_name_to_img_obj[tag["Value"]] = image
+                            self.log.info(
+                                "Found image: %s with name tag %s"
+                                % (image.id, tag["Value"])
+                            )
+
+        imageAMIs = [item.id for item in images]
+        taggedAMIs = [img_name_to_img_obj[key].id for key in img_name_to_img_obj]
+        ignoredAMIs = list(set(imageAMIs) - set(taggedAMIs))
+
+        if len(ignoredAMIs) > 0:
+            self.log.info(
+                "Ignored images %s for lack of or ill-formed name tag"
+                % str(ignoredAMIs)
+            )
+        
+        return img_name_to_img_obj
+        
 
     @staticmethod
     def _validate_ec2_runtime_config() -> str:
@@ -265,44 +299,17 @@ class Ec2SSH(VMMSInterface):
             # self.createKeyPair()
         # create boto3resource
 
-        self.img2ami = {} # this is a bad name, should really be img_name to img
-        self.images = []
         try:
             # This is a service resource
             self.boto3resource: EC2ServiceResource = boto3.resource("ec2", self.ec2Region) # TODO: rename this ot self.ec2resource
             self.boto3client = boto3.client("ec2", self.ec2Region)
 
-            # Get images from ec2
-            images = self.boto3resource.images.filter(Owners=["self"])
         except Exception as e:
             self.log.error("EC2SSH failed initialization: %s" % (e))
             raise
+        self.img2ami = self.__get_valid_images()
 
-        for image in images:
-            if image.tags:
-                for tag in image.tags:
-                    if tag["Key"] == "Name" and tag["Value"]:
-                        if tag["Value"] in self.img2ami:
-                            self.log.info(
-                                "Ignore %s for duplicate name tag %s"
-                                % (image.id, tag["Value"])
-                            )
-                        else:
-                            self.img2ami[tag["Value"]] = image
-                            self.log.info(
-                                "Found image: %s with name tag %s"
-                                % (image.id, tag["Value"])
-                            )
 
-        imageAMIs = [item.id for item in images]
-        taggedAMIs = [self.img2ami[key].id for key in self.img2ami]
-        ignoredAMIs = list(set(imageAMIs) - set(taggedAMIs))
-
-        if len(ignoredAMIs) > 0:
-            self.log.info(
-                "Ignored images %s for lack of or ill-formed name tag"
-                % str(ignoredAMIs)
-            )
 
     def instanceName(self, id, name):
         """instanceName - Constructs a VM instance name. Always use
@@ -344,7 +351,16 @@ class Ec2SSH(VMMSInterface):
             ec2instance["instance_type"] = config.Config.DEFAULT_INST_TYPE
 
         # for now, ami is config default
-        ec2instance["ami"] = self.img2ami[vm.image].id
+        if vm.image in self.img2ami:
+            ec2instance["ami"] = self.img2ami[vm.image].id
+        else:
+            # We may need to rescan for new images
+            self.img2ami = self.__get_valid_images()
+            if vm.image in self.img2ami:
+                ec2instance["ami"] = self.img2ami[vm.image].id
+            else:
+                self.log.error("Image %s not found" % vm.image)
+                raise
 
         self.log.info("tangoMachineToEC2Instance: %s" % str(ec2instance))
         return ec2instance
@@ -871,6 +887,7 @@ class Ec2SSH(VMMSInterface):
 
     def getImages(self):
         """getImages - return a constant; actually use the ami specified in config"""
+        self.img2ami = self.__get_valid_images()
         return [key for key in self.img2ami]
 
     # getTag: to do later
