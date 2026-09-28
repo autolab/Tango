@@ -159,3 +159,28 @@ class Config(object):
     INSTANCE_RUNNING = 16  # Status code of a instance that is running
 
     MAX_EC2_VMS = 5  # The maximum number of spot instances allowed at once
+
+    ######
+    # Part 6: IAM developer access constants
+    #
+    # Used by vmms/iamProvisioner.py to provision IAM users for developer
+    # access to a dev instance over SSM Session Manager.
+
+    # Region for the IAM and SSM clients. Deliberately separate from EC2_REGION
+    IAM_REGION = ""
+
+    # IAM path that Tango-managed developer users live under. Tango refuses to
+    # modify a user outside this path. Must start and end with "/"
+    IAM_USER_PATH = "/autolab-dev/"
+
+    # IAM group carrying the SSM permissions for developer access
+    IAM_GROUP = ""
+
+    # Instance ids developer accounts may be provisioned on. A request naming
+    # any other instance is rejected
+    IAM_ALLOWED_INSTANCES = []
+
+    # Keys authorizing the /iam routes. Separate from KEYS on purpose: these
+    # routes create IAM users and run root commands over SSM. Empty by default,
+    # which leaves the routes closed until IAM_ADMIN_KEY is set
+    IAM_ADMIN_KEYS = [k for k in [os.getenv("IAM_ADMIN_KEY", "")] if k]
