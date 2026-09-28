@@ -36,7 +36,7 @@ def run_build_and_poll(test_name, payload, expected_success):
             
             if status_id == 0:
                 if expected_success:
-                    print(f"✅ [{test_name}] PASSED! Image built: {status_data.get('ecr_image_uri')}")
+                    print(f"✅ [{test_name}] PASSED! Image built successfully.")
                     return True
                 else:
                     print(f"❌ [{test_name}] FAILED: Expected failure, but it succeeded!")
