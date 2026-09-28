@@ -44,10 +44,10 @@ def run_build_and_poll(test_name, payload, expected_success):
                     
             elif status_id < 0:
                 if not expected_success:
-                    print(f"✅ [{test_name}] PASSED! Caught expected failure: {msg}")
+                    print(f"✅ [{test_name}] PASSED! Caught expected failure (details redacted). statusId={status_id}")
                     return True
                 else:
-                    print(f"❌ [{test_name}] FAILED: Expected success, but got error: {msg}")
+                    print(f"❌ [{test_name}] FAILED: Expected success, but got an error (details redacted). statusId={status_id}")
                     return False
                     
             time.sleep(2)
