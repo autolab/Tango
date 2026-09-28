@@ -3,6 +3,7 @@ import sys
 import inspect
 import hashlib
 import json 
+import html
 
 import urllib.error
 import urllib.parse
@@ -189,10 +190,11 @@ class BuildImageHandler(tornado.web.RequestHandler):
             # Trigger background build
             assert(tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri) == job_id)
 
+            safe_job_id = html.escape(str(job_id), quote=True)
             response = {
                 "statusMsg": "Building image in ECR",
                 "statusId": 1,
-                "jobId": job_id
+                "jobId": safe_job_id
             }
             self.write(response)
             
