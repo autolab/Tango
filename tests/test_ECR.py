@@ -19,7 +19,7 @@ def run_build_and_poll(test_name, payload, expected_success):
             print(f"❌ [{test_name}] FAILED: No jobId returned.")
             return False
             
-        print(f"⏳ [{test_name}] Job {job_id} started. Polling...")
+        print(f"⏳ [{test_name}] Job started. Polling...")
         
         # Poll the GET request
         status_url = f"{BASE_URL}/build_status/{API_KEY}/{job_id}/"
