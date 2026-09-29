@@ -39,8 +39,8 @@ SSM_POLL_INTERVAL_SECS = 2
 SSM_POLL_ATTEMPTS = 30
 SSM_TIMEOUT_SECS = SSM_POLL_INTERVAL_SECS * SSM_POLL_ATTEMPTS
 
-# IAM allows [A-Za-z0-9+=,.@_-] up to 64 chars.
-IAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9+=,.@_-]{1,64}$")
+# IAM allows [A-Za-z0-9] up to 64 chars.
+IAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9]{1,64}$")
 
 # Linux accounts are stricter: must not start with a digit or a dash, and must
 # stay within the 32 char limit useradd enforces.
