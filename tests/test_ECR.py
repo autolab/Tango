@@ -19,7 +19,7 @@ def run_build_and_poll(test_name, payload, expected_success):
             print(f"❌ [{test_name}] FAILED: No jobId returned.")
             return False
             
-        print(f"⏳ [{test_name}] Job {job_id} started. Polling...")
+        print(f"⏳ [{test_name}] Job started. Polling...")
         
         # Poll the GET request
         status_url = f"{BASE_URL}/build_status/{API_KEY}/{job_id}/"
@@ -36,7 +36,7 @@ def run_build_and_poll(test_name, payload, expected_success):
             
             if status_id == 0:
                 if expected_success:
-                    print(f"✅ [{test_name}] PASSED! Image built: {status_data.get('ecr_image_uri')}")
+                    print(f"✅ [{test_name}] PASSED! Image built successfully.")
                     return True
                 else:
                     print(f"❌ [{test_name}] FAILED: Expected failure, but it succeeded!")
@@ -44,10 +44,10 @@ def run_build_and_poll(test_name, payload, expected_success):
                     
             elif status_id < 0:
                 if not expected_success:
-                    print(f"✅ [{test_name}] PASSED! Caught expected failure: {msg}")
+                    print(f"✅ [{test_name}] PASSED! Caught expected failure (details redacted). statusId={status_id}")
                     return True
                 else:
-                    print(f"❌ [{test_name}] FAILED: Expected success, but got error: {msg}")
+                    print(f"❌ [{test_name}] FAILED: Expected success, but got an error (details redacted). statusId={status_id}")
                     return False
                     
             time.sleep(2)

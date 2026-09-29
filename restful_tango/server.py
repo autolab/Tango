@@ -3,14 +3,16 @@ import sys
 import inspect
 import hashlib
 import json 
+import html
 
 import urllib.error
 import urllib.parse
 import urllib.request
 
+import tornado.ioloop
 import tornado.web
 from tempfile import NamedTemporaryFile
-from restful_tango.tangoREST import TangoREST
+from restful_tango.tangoREST import TangoREST, IamAuthError
 import asyncio
 
 from config import Config
@@ -26,6 +28,12 @@ IMAGE = ".+"
 NUM = "[0-9]+"
 JOBID = "[0-9]+"
 DEADJOBS = ".+"
+
+# IAM routes: a UUID4 job id, and the IAM charset rather than ".+" so that a
+# username cannot smuggle path segments.
+IAM_JOBID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+IAM_USERNAME = "[A-Za-z0-9+=,.@_-]{1,64}"
+
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -179,10 +187,11 @@ class BuildImageHandler(tornado.web.RequestHandler):
             # Trigger background build
             assert(tangoREST.buildImage(key, course_id, job_id, image_name, dockerfile_content, base_tag, base_uri) == job_id)
 
+            safe_job_id = html.escape(str(job_id), quote=True)
             response = {
                 "statusMsg": "Building image in ECR",
                 "statusId": 1,
-                "jobId": job_id
+                "jobId": safe_job_id
             }
             self.write(response)
             
@@ -202,6 +211,128 @@ class AllBuildStatusHandler(tornado.web.RequestHandler):
         status_data = tangoREST.allBuildStatus(key)
         self.write(status_data)
 
+class IamBaseHandler(tornado.web.RequestHandler):
+    """Shared auth, cache and error handling for the /iam routes.
+
+    The key in these paths is checked against Config.IAM_ADMIN_KEYS rather
+    than Config.KEYS.
+    """
+
+    def noStore(self):
+        """Keep responses that can carry a secret out of caches."""
+        self.set_header("Cache-Control", "no-store")
+
+    def writeIamError(self, status, msg):
+        self.set_status(status)
+        self.write({"statusId": -1, "statusMsg": msg})
+
+    def handleIamError(self, e):
+        """Map a provisioning exception onto an HTTP status code."""
+        from vmms.iamProvisioner import (
+            IamCapacityError,
+            IamJobNotFound,
+            IamUserNotFound,
+            IamValidationError,
+        )
+
+        if isinstance(e, IamAuthError):
+            self.writeIamError(403, "Key not recognized")
+        elif isinstance(e, IamValidationError):
+            self.writeIamError(400, str(e))
+        elif isinstance(e, (IamJobNotFound, IamUserNotFound)):
+            self.writeIamError(404, str(e))
+        elif isinstance(e, IamCapacityError):
+            self.set_header("Retry-After", "30")
+            self.writeIamError(503, str(e))
+        else:
+            # Logged rather than returned: an AWS error can name account
+            # internals the caller has no business seeing.
+            tangoREST.log.error("IAM request failed: %s" % str(e))
+            self.writeIamError(500, "Server error")
+
+
+class IamProvisionHandler(IamBaseHandler):
+    def post(self, key):
+        """post - Start provisioning an IAM user, return a job id."""
+        try:
+            payload = json.loads(self.request.body.decode("utf-8") or "{}")
+        except ValueError:
+            return self.writeIamError(400, "Body must be valid JSON")
+
+        if not isinstance(payload, dict):
+            return self.writeIamError(400, "Body must be a JSON object")
+
+        iam_username = payload.get("iam_username")
+        instance_id = payload.get("instance_id")
+
+        missing = [
+            field
+            for field, value in (
+                ("iam_username", iam_username),
+                ("instance_id", instance_id),
+            )
+            if value is None
+        ]
+        if missing:
+            return self.writeIamError(
+                400, "Missing required parameters: %s" % ", ".join(missing)
+            )
+
+        create_key = payload.get("create_key", False)
+        if not isinstance(create_key, bool):
+            return self.writeIamError(400, "create_key must be a boolean")
+
+        try:
+            result = tangoREST.iamProvision(
+                key,
+                iam_username,
+                payload.get("os_username"),
+                instance_id,
+                create_key,
+            )
+        except Exception as e:
+            return self.handleIamError(e)
+
+        self.set_status(202)
+        self.write(result)
+
+
+class IamJobStatusHandler(IamBaseHandler):
+    def get(self, key, jobId):
+        """get - Poll the status of an IAM provisioning job."""
+        # Set before writing: this response can carry a one-time access key.
+        self.noStore()
+        try:
+            self.write(tangoREST.iamJobStatus(key, jobId))
+        except Exception as e:
+            self.handleIamError(e)
+
+
+class IamAccessKeyHandler(IamBaseHandler):
+    async def post(self, key, iamUsername):
+        """post - Replace the user's access keys with a fresh one."""
+        # This response returns a secret.
+        self.noStore()
+
+        # Checked here as well as in iamCreateKey so that an unauthorized
+        # request does not occupy an executor thread.
+        try:
+            tangoREST.requireIamAdminKey(key)
+        except Exception as e:
+            return self.handleIamError(e)
+
+        try:
+            # Blocking IAM calls, kept off the event loop. run_in_executor
+            # rather than asyncio.to_thread, which needs Python 3.9.
+            result = await tornado.ioloop.IOLoop.current().run_in_executor(
+                None, tangoREST.iamCreateKey, key, iamUsername
+            )
+        except Exception as e:
+            return self.handleIamError(e)
+
+        self.write(result)
+
+
 async def main(port: int):
     # Routes
     application = tornado.web.Application(
@@ -219,7 +350,11 @@ async def main(port: int):
             (r"/build/(%s)/" % (SHA1_KEY), BuildHandler),
             (r"/build_image/(%s)/" % (SHA1_KEY), BuildImageHandler), 
             (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
-            (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler), 
+            (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler),
+            # IAM developer access
+            (r"/iam/(%s)/users/" % (SHA1_KEY), IamProvisionHandler),
+            (r"/iam/(%s)/jobs/(%s)/" % (SHA1_KEY, IAM_JOBID), IamJobStatusHandler),
+            (r"/iam/(%s)/users/(%s)/key/" % (SHA1_KEY, IAM_USERNAME), IamAccessKeyHandler),
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)

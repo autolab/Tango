@@ -69,6 +69,11 @@ class AutogradeDoneHandler(tornado.web.RequestHandler):
         global sub_num
         global start_time
         id = self.get_query_argument("id")
+        if not id.isdigit():
+            self.set_status(400)
+            self.write("invalid id")
+            self.finish()
+            return
         fileBody = self.request.files["file"][0]["body"].decode()
         scoreJson = fileBody.split("\n")[-2]
         with open(os.path.join(test_dir, "output", "output%s.txt" % id), 'w') as f:
