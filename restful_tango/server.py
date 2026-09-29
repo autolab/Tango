@@ -34,9 +34,6 @@ DEADJOBS = ".+"
 IAM_JOBID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 IAM_USERNAME = "[A-Za-z0-9+=,.@_-]{1,64}"
 
-# The /iam routes take their key from a header, not the path, and it is
-# Config.IAM_ADMIN_KEYS rather than Config.KEYS.
-IAM_KEY_HEADER = "X-Tango-Key"
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -215,11 +212,11 @@ class AllBuildStatusHandler(tornado.web.RequestHandler):
         self.write(status_data)
 
 class IamBaseHandler(tornado.web.RequestHandler):
-    """Shared auth, cache and error handling for the /iam routes."""
+    """Shared auth, cache and error handling for the /iam routes.
 
-    def iamKey(self):
-        """Read the admin key from the request header."""
-        return self.request.headers.get(IAM_KEY_HEADER, "")
+    The key in these paths is checked against Config.IAM_ADMIN_KEYS rather
+    than Config.KEYS.
+    """
 
     def noStore(self):
         """Keep responses that can carry a secret out of caches."""
@@ -255,7 +252,7 @@ class IamBaseHandler(tornado.web.RequestHandler):
 
 
 class IamProvisionHandler(IamBaseHandler):
-    def post(self):
+    def post(self, key):
         """post - Start provisioning an IAM user, return a job id."""
         try:
             payload = json.loads(self.request.body.decode("utf-8") or "{}")
@@ -287,7 +284,7 @@ class IamProvisionHandler(IamBaseHandler):
 
         try:
             result = tangoREST.iamProvision(
-                self.iamKey(),
+                key,
                 iam_username,
                 payload.get("os_username"),
                 instance_id,
@@ -301,22 +298,21 @@ class IamProvisionHandler(IamBaseHandler):
 
 
 class IamJobStatusHandler(IamBaseHandler):
-    def get(self, jobId):
+    def get(self, key, jobId):
         """get - Poll the status of an IAM provisioning job."""
         # Set before writing: this response can carry a one-time access key.
         self.noStore()
         try:
-            self.write(tangoREST.iamJobStatus(self.iamKey(), jobId))
+            self.write(tangoREST.iamJobStatus(key, jobId))
         except Exception as e:
             self.handleIamError(e)
 
 
 class IamAccessKeyHandler(IamBaseHandler):
-    async def post(self, iamUsername):
+    async def post(self, key, iamUsername):
         """post - Replace the user's access keys with a fresh one."""
         # This response returns a secret.
         self.noStore()
-        key = self.iamKey()
 
         # Checked here as well as in iamCreateKey so that an unauthorized
         # request does not occupy an executor thread.
@@ -355,11 +351,10 @@ async def main(port: int):
             (r"/build_image/(%s)/" % (SHA1_KEY), BuildImageHandler), 
             (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
             (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler),
-            # IAM developer access. Key comes from the X-Tango-Key header, so
-            # these paths carry no key segment.
-            (r"/iam/users/?", IamProvisionHandler),
-            (r"/iam/jobs/(%s)/?" % (IAM_JOBID), IamJobStatusHandler),
-            (r"/iam/users/(%s)/key/?" % (IAM_USERNAME), IamAccessKeyHandler),
+            # IAM developer access
+            (r"/iam/(%s)/users/" % (SHA1_KEY), IamProvisionHandler),
+            (r"/iam/(%s)/jobs/(%s)/" % (SHA1_KEY, IAM_JOBID), IamJobStatusHandler),
+            (r"/iam/(%s)/users/(%s)/key/" % (SHA1_KEY, IAM_USERNAME), IamAccessKeyHandler),
         ]
     )
     application.listen(port, max_buffer_size=Config.MAX_INPUT_FILE_SIZE)
