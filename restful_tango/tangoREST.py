@@ -7,7 +7,6 @@
 import sys
 import os
 import hashlib
-import hmac
 import json
 import logging
 import docker
@@ -15,10 +14,6 @@ import docker
 from config import Config
 from tangoObjects import TangoJob, TangoMachine, InputFile
 from tango import TangoServer
-
-
-class IamAuthError(Exception):
-    """Raised when a request to an /iam route carries an invalid admin key."""
 
 
 class Status(object):
@@ -540,43 +535,18 @@ class TangoREST(object):
     ##
     # IAM developer access API
     #
-    # Authorized by Config.IAM_ADMIN_KEYS, not Config.KEYS: these routes create
-    # IAM users and run root commands over SSM, so they are deliberately not
-    # reachable with the key the autograding clients use.
-    #
-    # These methods raise rather than returning an error dict, so that the
-    # handlers can answer with a real HTTP status code.
+    # Authorized by the same keys as the other routes (validateKey).
     ##
 
-    def validateIamAdminKey(self, key):
-        """validateIamAdminKey - Validates an admin key for the IAM routes"""
-        if not key:
-            return False
+    def requireIamKey(self, key):
+        """requireIamKey - Raises unless the key authorizes an IAM route"""
+        from vmms.iamProvisioner import IamAuthError
 
-        # compare_digest raises TypeError on a non-ASCII str, and the key
-        # arrives in a client-controlled header, so compare bytes instead. A
-        # value that will not encode is simply not a valid key.
-        try:
-            keyBytes = key.encode("utf-8") if isinstance(key, str) else bytes(key)
-        except (UnicodeEncodeError, TypeError, ValueError):
-            return False
-
-        result = False
-        for el in Config.IAM_ADMIN_KEYS:
-            expected = el.encode("utf-8") if isinstance(el, str) else bytes(el)
-            # Constant time: unlike KEYS, this key is the only thing standing in
-            # front of IAM user creation.
-            if hmac.compare_digest(expected, keyBytes):
-                result = True
-        return result
-
-    def requireIamAdminKey(self, key):
-        """requireIamAdminKey - Raises unless the key authorizes an IAM route"""
-        if not self.validateIamAdminKey(key):
-            self.log.info("IAM admin key not recognized")
+        if not self.validateKey(key):
+            self.log.info("IAM key not recognized")
             raise IamAuthError("Key not recognized")
 
-    def iamProvision(self, key, iam_username, os_username, instance_id, create_key):
+    def iamProvision(self, key, iam_username, os_username, create_key):
         """iamProvision - Start provisioning an IAM user, return its job id.
 
         Returns as soon as the background job is started. Raises
@@ -584,17 +554,12 @@ class TangoREST(object):
         provisions are already running.
         """
         self.log.debug("Received IAM provision request(%s)" % (iam_username))
-        self.requireIamAdminKey(key)
+        self.requireIamKey(key)
 
         from vmms.iamProvisioner import start_iam_provision
 
-        job_id = start_iam_provision(
-            iam_username, os_username, instance_id, create_key
-        )
-        self.log.info(
-            "Started IAM provision job %s for %s on %s"
-            % (job_id, iam_username, instance_id)
-        )
+        job_id = start_iam_provision(iam_username, os_username, create_key)
+        self.log.info("Started IAM provision job %s for %s" % (job_id, iam_username))
         result = self.status.create(1, "Provisioning IAM user")
         result["jobId"] = job_id
         return result
@@ -607,7 +572,7 @@ class TangoREST(object):
         must send it with Cache-Control: no-store.
         """
         self.log.debug("Received IAM job status request(%s)" % (job_id))
-        self.requireIamAdminKey(key)
+        self.requireIamKey(key)
 
         from vmms.iamProvisioner import get_provision_status
 
@@ -620,7 +585,7 @@ class TangoREST(object):
         returned to the caller and never logged.
         """
         self.log.debug("Received IAM access key request(%s)" % (iam_username))
-        self.requireIamAdminKey(key)
+        self.requireIamKey(key)
 
         from vmms.iamProvisioner import regenerate_access_key
 

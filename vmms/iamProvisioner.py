@@ -49,6 +49,10 @@ OS_USERNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 INSTANCE_ID_RE = re.compile(r"^i-[0-9a-f]{8,17}$")
 
 
+class IamAuthError(Exception):
+    """Raised when a request to an /iam route carries an invalid key."""
+
+
 class IamValidationError(Exception):
     """Raised when a caller-supplied value fails validation."""
 
@@ -78,9 +82,11 @@ def _validate_iam_runtime_config():
     """
     missing = []
 
-    region = str(getattr(Config, "IAM_REGION", "")).strip()
+    # IAM is global; the region only matters for SSM, and the dev instance
+    # lives in the same region as the EC2 VMs.
+    region = str(getattr(Config, "EC2_REGION", "")).strip()
     if not region:
-        missing.append("IAM_REGION")
+        missing.append("EC2_REGION")
 
     path = str(getattr(Config, "IAM_USER_PATH", "")).strip()
     if not path:
@@ -90,9 +96,9 @@ def _validate_iam_runtime_config():
     if not group:
         missing.append("IAM_GROUP")
 
-    allowed = getattr(Config, "IAM_ALLOWED_INSTANCES", None) or []
-    if not allowed:
-        missing.append("IAM_ALLOWED_INSTANCES")
+    instance_id = str(getattr(Config, "IAM_INSTANCE_ID", "")).strip()
+    if not instance_id:
+        missing.append("IAM_INSTANCE_ID")
 
     if missing:
         raise ValueError(
@@ -104,7 +110,13 @@ def _validate_iam_runtime_config():
             "Invalid IAM_USER_PATH (must start and end with '/'): %s" % path
         )
 
-    return region, path, group, list(allowed)
+    if not INSTANCE_ID_RE.match(instance_id):
+        raise ValueError(
+            "Invalid IAM_INSTANCE_ID (must match %s): %s"
+            % (INSTANCE_ID_RE.pattern, instance_id)
+        )
+
+    return region, path, group, instance_id
 
 
 ##
@@ -162,21 +174,6 @@ def validate_os_username(os_username):
             "Invalid os_username: must match %s" % OS_USERNAME_RE.pattern
         )
     return os_username
-
-
-def validate_instance_id(instance_id):
-    """Validate an instance id and check it against the configured allowlist."""
-    if not isinstance(instance_id, str) or not INSTANCE_ID_RE.match(instance_id):
-        raise IamValidationError(
-            "Invalid instance_id: must match %s" % INSTANCE_ID_RE.pattern
-        )
-
-    _, _, _, allowed = _validate_iam_runtime_config()
-    if instance_id not in allowed:
-        raise IamValidationError(
-            "instance_id %s is not in IAM_ALLOWED_INSTANCES" % instance_id
-        )
-    return instance_id
 
 
 def resolve_usernames(iam_username, os_username=None):
@@ -451,14 +448,15 @@ def regenerate_access_key(iam_username):
 ##
 
 
-def start_iam_provision(iam_username, os_username, instance_id, create_key=False):
+def start_iam_provision(iam_username, os_username, create_key=False):
     """Validate the request, start a background provision, return the job id.
 
-    Raises IamValidationError on a bad request and IamCapacityError when too
-    many provisions are already running.
+    The user is provisioned on Config.IAM_INSTANCE_ID. Raises
+    IamValidationError on a bad request and IamCapacityError when too many
+    provisions are already running.
     """
     iam_username, os_username = resolve_usernames(iam_username, os_username)
-    validate_instance_id(instance_id)
+    _, _, _, instance_id = _validate_iam_runtime_config()
 
     if not _provision_semaphore.acquire(blocking=False):
         raise IamCapacityError(

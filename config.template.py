@@ -166,9 +166,6 @@ class Config(object):
     # Used by vmms/iamProvisioner.py to provision IAM users for developer
     # access to a dev instance over SSM Session Manager.
 
-    # Region for the IAM and SSM clients. Deliberately separate from EC2_REGION
-    IAM_REGION = ""
-
     # IAM path that Tango-managed developer users live under. Tango refuses to
     # modify a user outside this path. Must start and end with "/"
     IAM_USER_PATH = "/autolab-dev/"
@@ -176,11 +173,7 @@ class Config(object):
     # IAM group carrying the SSM permissions for developer access
     IAM_GROUP = ""
 
-    # Instance ids developer accounts may be provisioned on. A request naming
-    # any other instance is rejected
-    IAM_ALLOWED_INSTANCES = []
+    # The dev instance developer accounts are provisioned on. Set here rather
+    # than taken from the request, so a caller cannot target another instance
+    IAM_INSTANCE_ID = ""
 
-    # Keys authorizing the /iam routes. Separate from KEYS on purpose: these
-    # routes create IAM users and run root commands over SSM. Empty by default,
-    # which leaves the routes closed until IAM_ADMIN_KEY is set
-    IAM_ADMIN_KEYS = [k for k in [os.getenv("IAM_ADMIN_KEY", "")] if k]

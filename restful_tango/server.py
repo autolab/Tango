@@ -12,7 +12,7 @@ import urllib.request
 import tornado.ioloop
 import tornado.web
 from tempfile import NamedTemporaryFile
-from restful_tango.tangoREST import TangoREST, IamAuthError
+from restful_tango.tangoREST import TangoREST
 import asyncio
 
 from config import Config
@@ -212,11 +212,7 @@ class AllBuildStatusHandler(tornado.web.RequestHandler):
         self.write(status_data)
 
 class IamBaseHandler(tornado.web.RequestHandler):
-    """Shared auth, cache and error handling for the /iam routes.
-
-    The key in these paths is checked against Config.IAM_ADMIN_KEYS rather
-    than Config.KEYS.
-    """
+    """Shared auth, cache and error handling for the /iam routes."""
 
     def noStore(self):
         """Keep responses that can carry a secret out of caches."""
@@ -229,6 +225,7 @@ class IamBaseHandler(tornado.web.RequestHandler):
     def handleIamError(self, e):
         """Map a provisioning exception onto an HTTP status code."""
         from vmms.iamProvisioner import (
+            IamAuthError,
             IamCapacityError,
             IamJobNotFound,
             IamUserNotFound,
@@ -263,20 +260,8 @@ class IamProvisionHandler(IamBaseHandler):
             return self.writeIamError(400, "Body must be a JSON object")
 
         iam_username = payload.get("iam_username")
-        instance_id = payload.get("instance_id")
-
-        missing = [
-            field
-            for field, value in (
-                ("iam_username", iam_username),
-                ("instance_id", instance_id),
-            )
-            if value is None
-        ]
-        if missing:
-            return self.writeIamError(
-                400, "Missing required parameters: %s" % ", ".join(missing)
-            )
+        if iam_username is None:
+            return self.writeIamError(400, "Missing required parameter: iam_username")
 
         create_key = payload.get("create_key", False)
         if not isinstance(create_key, bool):
@@ -287,7 +272,6 @@ class IamProvisionHandler(IamBaseHandler):
                 key,
                 iam_username,
                 payload.get("os_username"),
-                instance_id,
                 create_key,
             )
         except Exception as e:
@@ -317,7 +301,7 @@ class IamAccessKeyHandler(IamBaseHandler):
         # Checked here as well as in iamCreateKey so that an unauthorized
         # request does not occupy an executor thread.
         try:
-            tangoREST.requireIamAdminKey(key)
+            tangoREST.requireIamKey(key)
         except Exception as e:
             return self.handleIamError(e)
 
