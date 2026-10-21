@@ -564,6 +564,20 @@ class TangoREST(object):
         result["jobId"] = job_id
         return result
 
+    def iamConfig(self, key):
+        """iamConfig - Return the instance id and region developers connect to.
+
+        Raises ValueError when the IAM configuration is incomplete.
+        """
+        self.log.debug("Received IAM config request")
+        self.requireIamKey(key)
+
+        from vmms.iamProvisioner import get_access_config
+
+        result = self.status.create(2, "IAM access config")
+        result.update(get_access_config())
+        return result
+
     def iamJobStatus(self, key, job_id):
         """iamJobStatus - Return the status of an IAM provisioning job.
 

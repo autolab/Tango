@@ -449,6 +449,15 @@ def regenerate_access_key(iam_username):
 ##
 
 
+def get_access_config():
+    """Return the dev instance and region developers connect to.
+
+    Raises ValueError when the IAM configuration is incomplete.
+    """
+    region, _, _, instance_id = _validate_iam_runtime_config()
+    return {"instanceId": instance_id, "region": region}
+
+
 def start_iam_provision(iam_username, os_username, create_key=False):
     """Validate the request, start a background provision, return the job id.
 

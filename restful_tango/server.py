@@ -281,6 +281,15 @@ class IamProvisionHandler(IamBaseHandler):
         self.write(result)
 
 
+class IamConfigHandler(IamBaseHandler):
+    def get(self, key):
+        """get - Return the instance id and region developers connect to."""
+        try:
+            self.write(tangoREST.iamConfig(key))
+        except Exception as e:
+            self.handleIamError(e)
+
+
 class IamJobStatusHandler(IamBaseHandler):
     def get(self, key, jobId):
         """get - Poll the status of an IAM provisioning job."""
@@ -336,6 +345,7 @@ async def main(port: int):
             (r"/build_status/(%s)/(%s)/" % (SHA1_KEY, JOBID), BuildStatusHandler), 
             (r"/all_build_status/(%s)/" % (SHA1_KEY), AllBuildStatusHandler),
             # IAM developer access
+            (r"/iam/(%s)/config/" % (SHA1_KEY), IamConfigHandler),
             (r"/iam/(%s)/users/" % (SHA1_KEY), IamProvisionHandler),
             (r"/iam/(%s)/jobs/(%s)/" % (SHA1_KEY, IAM_JOBID), IamJobStatusHandler),
             (r"/iam/(%s)/users/(%s)/key/" % (SHA1_KEY, IAM_USERNAME), IamAccessKeyHandler),
