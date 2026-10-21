@@ -531,3 +531,81 @@ class TangoREST(object):
             self.log.info("Key not recognized: %s" % key)
             return self.status.wrong_key
             self.log.error("Validation failed %s" % (key))
+
+    ##
+    # IAM developer access API
+    #
+    # Authorized by the same keys as the other routes (validateKey).
+    ##
+
+    def requireIamKey(self, key):
+        """requireIamKey - Raises unless the key authorizes an IAM route"""
+        from vmms.iamProvisioner import IamAuthError
+
+        if not self.validateKey(key):
+            self.log.info("IAM key not recognized")
+            raise IamAuthError("Key not recognized")
+
+    def iamProvision(self, key, iam_username, os_username, create_key):
+        """iamProvision - Start provisioning an IAM user, return its job id.
+
+        Returns as soon as the background job is started. Raises
+        IamValidationError on a bad request and IamCapacityError when too many
+        provisions are already running.
+        """
+        self.log.debug("Received IAM provision request(%s)" % (iam_username))
+        self.requireIamKey(key)
+
+        from vmms.iamProvisioner import start_iam_provision
+
+        job_id = start_iam_provision(iam_username, os_username, create_key)
+        self.log.info("Started IAM provision job %s for %s" % (job_id, iam_username))
+        result = self.status.create(1, "Provisioning IAM user")
+        result["jobId"] = job_id
+        return result
+
+    def iamConfig(self, key):
+        """iamConfig - Return the instance id and region developers connect to.
+
+        Raises ValueError when the IAM configuration is incomplete.
+        """
+        self.log.debug("Received IAM config request")
+        self.requireIamKey(key)
+
+        from vmms.iamProvisioner import get_access_config
+
+        result = self.status.create(2, "IAM access config")
+        result.update(get_access_config())
+        return result
+
+    def iamJobStatus(self, key, job_id):
+        """iamJobStatus - Return the status of an IAM provisioning job.
+
+        Raises IamJobNotFound for an unknown job id. The response may carry a
+        newly created access key on its first successful read, so the handler
+        must send it with Cache-Control: no-store.
+        """
+        self.log.debug("Received IAM job status request(%s)" % (job_id))
+        self.requireIamKey(key)
+
+        from vmms.iamProvisioner import get_provision_status
+
+        return get_provision_status(job_id)
+
+    def iamCreateKey(self, key, iam_username):
+        """iamCreateKey - Replace the user's access keys with a fresh one.
+
+        Blocking: handlers must call this off the event loop. The secret is
+        returned to the caller and never logged.
+        """
+        self.log.debug("Received IAM access key request(%s)" % (iam_username))
+        self.requireIamKey(key)
+
+        from vmms.iamProvisioner import regenerate_access_key
+
+        access_key = regenerate_access_key(iam_username)
+        self.log.info("Regenerated access key for %s" % iam_username)
+        result = self.status.create(2, "Access key regenerated")
+        result["iamUsername"] = iam_username
+        result["accessKey"] = access_key
+        return result
