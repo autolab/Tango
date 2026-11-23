@@ -341,6 +341,21 @@ def ensure_iam_user(iam_username, os_username):
     iam.add_user_to_group(GroupName=group, UserName=iam_username)
     return created
 
+def _scoped_iam_username(iam_username, instance_id):
+    """Scopes IAM users to machine so that there are no duplicates 
+    between multiple deployments of Autolab. IAM users will be
+    [USERNAME]-[EC2 ID]
+    """
+
+    suffix = "-%s" % instance_id
+    if iam_username.endswith(suffix):
+        return iam_username
+    scoped = "%s%s" % (iam_username, suffix)
+    if len(scoped) > 64:
+        raise IamValidationError(
+            "Scoped iam_username exceeds 64 characters: %s" % scoped
+        )
+    return scoped
 
 def ensure_linux_user(os_username, instance_id):
     """Create the matching Linux account on the instance if it is missing.
@@ -424,7 +439,8 @@ def regenerate_access_key(iam_username):
     """
     validate_iam_username(iam_username)
     iam = _iam()
-    _, path, _, _ = _validate_iam_runtime_config()
+    _, path, _, instance_id = _validate_iam_runtime_config()
+    iam_username = _scoped_iam_username(iam_username, instance_id)
     _assert_managed_user(iam, iam_username, path)
 
     existing = iam.list_access_keys(UserName=iam_username)["AccessKeyMetadata"]
@@ -467,6 +483,7 @@ def start_iam_provision(iam_username, os_username, create_key=False):
     """
     iam_username, os_username = resolve_usernames(iam_username, os_username)
     _, _, _, instance_id = _validate_iam_runtime_config()
+    iam_username = _scoped_iam_username(iam_username, instance_id)
 
     if not _provision_semaphore.acquire(blocking=False):
         raise IamCapacityError(
