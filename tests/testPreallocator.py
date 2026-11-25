@@ -25,6 +25,11 @@ class TestPreallocator(unittest.TestCase):
         # Add more machine types to test here in future
         self.testMachines = ["localDocker"]
 
+    def test_getImages(self):
+        from vmms.localDocker import LocalDocker
+
+        self.assertIn("autograding_image", LocalDocker().getImages())
+
     def createVM(self):
         if Config.USE_REDIS:
             __db = redis.StrictRedis(Config.REDIS_HOSTNAME, Config.REDIS_PORT, db=0)

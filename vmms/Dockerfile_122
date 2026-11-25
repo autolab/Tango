@@ -1,15 +1,10 @@
 # Autolab - autograding docker image
 
-FROM ubuntu:14.04
+FROM ubuntu:24.04
 MAINTAINER Mihir Pandya <mihir.m.pandya@gmail.com>
 
 # Install necessary packages
-RUN apt-get update
-RUN apt-get install -y gcc
-RUN apt-get install -y make
-RUN apt-get install -y build-essential
-RUN apt-get install -y wget
-RUN apt-get install -y git
+RUN apt-get update && apt-get install -y build-essential ca-certificates git sudo wget
 
 # Install autodriver
 WORKDIR /home
@@ -25,14 +20,12 @@ RUN make clean && make
 RUN cp autodriver /usr/bin/autodriver
 RUN chmod +s /usr/bin/autodriver
 
-# Install C0
+# CMU distributes this C0 compiler as an amd64 Debian package.
 WORKDIR /home
-RUN wget http://c0.typesafety.net/dist/cc0-v0440-linux3.18.1-64bit-bin.tgz
-RUN tar -xvzf cc0-*
-WORKDIR /home/cc0
-RUN bin/cc0 -d doc/src/exp.c0 doc/src/exp-test.c0
-RUN ./a.out
-RUN cp bin/cc0 /usr/bin/cc0
+RUN wget -O /tmp/cc0.deb https://c0.cs.cmu.edu/downloads/cc0-debian.deb \
+ && echo "c8e44492d7212c9cca9b856569c06f8c70f398e9f02d4d1de823ce9f4535be36  /tmp/cc0.deb" | sha256sum -c - \
+ && apt-get install -y /tmp/cc0.deb \
+ && rm /tmp/cc0.deb
 
 # Clean up
 WORKDIR /home
@@ -40,8 +33,7 @@ RUN apt-get remove -y git
 RUN apt-get remove -y wget
 RUN apt-get -y autoremove
 RUN rm -rf Tango/
-RUN rm -f cc0-*
-RUN rm -rf cc0/
+RUN rm -rf /var/lib/apt/lists/*
 
 # Check installation
 RUN ls -l /home

@@ -29,7 +29,7 @@ class TestDictionary(unittest.TestCase):
             self.assertTrue(key in test_dict)
             self.assertEqual(test_dict.get(key), self.test_entries[key])
 
-        for (key, val) in test_dict.items():
+        for key, val in test_dict.items():
             self.assertEqual(self.test_entries.get(key), val)
 
         self.assertEqual(

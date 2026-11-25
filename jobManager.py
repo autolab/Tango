@@ -118,10 +118,8 @@ class JobManager(object):
 if __name__ == "__main__":
 
     if not Config.USE_REDIS:
-        print(
-            "You need to have Redis running to be able to initiate stand-alone\
-         JobManager"
-        )
+        print("You need to have Redis running to be able to initiate stand-alone\
+         JobManager")
     else:
         tango = tango.TangoServer()
         tango.log.debug("Resetting Tango VMs")

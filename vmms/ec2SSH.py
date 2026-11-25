@@ -8,7 +8,6 @@
 #   Ec2Exception - EC2 raises this if it encounters any problem
 #   ec2CallError - raised by ec2Call() function
 #
-# TODO: this currently probably does not work on Python 3 yet
 
 import subprocess
 import os
@@ -18,8 +17,8 @@ import logging
 
 import config
 
-import boto
-from boto import ec2
+import boto3
+from botocore.exceptions import ClientError
 from tangoObjects import TangoMachine
 
 
@@ -96,23 +95,17 @@ class Ec2SSH(object):
     ]
 
     def __init__(self, accessKeyId=None, accessKey=None):
-        """log - logger for the instance
-        connection - EC2Connection object that stores the connection
-        info to the EC2 network
-        instance - Instance object that stores information about the
-        VM created
-        """
-        self.ssh_flags = Ec2SSH._SSH_FLAGS
+        self.ssh_flags = self._SSH_FLAGS.copy()
+        credentials = {}
         if accessKeyId:
-            self.connection = ec2.connect_to_region(
-                config.Config.EC2_REGION,
-                aws_access_key_id=accessKeyId,
-                aws_secret_access_key=accessKey,
-            )
-            self.useDefaultKeyPair = False
-        else:
-            self.connection = ec2.connect_to_region(config.Config.EC2_REGION)
-            self.useDefaultKeyPair = True
+            credentials = {
+                "aws_access_key_id": accessKeyId,
+                "aws_secret_access_key": accessKey,
+            }
+        self.connection = boto3.client(
+            "ec2", region_name=config.Config.EC2_REGION, **credentials
+        )
+        self.useDefaultKeyPair = not accessKeyId
         self.log = logging.getLogger("Ec2SSH")
 
     def instanceName(self, id, name):
@@ -172,32 +165,36 @@ class Ec2SSH(object):
             self.key_pair_name,
         )
         self.deleteKeyPair()
-        key = self.connection.create_key_pair(self.key_pair_name)
-        key.save(config.Config.DYNAMIC_SECURITY_KEY_PATH)
-        # change the SSH_FLAG accordingly
+        key = self.connection.create_key_pair(KeyName=self.key_pair_name)
+        with os.fdopen(
+            os.open(self.key_pair_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600),
+            "w",
+        ) as key_file:
+            key_file.write(key["KeyMaterial"])
         self.ssh_flags[1] = self.key_pair_path
 
     def deleteKeyPair(self):
-        self.connection.delete_key_pair(self.key_pair_name)
-        # try to delete may not exist key file
+        self.connection.delete_key_pair(KeyName=self.key_pair_name)
         try:
             os.remove(self.key_pair_path)
-        except OSError:
+        except FileNotFoundError:
             pass
 
     def createSecurityGroup(self):
-        # Create may-exist security group
         try:
             security_group = self.connection.create_security_group(
-                config.Config.DEFAULT_SECURITY_GROUP,
-                "Autolab security group - allowing all traffic",
+                GroupName=config.Config.DEFAULT_SECURITY_GROUP,
+                Description="Autolab security group - allowing all traffic",
             )
-            # All ports, all traffics, all ips
-            security_group.authorize(
-                from_port=None, to_port=None, ip_protocol="-1", cidr_ip="0.0.0.0/0"
-            )
-        except boto.exception.EC2ResponseError:
-            pass
+        except ClientError as error:
+            if error.response["Error"]["Code"] != "InvalidGroup.Duplicate":
+                raise
+            return
+
+        self.connection.authorize_security_group_ingress(
+            GroupId=security_group["GroupId"],
+            IpPermissions=[{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+        )
 
     #
     # VMMS API functions
@@ -205,7 +202,7 @@ class Ec2SSH(object):
     def initializeVM(self, vm):
         """initializeVM - Tell EC2 to create a new VM instance.
 
-        Returns a boto.ec2.instance.Instance object.
+        Returns the Tango machine with its EC2 instance ID and address.
         """
         # Create the instance and obtain the reservation
         try:
@@ -221,51 +218,34 @@ class Ec2SSH(object):
                 self.createKeyPair()
 
             reservation = self.connection.run_instances(
-                ec2instance["ami"],
-                key_name=self.key_pair_name,
-                security_groups=[config.Config.DEFAULT_SECURITY_GROUP],
-                instance_type=ec2instance["instance_type"],
+                ImageId=ec2instance["ami"],
+                MinCount=1,
+                MaxCount=1,
+                KeyName=self.key_pair_name,
+                SecurityGroups=[config.Config.DEFAULT_SECURITY_GROUP],
+                InstanceType=ec2instance["instance_type"],
+                TagSpecifications=[
+                    {
+                        "ResourceType": "instance",
+                        "Tags": [{"Key": "Name", "Value": instanceName}],
+                    }
+                ],
             )
-
-            # Wait for instance to reach 'running' state
-            state = -1
-            start_time = time.time()
-            while state is not config.Config.INSTANCE_RUNNING:
-
-                for inst in self.connection.get_all_instances():
-                    if inst.id == reservation.id:
-                        newInstance = inst.instances.pop()
-
-                state = newInstance.state_code
-                self.log.debug(
-                    "VM %s: Waiting to reach 'running' state. Current state: %s (%d)"
-                    % (instanceName, newInstance.state, state)
-                )
-                time.sleep(config.Config.TIMER_POLL_INTERVAL)
-                elapsed_secs = time.time() - start_time
-                if elapsed_secs > config.Config.INITIALIZEVM_TIMEOUT:
-                    self.log.debug(
-                        "VM %s: Did not reach 'running' state before timeout period of %d"
-                        % (instanceName, config.Config.TIMER_POLL_INTERVAL)
-                    )
-
-            self.log.info(
-                "VM %s | State %s | Reservation %s | Public DNS Name %s | Public IP Address %s"
-                % (
-                    instanceName,
-                    newInstance.state,
-                    reservation.id,
-                    newInstance.public_dns_name,
-                    newInstance.ip_address,
-                )
+            instance_id = reservation["Instances"][0]["InstanceId"]
+            vm.ec2_id = instance_id
+            poll_interval = config.Config.TIMER_POLL_INTERVAL
+            self.connection.get_waiter("instance_running").wait(
+                InstanceIds=[instance_id],
+                WaiterConfig={
+                    "Delay": poll_interval,
+                    "MaxAttempts": config.Config.INITIALIZEVM_TIMEOUT // poll_interval
+                    + 1,
+                },
             )
-
-            # Save domain and id ssigned by EC2 in vm object
-            vm.domain_name = newInstance.ip_address
-            vm.ec2_id = newInstance.id
-            # Assign name to EC2 instance
-            self.connection.create_tags([newInstance.id], {"Name": instanceName})
-            self.log.debug("VM %s: %s" % (instanceName, newInstance))
+            response = self.connection.describe_instances(InstanceIds=[instance_id])
+            instance = response["Reservations"][0]["Instances"][0]
+            vm.domain_name = instance["PublicIpAddress"]
+            self.log.debug("VM %s: %s", instanceName, instance)
             return vm
 
         except Exception as e:
@@ -277,7 +257,7 @@ class Ec2SSH(object):
         """waitVM - Wait at most max_secs for a VM to become
         ready. Return error if it takes too long.
 
-        VM is a boto.ec2.instance.Instance object.
+        VM is a Tango machine with an EC2 address.
         """
 
         # First, wait for ping to the vm instance to work
@@ -445,7 +425,7 @@ class Ec2SSH(object):
 
     def destroyVM(self, vm):
         """destroyVM - Removes a VM from the system"""
-        ret = self.connection.terminate_instances(instance_ids=[vm.ec2_id])
+        ret = self.connection.terminate_instances(InstanceIds=[vm.ec2_id])
         # delete dynamically created key
         if not self.useDefaultKeyPair:
             self.deleteKeyPair()
@@ -455,36 +435,35 @@ class Ec2SSH(object):
         return self.destroyVM(vm)
 
     def getVMs(self):
-        """getVMs - Returns the complete list of VMs on this account. Each
-        list entry is a boto.ec2.instance.Instance object.
-        """
-        # TODO: Find a way to return vm objects as opposed ec2 instance
-        # objects.
-        instances = list()
-        for i in self.connection.get_all_instances():
-            if i.id is not config.Config.TANGO_RESERVATION_ID:
-                inst = i.instances.pop()
-                if inst.state_code is config.Config.INSTANCE_RUNNING:
-                    instances.append(inst)
-
-        vms = list()
-        for inst in instances:
-            vm = TangoMachine()
-            vm.ec2_id = inst.id
-            vm.name = str(inst.tags.get("Name"))
-            self.log.debug("getVMs: Instance - %s, EC2 Id - %s" % (vm.name, vm.ec2_id))
-            vms.append(vm)
-
+        """List running EC2 instances outside Tango's excluded reservation."""
+        vms = []
+        paginator = self.connection.get_paginator("describe_instances")
+        for page in paginator.paginate(
+            Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
+        ):
+            for reservation in page["Reservations"]:
+                if reservation["ReservationId"] == config.Config.TANGO_RESERVATION_ID:
+                    continue
+                for instance in reservation["Instances"]:
+                    tags = {
+                        tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])
+                    }
+                    vm = TangoMachine(ec2_id=instance["InstanceId"])
+                    vm.name = str(tags.get("Name"))
+                    vms.append(vm)
         return vms
 
     def existsVM(self, vm):
-        """existsVM - Checks whether a VM exists in the vmms."""
-        instances = self.connection.get_all_instances()
-
-        for inst in instances:
-            if inst.instances[0].id is vm.ec2_id:
-                return True
-        return False
+        """Check whether EC2 knows about the instance."""
+        if vm.ec2_id is None:
+            return False
+        try:
+            response = self.connection.describe_instances(InstanceIds=[vm.ec2_id])
+        except ClientError as error:
+            if error.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
+                return False
+            raise
+        return any(reservation["Instances"] for reservation in response["Reservations"])
 
     def getImages(self):
         """getImages - return a constant; actually use the ami specified in config"""

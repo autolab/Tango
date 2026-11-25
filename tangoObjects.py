@@ -8,20 +8,25 @@ import pickle
 import redis
 
 redisConnection = None
+# Queue removal matches serialized bytes, including entries written by Python 3.8.
+PICKLE_PROTOCOL = 4
 
 
 def getRedisConnection():
     global redisConnection
     if redisConnection is None:
-        redisConnection = redis.StrictRedis(
-            host=Config.REDIS_HOSTNAME, port=Config.REDIS_PORT, db=0
+        redisConnection = redis.Redis(
+            host=Config.REDIS_HOSTNAME,
+            port=Config.REDIS_PORT,
+            db=0,
+            protocol=2,
+            socket_timeout=None,
         )
 
     return redisConnection
 
 
 class InputFile(object):
-
     """
     InputFile - Stores pointer to the path on the local machine and the
     name of the file on the destination machine
@@ -39,7 +44,6 @@ class InputFile(object):
 
 
 class TangoMachine(object):
-
     """
     TangoMachine - A description of the Autograding Virtual Machine
     """
@@ -77,7 +81,6 @@ class TangoMachine(object):
 
 
 class TangoJob(object):
-
     """
     TangoJob - A job that is to be run on a TangoMachine
     """
@@ -240,7 +243,6 @@ class ExtendedQueue(Queue):
 
 
 class TangoRemoteQueue(object):
-
     """Simple Queue with Redis Backend"""
 
     def __init__(self, name, namespace="queue"):
@@ -258,7 +260,7 @@ class TangoRemoteQueue(object):
 
     def put(self, item):
         """Put item into the queue."""
-        pickled_item = pickle.dumps(item)
+        pickled_item = pickle.dumps(item, protocol=PICKLE_PROTOCOL)
         self.__db.rpush(self.key, pickled_item)
 
     def get(self, block=True, timeout=None):
@@ -295,7 +297,7 @@ class TangoRemoteQueue(object):
 
     def remove(self, item):
         items = self.__db.lrange(self.key, 0, -1)
-        pickled_item = pickle.dumps(item)
+        pickled_item = pickle.dumps(item, protocol=PICKLE_PROTOCOL)
         return self.__db.lrem(self.key, 0, pickled_item)
 
     def _clean(self):
@@ -323,7 +325,7 @@ class TangoRemoteDictionary(object):
         return self.r.hexists(self.hash_name, str(id))
 
     def set(self, id, obj):
-        pickled_obj = pickle.dumps(obj)
+        pickled_obj = pickle.dumps(obj, protocol=PICKLE_PROTOCOL)
 
         if hasattr(obj, "_remoteLocation"):
             obj._remoteLocation = self.hash_name + ":" + str(id)

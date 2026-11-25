@@ -1,5 +1,5 @@
 # Start with empty ubuntu machine
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 MAINTAINER Autolab Development Team "autolab-dev@andrew.cmu.edu"
 
@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN chmod 1777 /tmp
 
-# Install dependancies
+# Install dependencies
 RUN apt-get update && apt-get install -y \
 	nginx \
 	curl \
@@ -22,9 +22,9 @@ RUN apt-get update && apt-get install -y \
 	vim \
 	supervisor \
 	python3 \
-	python3-pip \
+	python3-venv \
 	build-essential \
-	tcl8.6 \
+	tcl \
 	wget \
 	libgcrypt20-dev \
 	zlib1g-dev \
@@ -51,25 +51,23 @@ RUN set -eux; \
       docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
-# Install the magic wrapper.
-ADD ./wrapdocker /usr/local/bin/wrapdocker
-RUN chmod +x /usr/local/bin/wrapdocker
+# Install the Docker daemon launcher.
+COPY --chmod=0755 wrapdocker /usr/local/bin/wrapdocker
 
 # Define additional metadata for our image.
 VOLUME /var/lib/docker
 
-WORKDIR /opt
-
-# Create virtualenv to link dependancies
-RUN pip3 install virtualenv && virtualenv .
+RUN python3 -m venv /opt/tango-venv
+ENV PATH="/opt/tango-venv/bin:${PATH}"
 
 WORKDIR /opt/TangoService/Tango
 
 # Add in requirements
 COPY requirements.txt .
 
-# Install python dependancies
-RUN pip3 install -r requirements.txt
+# Install Python dependencies in the same environment Supervisor will use.
+RUN python -m pip install --no-cache-dir --upgrade pip==26.3 \
+ && python -m pip install --no-cache-dir -r requirements.txt
 
 # Move all code into Tango directory
 COPY . .

@@ -284,11 +284,8 @@ class DistDocker(object):
         # IMPORTANT: The single and double quotes are important, since we
         #            are switching to the autolab user and then running
         #            bash commands.
-        setupCmd = (
-            'cp -r mount/* autolab/; su autolab -c "%s"; \
-                cp output/feedback mount/feedback'
-            % autodriverCmd
-        )
+        setupCmd = 'cp -r mount/* autolab/; su autolab -c "%s"; \
+                cp output/feedback mount/feedback' % autodriverCmd
 
         disableNetworkArg = "--network none" if disableNetwork else ""
 
@@ -452,30 +449,26 @@ class DistDocker(object):
         return vm.name in vmnames
 
     def getImages(self):
-        """getImages - Executes `docker images` on every host and
-        returns a list of images that can be used to boot a docker
-        container with. This function is a lot of parsing and so
-        can break easily.
-        """
+        """Return the names of tagged images on the Docker hosts."""
         result = set()
         try:
             hosts = socket.gethostbyname_ex(self.hostDNSPoolname)[2]
         except EnvironmentError:
             return result
         for host in hosts:
-            o = subprocess.check_output(
+            repositories = subprocess.check_output(
                 ["ssh"]
                 + DistDocker._SSH_FLAGS
                 + DistDocker._SSH_AUTH_FLAGS
-                + ["%s@%s" % (self.hostUser, host), "(docker images)"]
-            ).decode("utf-8")
-            o_l = o.split("\n")
-            o_l.pop()
-            o_l.reverse()
-            o_l.pop()
-            for row in o_l:
-                row_l = row.split(" ")
-                result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
+                + [
+                    "%s@%s" % (self.hostUser, host),
+                    "docker image ls --format '{{.Repository}}'",
+                ],
+                text=True,
+            ).splitlines()
+            result.update(
+                repo.rsplit("/", 1)[-1] for repo in repositories if repo != "<none>"
+            )
 
         return list(result)
 

@@ -176,11 +176,8 @@ class LocalDocker(object):
             )
         )
 
-        args = args + [
-            'cp -r mount/* autolab/; su autolab -c "%s"; \
-                        cp output/feedback mount/feedback'
-            % autodriverCmd
-        ]
+        args = args + ['cp -r mount/* autolab/; su autolab -c "%s"; \
+                        cp output/feedback mount/feedback' % autodriverCmd]
 
         self.log.debug("Running job: %s" % str(args))
         ret = timeout(args, runTimeout * 2)
@@ -253,21 +250,13 @@ class LocalDocker(object):
         return ret == 0
 
     def getImages(self):
-        """getImages - Executes `docker images` and returns a list of
-        images that can be used to boot a docker container with. This
-        function is a lot of parsing and so can break easily.
-        """
-        result = set()
-        cmd = "docker images"
-        o = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        o_l = o.split("\n")
-        o_l.pop()
-        o_l.reverse()
-        o_l.pop()
-        for row in o_l:
-            row_l = row.split(" ")
-            result.add(re.sub(r".*/([^/]*)", r"\1", row_l[0]))
-        return list(result)
+        """Return the names of tagged images on the local Docker host."""
+        repositories = subprocess.check_output(
+            ["docker", "image", "ls", "--format", "{{.Repository}}"], text=True
+        ).splitlines()
+        return list(
+            {repo.rsplit("/", 1)[-1] for repo in repositories if repo != "<none>"}
+        )
 
     def getPartialOutput(self, vm):
         """getPartialOutput - Get the partial output of a job.

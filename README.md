@@ -28,6 +28,12 @@ Tango was developed as a distributed grading system for [Autolab](https://github
 
 ## Using Tango
 
+The Tango service image and CI use Python 3.12. For local development, use
+Python 3.12 in a virtual environment and install `requirements-dev.txt`.
+
+The C0 grading image uses CMU's amd64 compiler package. Build it with
+`docker build --platform linux/amd64 -f vmms/Dockerfile_122 -t tango-c0 .`.
+
 Please feel free to use Tango at your school/organization. If you run into any problems with the steps below, you can reach the core developers at `autolab-dev@andrew.cmu.edu` and we would be happy to help.
 
 1. [Follow the steps to set up Tango](https://docs.autolabproject.com/installation/tango/).

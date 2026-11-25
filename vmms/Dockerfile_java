@@ -1,4 +1,4 @@
-FROM openjdk:11
+FROM eclipse-temurin:25-jdk-noble
 MAINTAINER Vinay Venkat (@cool00geek)
 
 RUN apt-get update --fix-missing

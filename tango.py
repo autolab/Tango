@@ -51,7 +51,6 @@ from config import Config
 
 
 class TangoServer(object):
-
     """TangoServer - Implements the API functions that the server accepts"""
 
     def __init__(self):
@@ -142,7 +141,7 @@ class TangoServer(object):
             if vm.image not in vmms.getImages():
                 self.log.error("Invalid image name")
                 return -3
-            (name, ext) = os.path.splitext(vm.image)
+            name, ext = os.path.splitext(vm.image)
             vm.name = name
             self.preallocator.update(vm, num)
             return 0
@@ -319,7 +318,7 @@ class TangoServer(object):
                     )
                     errors += 1
                 else:
-                    (name, ext) = os.path.splitext(job.vm.image)
+                    name, ext = os.path.splitext(job.vm.image)
                     job.vm.name = name
 
             if not job.vm.vmms:
