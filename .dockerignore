@@ -1,2 +1,5 @@
 .git
 .gitignore
+env/
+**/__pycache__/
+dump.rdb

@@ -1,5 +1,5 @@
 # Autolab - autograding docker image
-FROM golang:latest
+FROM golang:1.27.4-trixie
 
 RUN apt-get update --fix-missing && apt-get install -y gcc make build-essential sudo
 

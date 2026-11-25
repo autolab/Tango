@@ -6,7 +6,7 @@ import time
 import logging
 import tempfile
 import requests
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import os
 import shutil
@@ -114,7 +114,7 @@ class Worker(threading.Thread):
         and f2 is the output from the Autodriver
         """
         self.appendMsg(f1, "Here is the output from the autograder:\n---")
-        (wfd, tmpname) = tempfile.mkstemp(dir=os.path.dirname(f2))
+        wfd, tmpname = tempfile.mkstemp(dir=os.path.dirname(f2))
         wf = os.fdopen(wfd, "ab")
         with open(f1, "rb") as f1fd:
             shutil.copyfileobj(f1fd, wf)
@@ -327,7 +327,7 @@ class Worker(threading.Thread):
             # Move the job from the live queue to the dead queue
             # with an explanatory message
             msg = "Success: Autodriver returned normally"
-            (returnVM, replaceVM) = (True, False)
+            returnVM, replaceVM = (True, False)
             if ret["copyin"] != 0:
                 msg = "Error: Copy in to VM failed (status=%d)" % (ret["copyin"])
             elif ret["runjob"] != 0:
@@ -341,7 +341,7 @@ class Worker(threading.Thread):
                     # and do not retry the job since the job may have damaged
                     # the VM.
                     msg = "Error: OS error while running job on VM"
-                    (returnVM, replaceVM) = (False, True)
+                    returnVM, replaceVM = (False, True)
                 else:  # This should never happen
                     msg = "Error: Unknown autodriver error (status=%d)" % (
                         ret["runjob"]

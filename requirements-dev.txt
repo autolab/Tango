@@ -1,3 +1,4 @@
 -r requirements.txt
-pre-commit>=2.11.1
-black==24.3.0
+black==26.10.1
+pre-commit==4.7.0
+pyflakes==4.1.0
